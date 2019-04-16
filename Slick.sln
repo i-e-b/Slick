@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.572
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlickWindows", "src\SlickWindows\SlickWindows.csproj", "{6B3871A9-F246-413B-935E-9D5E337CAF1B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Info", "_Info", "{9B823A59-9FF5-4FBB-9523-FC50DBD02A83}"
+	ProjectSection(SolutionItems) = preProject
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6B3871A9-F246-413B-935E-9D5E337CAF1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B3871A9-F246-413B-935E-9D5E337CAF1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B3871A9-F246-413B-935E-9D5E337CAF1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B3871A9-F246-413B-935E-9D5E337CAF1B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C1C76B0B-98AD-497A-AC04-BD2D9F8B00D7}
+	EndGlobalSection
+EndGlobal
