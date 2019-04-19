@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Drawing;
 using JetBrains.Annotations;
 using Microsoft.Ink;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
+using SlickWindows.Canvas;
 
 namespace SlickWindows
 {
@@ -15,16 +15,21 @@ namespace SlickWindows
     public class RealtimeRendererPlugin:IStylusSyncPlugin
     {
         // Declare the graphics object used for dynamic rendering
-        [NotNull]private readonly Graphics myGraphics;
+        [NotNull]private readonly EndlessCanvas _canvas;
         private TabletDeviceKind tabletKind;
+
+        /// <summary>
+        /// The highest pressure value we've seen (initial guess, updated as we collect data)
+        /// </summary>
+        private static float maxPressure = 2540.0F;
 
         /// <summary>
         /// Constructor for this plugin
         /// </summary>
         /// <param name="g">The graphics object used for dynamic rendering.</param>
-        public RealtimeRendererPlugin(Graphics g)
+        public RealtimeRendererPlugin(EndlessCanvas g)
         {
-            myGraphics = g ?? throw new ArgumentNullException(nameof(g));
+            _canvas = g ?? throw new ArgumentNullException(nameof(g));
             tabletKind = TabletDeviceKind.Pen;
         }
 
@@ -39,31 +44,48 @@ namespace SlickWindows
         public void Packets(RealTimeStylus sender, PacketsData data)
         {
             if (sender == null || data == null) return;
+
+
             // For each new packet received, extract the x,y data
             // and draw a small circle around the result.
             for (int i = 0; i < data.Count; i += data.PacketPropertyCount)
             {
                 // Packet data always has x followed by y followed by the rest
-                Point point = new Point(data[i], data[i+1]);
+                var point = new Point(data[i], data[i+1]);
 
                 // Since the packet data is in Ink Space coordinates, we need to convert to Pixels...
-                point.X = (int)Math.Round(point.X * myGraphics.DpiX/2540.0F);
-                point.Y = (int)Math.Round(point.Y * myGraphics.DpiY/2540.0F);
+                point.X = (int)Math.Round(point.X * _canvas.DpiX / 2540.0F);
+                point.Y = (int)Math.Round(point.Y * _canvas.DpiY / 2540.0F);
+                var pressure = 1.0F;
+
+                if (data.PacketPropertyCount > 2) // Contains pressure info
+                {
+                    if (data[i+2] > maxPressure) maxPressure = data[i+2];
+                    pressure = data[i+2] / maxPressure;
+                }
 
                 // Draw a circle corresponding to the packet
-                switch (this.tabletKind)
+                switch (tabletKind)
                 {
                     case TabletDeviceKind.Pen:
                         // Make the packets from the stylus smaller and green
-                        myGraphics.DrawEllipse(Pens.Green, point.X - 2, point.Y - 2, 4, 4);
+                        // TODO: join prev pos from same input (dictionary and up/down)
+                        var x = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
+                        _canvas.Ink(x,x);
+                        //myGraphics.DrawEllipse(Pens.Green, point.X - 2, point.Y - 2, 10 * pressure, 10 * pressure);
                         break;
                     case TabletDeviceKind.Mouse:
                         // Make the packets from the mouse/pointing device mid-sized and red
-                        myGraphics.DrawEllipse(Pens.Red, point.X - 2, point.Y - 2, 10, 10);
+                        //myGraphics.DrawEllipse(Pens.Red, point.X - 2, point.Y - 2, 4, 4);
+                        var m = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
+                        _canvas.Ink(m,m);
                         break;
                     case TabletDeviceKind.Touch:
                         // Make the packets from a finger/touch digitizer larger and blue
-                        myGraphics.DrawEllipse(Pens.Blue, point.X - 2, point.Y - 2, 20, 20);
+                        //var indicPen = new Pen(Color.FromArgb(255, 0, 0, ((data.Stylus?.Id ?? 1) * 50) % 255), 1); // each touch point gets a new ID
+                        //myGraphics.DrawEllipse(indicPen, point.X - 2, point.Y - 2, 20, 20);
+                        // TODO: use delta of prev pos.
+                        _canvas.Scroll(0,0);
                         break;
 
                 }
@@ -78,7 +100,7 @@ namespace SlickWindows
         /// <param name="data">The notification data</param>
         public void Error(RealTimeStylus sender, ErrorData data)
         {
-            Debug.Assert(false, null, "An error occurred.  DataId=" + data.DataId + ", " + "Exception=" + data.InnerException);
+            //Debug.Assert(false, null, "An error occurred.  DataId=" + data.DataId + ", " + "Exception=" + data.InnerException);
         }
 
         /// <summary>
@@ -101,14 +123,17 @@ namespace SlickWindows
         public void StylusInRange(RealTimeStylus sender, StylusInRangeData data) {}
         public void StylusDown(RealTimeStylus sender, StylusDownData data) 
         {
-            var currentTablet = sender.GetTabletFromTabletContextId(data.Stylus.TabletContextId);
+            if (data?.Stylus == null) return;
+            var currentTablet = sender?.GetTabletFromTabletContextId(data.Stylus.TabletContextId);
 
-            if(currentTablet != null)
+            if (currentTablet != null)
             {
                 tabletKind = currentTablet.DeviceKind;
-            }        
+            }
         }
-        public void StylusUp(RealTimeStylus sender, StylusUpData data) {}
+        public void StylusUp(RealTimeStylus sender, StylusUpData data) {
+        }
+
         public void StylusButtonDown(RealTimeStylus sender, StylusButtonDownData data) {}
         public void StylusButtonUp(RealTimeStylus sender, StylusButtonUpData data) {}
         public void CustomStylusDataAdded(RealTimeStylus sender, CustomStylusData data){}

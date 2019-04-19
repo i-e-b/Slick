@@ -33,6 +33,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Containers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Ink, Version=1.7.2600.2180, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\..\..\Reference Assemblies\Microsoft\Tablet PC\v1.7\Microsoft.Ink.dll</HintPath>
@@ -53,7 +56,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Canvas\DPoint.cs" />
+    <Compile Include="Canvas\InkType.cs" />
+    <Compile Include="Canvas\PositionKey.cs" />
+    <Compile Include="Canvas\TileImage.cs" />
     <Compile Include="DataTriggerStylusPlugin.cs" />
+    <Compile Include="Canvas\EndlessCanvas.cs" />
     <Compile Include="IDataTriggered.cs" />
     <Compile Include="MainWindow.cs">
       <SubType>Form</SubType>

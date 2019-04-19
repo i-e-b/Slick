@@ -2,48 +2,53 @@
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
-using Microsoft.StylusInput.PluginData;
+using SlickWindows.Canvas;
 
 namespace SlickWindows
 {
     public partial class MainWindow : Form, IDataTriggered
     {
         // Declare the real time stylus.
-        [NotNull]private readonly RealTimeStylus StylusInput;
+        [NotNull]private readonly RealTimeStylus _stylusInput;
+        [NotNull]private readonly EndlessCanvas _canvas;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            StylusInput = new RealTimeStylus(this, true);
+            DoubleBuffered = true;
+            _canvas = new EndlessCanvas(DeviceDpi);
+
+            _stylusInput = new RealTimeStylus(this, true);
+            _stylusInput.MultiTouchEnabled = true;
 
             // Async calls get triggered on the UI thread, so we use this to trigger updates to WinForms visuals.
-            StylusInput.AsyncPluginCollection?.Add(new DataTriggerStylusPlugin(this));
+            _stylusInput.AsyncPluginCollection?.Add(new DataTriggerStylusPlugin(this));
 
-            AddInputPlugin(new RealtimeRendererPlugin(CreateGraphics()));
+            AddInputPlugin(_stylusInput, new RealtimeRendererPlugin(_canvas));
 
-            StylusInput.Enabled = true; 
+            _stylusInput.Enabled = true; 
         }
 
-        private void AddInputPlugin(IStylusSyncPlugin plugin)
+        private static void AddInputPlugin([NotNull]RealTimeStylus stylusInput, IStylusSyncPlugin plugin)
         {
-            if (plugin == null || StylusInput.SyncPluginCollection == null) throw new Exception("Input state not correct");
-            var rtsEnabled = StylusInput.Enabled;
-            StylusInput.Enabled = false;
-            StylusInput.SyncPluginCollection.Add(plugin);
-            StylusInput.Enabled = rtsEnabled;
-        }
-
-        /// <inheritdoc />
-        public void DataCollected(RealTimeStylus sender, CustomStylusData data)
-        {
-
+            if (plugin == null || stylusInput.SyncPluginCollection == null) throw new Exception("Input state not correct");
+            var rtsEnabled = stylusInput.Enabled;
+            stylusInput.Enabled = false;
+            stylusInput.SyncPluginCollection.Add(plugin);
+            stylusInput.Enabled = rtsEnabled;
         }
 
         /// <inheritdoc />
-        public void Error(RealTimeStylus sender, ErrorData data)
+        protected override void OnPaint(PaintEventArgs e)
         {
+            _canvas.RenderToGraphics(e.Graphics, Width, Height);
+        }
 
+        /// <inheritdoc />
+        public void DataCollected(RealTimeStylus sender)
+        {
+            Invalidate();
         }
     }
 }
