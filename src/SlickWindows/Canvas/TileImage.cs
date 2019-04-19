@@ -11,6 +11,7 @@ namespace SlickWindows.Canvas
     /// </summary>
     internal class TileImage
     {
+        // TODO: add load & save to disk support.
         public const int Size = 64;
         public const int Pixels = Size * Size;
 
@@ -52,20 +53,7 @@ namespace SlickWindows.Canvas
 
         public void Overwrite(double px, double py, double radius, Color penColor)
         {
-            // 16 bit color in 565 format
-            int color =   ((penColor.R & 0xF8) << 8)
-                          | ((penColor.G & 0xFC) << 2)
-                          | ((penColor.B & 0xF8) >> 3);
-            short cdata = (short)color;
-            
-            // simple square for now...
-            var ol = (int)(radius / 2);
-            var or = (int)(radius - ol);
-
-            var top = Math.Max(0, (int)(py - ol));
-            var left = Math.Max(0, (int)(px - ol));
-            var right = Math.Min(Size, (int)(px + or));
-            var bottom = Math.Min(Size, (int)(py + or));
+            var cdata = PreparePen(px, py, radius, penColor, out var top, out var left, out var right, out var bottom);
 
             for (int y = top; y < bottom; y++)
             {
@@ -75,5 +63,39 @@ namespace SlickWindows.Canvas
                 }
             }
         }
+
+        public void Highlight(double px, double py, double radius, Color penColor) {
+            var cdata = PreparePen(px, py, radius, penColor, out var top, out var left, out var right, out var bottom);
+
+            for (int y = top; y < bottom; y++)
+            {
+                for (int x = left; x < right; x++)
+                {
+                    // TODO: do highlighter mode
+                    data[(y*Size)+x] = cdata;
+                }
+            }
+        }
+
+        private static short PreparePen(double px, double py, double radius, Color penColor, out int top, out int left, out int right, out int bottom)
+        {
+            // 16 bit color in 565 format
+            int color = ((penColor.R & 0xF8) << 8)
+                        | ((penColor.G & 0xFC) << 2)
+                        | ((penColor.B & 0xF8) >> 3);
+            short cdata = (short) color;
+
+            // simple square for now...
+            var ol = (int) (radius / 2);
+            var or = (int) (radius - ol);
+
+            top = Math.Max(0, (int) (py - ol));
+            left = Math.Max(0, (int) (px - ol));
+            right = Math.Min(Size, (int) (px + or));
+            bottom = Math.Min(Size, (int) (py + or));
+            return cdata;
+        }
+
+
     }
 }

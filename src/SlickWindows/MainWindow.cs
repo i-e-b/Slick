@@ -48,6 +48,7 @@ namespace SlickWindows
         /// <inheritdoc />
         public void DataCollected(RealTimeStylus sender)
         {
+            Text = $"Position = ({_canvas.X}, {_canvas.Y})";
             Invalidate();
         }
     }

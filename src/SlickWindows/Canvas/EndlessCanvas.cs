@@ -14,6 +14,9 @@ namespace SlickWindows.Canvas
         private Color _penColor;
         private double _penSize;
         private InkType _penType;
+
+        public double X { get { return _xOffset; } }
+        public double Y { get { return _yOffset; } }
         
         public int DpiY;
         public int DpiX;
@@ -23,10 +26,10 @@ namespace SlickWindows.Canvas
         {
             DpiX = deviceDpi; // TODO: derive from the context
             DpiY = deviceDpi;
-           _xOffset = 0.0; 
-           _yOffset = 0.0;
+           _xOffset = 100.0; 
+           _yOffset = 100.0;
             
-           _penColor = Color.Black;
+           _penColor = Color.BlueViolet;
            _penSize = 5.0;
            _penType = InkType.Overwrite;
 
@@ -40,22 +43,23 @@ namespace SlickWindows.Canvas
             // TODO: generalise graphics
 
             // work out the indexes we need, find in dictionary, draw
+            int ox = (int)(_xOffset / TileImage.Size);
+            int oy = (int)(_yOffset / TileImage.Size);
             int mx = width / TileImage.Size;
             int my = height / TileImage.Size;
 
-            for (int y = 0; y < my; y++)
+            for (int y = -1; y <= my; y++)
             {
-                var yIdx = Math.Floor(y + _yOffset);
+                var yIdx = oy + y;
 
-                for (int x = 0; x < mx; x++)
+                for (int x = -1; x <= mx; x++)
                 {
-                    var xIdx = Math.Floor(x + _xOffset);
-                    var pk = new PositionKey((int)xIdx, (int)yIdx);
+                    var xIdx = ox + x;
+                    var pk = new PositionKey(xIdx, yIdx);
                     if (!_canvasTiles.ContainsKey(pk)) continue;
 
                     var tile = _canvasTiles[pk];
-                    // this position is wrong. Fix
-                    tile.Render(g, (xIdx * TileImage.Size) + _xOffset, (yIdx * TileImage.Size) + _yOffset);
+                    tile.Render(g, (xIdx * TileImage.Size) - _xOffset, (yIdx * TileImage.Size) - _yOffset);
                 }
             }
         }
@@ -63,7 +67,7 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// move the offset
         /// </summary>
-        public void Scroll(float dx, float dy){
+        public void Scroll(double dx, double dy){
             _xOffset += dx;
             _yOffset += dy;
         }
@@ -72,9 +76,6 @@ namespace SlickWindows.Canvas
         /// Draw curve in the current inking colour
         /// </summary>
         public void Ink(DPoint start, DPoint end) {
-            // TODO: should repeat this for pixels between.
-            // for now, just showing the first
-            
             var xIdx = Math.Floor((start.X + _xOffset) / TileImage.Size);
             var yIdx = Math.Floor((start.Y + _yOffset) / TileImage.Size);
             var pk = new PositionKey((int)xIdx, (int)yIdx);
@@ -82,10 +83,18 @@ namespace SlickWindows.Canvas
             if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
             var img = _canvasTiles[pk];
 
-            var bx = (start.X - _xOffset) % TileImage.Size;
-            var by = (start.Y - _yOffset) % TileImage.Size;
+            var bx = (start.X + _xOffset) % TileImage.Size;
+            var by = (start.Y + _yOffset) % TileImage.Size;
 
-            img.Overwrite(bx, by, start.Pressure * _penSize, _penColor);
+            if (bx < 0) bx += TileImage.Size;
+            if (by < 0) by += TileImage.Size;       
+
+            if (_penType == InkType.Overwrite) {
+                img?.Overwrite(bx, by, start.Pressure * _penSize, _penColor);
+            }
+            else {
+                img?.Highlight(bx, by, start.Pressure * _penSize, _penColor);
+            }
         }
 
         /// <summary>

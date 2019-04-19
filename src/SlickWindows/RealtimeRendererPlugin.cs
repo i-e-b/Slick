@@ -18,10 +18,15 @@ namespace SlickWindows
         [NotNull]private readonly EndlessCanvas _canvas;
         private TabletDeviceKind tabletKind;
 
+        DPoint? _lastTouch;
+        private static readonly object _tlock = new object();
+
         /// <summary>
         /// The highest pressure value we've seen (initial guess, updated as we collect data)
         /// </summary>
         private static float maxPressure = 2540.0F;
+
+        private int _touchId;
 
         /// <summary>
         /// Constructor for this plugin
@@ -30,6 +35,7 @@ namespace SlickWindows
         public RealtimeRendererPlugin(EndlessCanvas g)
         {
             _canvas = g ?? throw new ArgumentNullException(nameof(g));
+            _lastTouch = null;
             tabletKind = TabletDeviceKind.Pen;
         }
 
@@ -72,6 +78,7 @@ namespace SlickWindows
                         // TODO: join prev pos from same input (dictionary and up/down)
                         var x = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
                         _canvas.Ink(x,x);
+
                         //myGraphics.DrawEllipse(Pens.Green, point.X - 2, point.Y - 2, 10 * pressure, 10 * pressure);
                         break;
                     case TabletDeviceKind.Mouse:
@@ -79,13 +86,33 @@ namespace SlickWindows
                         //myGraphics.DrawEllipse(Pens.Red, point.X - 2, point.Y - 2, 4, 4);
                         var m = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
                         _canvas.Ink(m,m);
+                        
                         break;
                     case TabletDeviceKind.Touch:
                         // Make the packets from a finger/touch digitizer larger and blue
                         //var indicPen = new Pen(Color.FromArgb(255, 0, 0, ((data.Stylus?.Id ?? 1) * 50) % 255), 1); // each touch point gets a new ID
                         //myGraphics.DrawEllipse(indicPen, point.X - 2, point.Y - 2, 20, 20);
                         // TODO: use delta of prev pos.
-                        _canvas.Scroll(0,0);
+
+                        lock (_tlock)
+                        {
+                            // this needs improvement
+                            if (_lastTouch == null)
+                            {
+                                _touchId = data.Stylus.Id;
+                                _lastTouch = new DPoint { X = point.X, Y = point.Y, Pressure = pressure };
+                                break;
+                            }
+
+                            if (data.Stylus.Id == _touchId)
+                            {
+                                _canvas.Scroll(
+                                    _lastTouch.Value.X - point.X,
+                                    _lastTouch.Value.Y - point.Y
+                                    );
+                                _lastTouch = null;
+                            }
+                        }
                         break;
 
                 }
@@ -111,7 +138,8 @@ namespace SlickWindows
             get
             {
                 // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
-                return DataInterestMask.StylusDown | DataInterestMask.Packets | DataInterestMask.Error;
+                return DataInterestMask.StylusDown | DataInterestMask.StylusUp 
+                     | DataInterestMask.Packets | DataInterestMask.Error;
                 // ReSharper restore BitwiseOperatorOnEnumWithoutFlags
             }
         }
@@ -123,6 +151,7 @@ namespace SlickWindows
         public void StylusInRange(RealTimeStylus sender, StylusInRangeData data) {}
         public void StylusDown(RealTimeStylus sender, StylusDownData data) 
         {
+            // make a queue type, and set the stylus type
             if (data?.Stylus == null) return;
             var currentTablet = sender?.GetTabletFromTabletContextId(data.Stylus.TabletContextId);
 
@@ -131,7 +160,13 @@ namespace SlickWindows
                 tabletKind = currentTablet.DeviceKind;
             }
         }
-        public void StylusUp(RealTimeStylus sender, StylusUpData data) {
+        public void StylusUp(RealTimeStylus sender, StylusUpData data)
+        {
+            // TODO: clear down matching queue
+            lock (_tlock)
+            {
+                _lastTouch = null;
+            }
         }
 
         public void StylusButtonDown(RealTimeStylus sender, StylusButtonDownData data) {}
