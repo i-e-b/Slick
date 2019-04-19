@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using JetBrains.Annotations;
 
 namespace SlickWindows.Canvas
@@ -10,10 +11,13 @@ namespace SlickWindows.Canvas
     /// </summary>
     public class EndlessCanvas {
         private double _xOffset, _yOffset;
-        [NotNull]private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
         private Color _penColor;
         private double _penSize;
         private InkType _penType;
+        private readonly string _basePath;
+
+        [NotNull]private readonly HashSet<PositionKey> _changedTiles;
+        [NotNull]private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
 
         public double X { get { return _xOffset; } }
         public double Y { get { return _yOffset; } }
@@ -21,19 +25,35 @@ namespace SlickWindows.Canvas
         public int DpiY;
         public int DpiX;
 
-
-        public EndlessCanvas(int deviceDpi)
+        /// <summary>
+        /// Load and run a canvas from a storage folder
+        /// </summary>
+        /// <param name="deviceDpi">Screen resolution</param>
+        /// <param name="basePath">Storage folder</param>
+        public EndlessCanvas(int deviceDpi, string basePath)
         {
-            DpiX = deviceDpi; // TODO: derive from the context
-            DpiY = deviceDpi;
-           _xOffset = 100.0; 
-           _yOffset = 100.0;
-            
-           _penColor = Color.BlueViolet;
-           _penSize = 5.0;
-           _penType = InkType.Overwrite;
+            _canvasTiles = new Dictionary<PositionKey, TileImage>();
+            _changedTiles = new HashSet<PositionKey>();
 
-           _canvasTiles = new Dictionary<PositionKey, TileImage>();
+            DpiX = deviceDpi; // TODO: derive from the context
+            _basePath = basePath;
+            DpiY = deviceDpi;
+            _xOffset = 0.0;
+            _yOffset = 0.0;
+
+            if (!string.IsNullOrWhiteSpace(basePath)) {
+                Directory.CreateDirectory(basePath);
+                var saved = Directory.GetFiles(basePath);
+                foreach (var path in saved)
+                {
+                    var key = PositionKey.Parse(Path.GetFileNameWithoutExtension(path));
+                    _canvasTiles.Add(key, TileImage.Load(path));
+                }
+            }
+
+            _penColor = Color.BlueViolet;
+            _penSize = 5.0;
+            _penType = InkType.Overwrite;
         }
 
         /// <summary>
@@ -75,26 +95,67 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
-        public void Ink(DPoint start, DPoint end) {
-            var xIdx = Math.Floor((start.X + _xOffset) / TileImage.Size);
-            var yIdx = Math.Floor((start.Y + _yOffset) / TileImage.Size);
-            var pk = new PositionKey((int)xIdx, (int)yIdx);
+        public void Ink(DPoint start, DPoint end)
+        {
+            var pt = start;
+            var dx = end.X - start.X;
+            var dy = end.Y - start.Y;
+            var dp = end.Pressure - start.Pressure;
+
+            var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
+            
+            _changedTiles.Add(InkPoint(pt));
+            if (dd < 1) { return; }
+
+            dx /= dd;
+            dy /= dd;
+            dp /= dd;
+            for (int i = 0; i < dd; i++)
+            {
+                _changedTiles.Add(InkPoint(pt));
+                pt.X += dx;
+                pt.Y += dy;
+                pt.Pressure += dp;
+            }
+        }
+
+        /// <summary>
+        /// Save any tiles changed since last save
+        /// </summary>
+        public void SaveChanges() {
+            if (string.IsNullOrWhiteSpace(_basePath)) return;
+            foreach (var key in _changedTiles)
+            {
+                if (!_canvasTiles.ContainsKey(key)) continue;
+                _canvasTiles[key]?.Save(_basePath, key);
+            }
+            _changedTiles.Clear();
+        }
+
+        private PositionKey InkPoint(DPoint pt)
+        {
+            var xIdx = Math.Floor((pt.X + _xOffset) / TileImage.Size);
+            var yIdx = Math.Floor((pt.Y + _yOffset) / TileImage.Size);
+            var pk = new PositionKey((int) xIdx, (int) yIdx);
 
             if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
             var img = _canvasTiles[pk];
 
-            var bx = (start.X + _xOffset) % TileImage.Size;
-            var by = (start.Y + _yOffset) % TileImage.Size;
+            var ax = (pt.X + _xOffset) % TileImage.Size;
+            var ay = (pt.Y + _yOffset) % TileImage.Size;
 
-            if (bx < 0) bx += TileImage.Size;
-            if (by < 0) by += TileImage.Size;       
+            if (ax < 0) ax += TileImage.Size;
+            if (ay < 0) ay += TileImage.Size;
 
-            if (_penType == InkType.Overwrite) {
-                img?.Overwrite(bx, by, start.Pressure * _penSize, _penColor);
+            if (_penType == InkType.Overwrite)
+            {
+                img?.Overwrite(ax, ay, pt.Pressure * _penSize, _penColor);
             }
-            else {
-                img?.Highlight(bx, by, start.Pressure * _penSize, _penColor);
+            else
+            {
+                img?.Highlight(ax, ay, pt.Pressure * _penSize, _penColor);
             }
+            return pk;
         }
 
         /// <summary>

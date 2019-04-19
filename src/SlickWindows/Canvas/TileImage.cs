@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
 
@@ -12,6 +13,7 @@ namespace SlickWindows.Canvas
     internal class TileImage
     {
         // TODO: add load & save to disk support.
+        // TODO: ability to merge (darkest pixel wins?)
         public const int Size = 64;
         public const int Pixels = Size * Size;
 
@@ -26,24 +28,33 @@ namespace SlickWindows.Canvas
             }
         }
 
-        public Bitmap CopyDataToBitmap(short[] imgData)
+        public void Save(string basePath, PositionKey pos) {
+            var actual = Path.Combine(basePath, pos.ToString());
+            
+            var img = CopyDataToBitmap(data);
+            img.Save(actual, ImageFormat.Gif); // TODO: better storage
+        }
+        
+        public static TileImage Load(string path)
         {
-            var bmp = new Bitmap(Size, Size, PixelFormat.Format16bppRgb565);
-
-            var bmpData = bmp.LockBits(
-                new Rectangle(0, 0, bmp.Width, bmp.Height),
-                ImageLockMode.WriteOnly, bmp.PixelFormat);
-
-            try
+            var img = new Bitmap(Image.FromFile(path));
+            var tile = new TileImage();
+            
+            for (int y = 0; y < Size; y++)
             {
-                Marshal.Copy(imgData, 0, bmpData.Scan0, imgData.Length);
-            }
-            finally
-            {
-                bmp.UnlockBits(bmpData);
-            }
+                for (int x = 0; x < Size; x++)
+                {
+                    var color = img.GetPixel(x,y);
+                    
+                    // 16 bit color in 565 format
+                    int bits = ((color.R & 0xF8) << 8)
+                             | ((color.G & 0xFC) << 3)
+                             | ((color.B & 0xF8) >> 3);
 
-            return bmp;
+                    tile.data[(y*Size)+x] = (short) bits;
+                }
+            }
+            return tile;
         }
 
         public void Render(Graphics g, double dx, double dy) {
@@ -81,7 +92,7 @@ namespace SlickWindows.Canvas
         {
             // 16 bit color in 565 format
             int color = ((penColor.R & 0xF8) << 8)
-                        | ((penColor.G & 0xFC) << 2)
+                        | ((penColor.G & 0xFC) << 3)
                         | ((penColor.B & 0xF8) >> 3);
             short cdata = (short) color;
 
@@ -95,7 +106,25 @@ namespace SlickWindows.Canvas
             bottom = Math.Min(Size, (int) (py + or));
             return cdata;
         }
+        
+        private Bitmap CopyDataToBitmap(short[] imgData)
+        {
+            var bmp = new Bitmap(Size, Size, PixelFormat.Format16bppRgb565);
 
+            var bmpData = bmp.LockBits(
+                new Rectangle(0, 0, bmp.Width, bmp.Height),
+                ImageLockMode.WriteOnly, bmp.PixelFormat);
 
+            try
+            {
+                Marshal.Copy(imgData, 0, bmpData.Scan0, imgData.Length);
+            }
+            finally
+            {
+                bmp.UnlockBits(bmpData);
+            }
+
+            return bmp;
+        }
     }
 }

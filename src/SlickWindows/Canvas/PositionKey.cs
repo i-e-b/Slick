@@ -1,4 +1,6 @@
-﻿using Containers;
+﻿using System;
+using System.Globalization;
+using Containers;
 
 namespace SlickWindows.Canvas
 {
@@ -30,6 +32,22 @@ namespace SlickWindows.Canvas
         public override int GetHashCode()
         {
             return (X * 255) ^ Y;
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return X.ToString("X") + "_" + Y.ToString("X");
+        }
+
+        public static PositionKey Parse(string s) {
+            var bits = s?.Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
+            if (bits == null || bits.Length < 2) return null;
+
+            return new PositionKey(
+                int.Parse(bits[0], NumberStyles.HexNumber),
+                int.Parse(bits[1], NumberStyles.HexNumber)
+            );
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using JetBrains.Annotations;
 using Microsoft.Ink;
@@ -16,7 +17,9 @@ namespace SlickWindows
     {
         // Declare the graphics object used for dynamic rendering
         [NotNull]private readonly EndlessCanvas _canvas;
-        private TabletDeviceKind tabletKind;
+
+        [NotNull] private readonly Dictionary<int,TabletDeviceKind> StylusId_to_DeviceKind;
+        [NotNull] private readonly Dictionary<int,Queue<DPoint>> StylusId_to_Points;
 
         DPoint? _lastTouch;
         private static readonly object _tlock = new object();
@@ -34,9 +37,10 @@ namespace SlickWindows
         /// <param name="g">The graphics object used for dynamic rendering.</param>
         public RealtimeRendererPlugin(EndlessCanvas g)
         {
+            StylusId_to_Points = new Dictionary<int, Queue<DPoint>>();
+            StylusId_to_DeviceKind = new Dictionary<int, TabletDeviceKind>();
             _canvas = g ?? throw new ArgumentNullException(nameof(g));
             _lastTouch = null;
-            tabletKind = TabletDeviceKind.Pen;
         }
 
 
@@ -49,8 +53,8 @@ namespace SlickWindows
         /// <param name="data">The notification data</param>
         public void Packets(RealTimeStylus sender, PacketsData data)
         {
-            if (sender == null || data == null) return;
-
+            if (sender == null || data?.Stylus == null) return;
+            if (!StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return; // unmapped!
 
             // For each new packet received, extract the x,y data
             // and draw a small circle around the result.
@@ -70,64 +74,35 @@ namespace SlickWindows
                     pressure = data[i+2] / maxPressure;
                 }
 
+                var thisPt = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
+
+                var tabletKind = StylusId_to_DeviceKind[data.Stylus.Id];
+                var ptQ = StylusId_to_Points[data.Stylus.Id];
+                if (ptQ == null) break;
+                ptQ.Enqueue(thisPt);
+
                 // Draw a circle corresponding to the packet
                 switch (tabletKind)
                 {
                     case TabletDeviceKind.Pen:
-                        // Make the packets from the stylus smaller and green
-                        // TODO: join prev pos from same input (dictionary and up/down)
-                        var x = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
-                        _canvas.Ink(x,x);
-
-                        //myGraphics.DrawEllipse(Pens.Green, point.X - 2, point.Y - 2, 10 * pressure, 10 * pressure);
-                        break;
                     case TabletDeviceKind.Mouse:
-                        // Make the packets from the mouse/pointing device mid-sized and red
-                        //myGraphics.DrawEllipse(Pens.Red, point.X - 2, point.Y - 2, 4, 4);
-                        var m = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
-                        _canvas.Ink(m,m);
-                        
+                        while (ptQ.Count > 1) {
+                            var a = ptQ.Dequeue();
+                            var b = ptQ.Peek();
+                            _canvas.Ink(a, b);
+                        }
                         break;
+
                     case TabletDeviceKind.Touch:
-                        // Make the packets from a finger/touch digitizer larger and blue
-                        //var indicPen = new Pen(Color.FromArgb(255, 0, 0, ((data.Stylus?.Id ?? 1) * 50) % 255), 1); // each touch point gets a new ID
-                        //myGraphics.DrawEllipse(indicPen, point.X - 2, point.Y - 2, 20, 20);
-                        // TODO: use delta of prev pos.
-
-                        lock (_tlock)
-                        {
-                            // this needs improvement
-                            if (_lastTouch == null)
-                            {
-                                _touchId = data.Stylus.Id;
-                                _lastTouch = new DPoint { X = point.X, Y = point.Y, Pressure = pressure };
-                                break;
-                            }
-
-                            if (data.Stylus.Id == _touchId)
-                            {
-                                _canvas.Scroll(
-                                    _lastTouch.Value.X - point.X,
-                                    _lastTouch.Value.Y - point.Y
-                                    );
-                                _lastTouch = null;
-                            }
+                        while (ptQ.Count > 1) {
+                            var a = ptQ.Dequeue();
+                            var b = ptQ.Peek();
+                            _canvas.Scroll(a.X - b.X, a.Y - b.Y);
                         }
                         break;
 
                 }
             }
-        }
-
-        /// <summary>
-        /// Called when the current plugin or the ones previous in the list
-        /// threw an exception.
-        /// </summary>
-        /// <param name="sender">The real time stylus associated with the notification</param>
-        /// <param name="data">The notification data</param>
-        public void Error(RealTimeStylus sender, ErrorData data)
-        {
-            //Debug.Assert(false, null, "An error occurred.  DataId=" + data.DataId + ", " + "Exception=" + data.InnerException);
         }
 
         /// <summary>
@@ -138,36 +113,49 @@ namespace SlickWindows
             get
             {
                 // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
-                return DataInterestMask.StylusDown | DataInterestMask.StylusUp 
-                     | DataInterestMask.Packets | DataInterestMask.Error;
+                return DataInterestMask.StylusDown | DataInterestMask.StylusUp | DataInterestMask.Packets;
                 // ReSharper restore BitwiseOperatorOnEnumWithoutFlags
             }
         }
 
-        // The remaining interface methods are not used in this sample application.
-        public void RealTimeStylusDisabled(RealTimeStylus sender, RealTimeStylusDisabledData data) {}
-        public void RealTimeStylusEnabled(RealTimeStylus sender, RealTimeStylusEnabledData data){}
-        public void StylusOutOfRange(RealTimeStylus sender, StylusOutOfRangeData data) {}
-        public void StylusInRange(RealTimeStylus sender, StylusInRangeData data) {}
         public void StylusDown(RealTimeStylus sender, StylusDownData data) 
         {
             // make a queue type, and set the stylus type
             if (data?.Stylus == null) return;
-            var currentTablet = sender?.GetTabletFromTabletContextId(data.Stylus.TabletContextId);
 
-            if (currentTablet != null)
-            {
-                tabletKind = currentTablet.DeviceKind;
-            }
-        }
-        public void StylusUp(RealTimeStylus sender, StylusUpData data)
-        {
-            // TODO: clear down matching queue
             lock (_tlock)
             {
+                if (StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return;
+
+                var currentTablet = sender?.GetTabletFromTabletContextId(data.Stylus.TabletContextId);
+                if (currentTablet != null) {
+                    StylusId_to_DeviceKind.Add(data.Stylus.Id, currentTablet.DeviceKind);
+                    StylusId_to_Points.Add(data.Stylus.Id, new Queue<DPoint>());
+                }
+            }
+        }
+
+        public void StylusUp(RealTimeStylus sender, StylusUpData data)
+        {
+            lock (_tlock)
+            {
+                
+                if (StylusId_to_DeviceKind[data.Stylus.Id] != TabletDeviceKind.Touch) {
+                    _canvas.SaveChanges();
+                }
+
+                StylusId_to_DeviceKind.Remove(data.Stylus.Id);
+                StylusId_to_Points.Remove(data.Stylus.Id);
                 _lastTouch = null;
             }
         }
+
+        // The remaining interface methods are not used in this
+        public void Error(RealTimeStylus sender, ErrorData data) { }
+        public void RealTimeStylusDisabled(RealTimeStylus sender, RealTimeStylusDisabledData data) {}
+        public void RealTimeStylusEnabled(RealTimeStylus sender, RealTimeStylusEnabledData data){}
+        public void StylusOutOfRange(RealTimeStylus sender, StylusOutOfRangeData data) {}
+        public void StylusInRange(RealTimeStylus sender, StylusInRangeData data) {}
 
         public void StylusButtonDown(RealTimeStylus sender, StylusButtonDownData data) {}
         public void StylusButtonUp(RealTimeStylus sender, StylusButtonUpData data) {}

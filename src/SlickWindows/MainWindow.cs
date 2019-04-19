@@ -17,10 +17,11 @@ namespace SlickWindows
             InitializeComponent();
 
             DoubleBuffered = true;
-            _canvas = new EndlessCanvas(DeviceDpi);
+            _canvas = new EndlessCanvas(DeviceDpi, @"C:\Temp\CanvTest");
 
             _stylusInput = new RealTimeStylus(this, true);
             _stylusInput.MultiTouchEnabled = true;
+            _stylusInput.AllTouchEnabled = true;
 
             // Async calls get triggered on the UI thread, so we use this to trigger updates to WinForms visuals.
             _stylusInput.AsyncPluginCollection?.Add(new DataTriggerStylusPlugin(this));
