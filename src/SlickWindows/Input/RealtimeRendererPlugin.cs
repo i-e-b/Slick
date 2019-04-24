@@ -86,6 +86,7 @@ namespace SlickWindows
                 {
                     case TabletDeviceKind.Pen:
                     case TabletDeviceKind.Mouse:
+                        // TODO: if shift key is pressed, drop through to scroll.
                         while (ptQ.Count > 1) {
                             var a = ptQ.Dequeue();
                             var b = ptQ.Peek();

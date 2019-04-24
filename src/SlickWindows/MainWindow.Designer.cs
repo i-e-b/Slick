@@ -28,13 +28,49 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            this.paletteButton = new System.Windows.Forms.Button();
+            this.mapButton = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            // 
+            // paletteButton
+            // 
+            this.paletteButton.Location = new System.Drawing.Point(12, 12);
+            this.paletteButton.Name = "paletteButton";
+            this.paletteButton.Size = new System.Drawing.Size(150, 66);
+            this.paletteButton.TabIndex = 0;
+            this.paletteButton.Text = "Palette";
+            this.paletteButton.UseVisualStyleBackColor = true;
+            this.paletteButton.Click += new System.EventHandler(this.paletteButton_Click);
+            // 
+            // mapButton
+            // 
+            this.mapButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.mapButton.Location = new System.Drawing.Point(12, 573);
+            this.mapButton.Name = "mapButton";
+            this.mapButton.Size = new System.Drawing.Size(150, 66);
+            this.mapButton.TabIndex = 1;
+            this.mapButton.Text = "Map";
+            this.mapButton.UseVisualStyleBackColor = true;
+            this.mapButton.Click += new System.EventHandler(this.mapButton_Click);
+            // 
+            // MainWindow
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Text = "Form1";
+            this.ClientSize = new System.Drawing.Size(975, 651);
+            this.Controls.Add(this.mapButton);
+            this.Controls.Add(this.paletteButton);
+            this.DoubleBuffered = true;
+            this.Name = "MainWindow";
+            this.Text = "Slick";
+            this.ResumeLayout(false);
+
         }
 
         #endregion
+
+        private System.Windows.Forms.Button paletteButton;
+        private System.Windows.Forms.Button mapButton;
     }
 }
 

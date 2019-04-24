@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
+using SlickWindows.Gui;
 
 namespace SlickWindows
 {
@@ -49,8 +50,18 @@ namespace SlickWindows
         /// <inheritdoc />
         public void DataCollected(RealTimeStylus sender)
         {
-            Text = $"Position = ({_canvas.X}, {_canvas.Y})";
+            Text = $"Slick ({_canvas.X}, {_canvas.Y})";
             Invalidate();
+        }
+
+        private void paletteButton_Click(object sender, EventArgs e)
+        {
+            new PaletteWindow { Canvas = _canvas }.ShowDialog();
+        }
+
+        private void mapButton_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

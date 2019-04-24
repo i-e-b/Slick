@@ -57,22 +57,37 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Canvas\DPoint.cs" />
+    <Compile Include="Canvas\IEndlessCanvas.cs" />
     <Compile Include="Canvas\InkType.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
-    <Compile Include="DataTriggerStylusPlugin.cs" />
+    <Compile Include="Gui\PaletteWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Gui\PaletteWindow.Designer.cs">
+      <DependentUpon>PaletteWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Input\DataTriggerStylusPlugin.cs" />
     <Compile Include="Canvas\EndlessCanvas.cs" />
-    <Compile Include="IDataTriggered.cs" />
+    <Compile Include="Input\IDataTriggered.cs" />
+    <Compile Include="Input\ITouchTriggered.cs" />
+    <Compile Include="Input\TouchPointStylusPlugin.cs" />
     <Compile Include="MainWindow.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainWindow.Designer.cs">
       <DependentUpon>MainWindow.cs</DependentUpon>
     </Compile>
-    <Compile Include="PluginListItem.cs" />
+    <Compile Include="Input\PluginListItem.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RealtimeRendererPlugin.cs" />
+    <Compile Include="Input\RealtimeRendererPlugin.cs" />
+    <EmbeddedResource Include="Gui\PaletteWindow.resx">
+      <DependentUpon>PaletteWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MainWindow.resx">
+      <DependentUpon>MainWindow.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -96,5 +111,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

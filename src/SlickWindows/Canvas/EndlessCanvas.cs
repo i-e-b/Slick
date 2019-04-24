@@ -9,7 +9,8 @@ namespace SlickWindows.Canvas
     /// <summary>
     /// Image storage for an unbounded canvas
     /// </summary>
-    public class EndlessCanvas {
+    public class EndlessCanvas : IEndlessCanvas
+    {
         private double _xOffset, _yOffset;
         private Color _penColor;
         private double _penSize;
@@ -161,7 +162,7 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Set current inking color, size, etc
         /// </summary>
-        public void SetPen(Color color, double size, InkType type) {
+        public void SetPen(int stylusId, Color color, double size, InkType type) {
             _penColor = color;
             _penSize = size;
             _penType = type;
