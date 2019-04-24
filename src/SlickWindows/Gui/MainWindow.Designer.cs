@@ -1,4 +1,4 @@
-﻿namespace SlickWindows
+﻿namespace SlickWindows.Gui
 {
     partial class MainWindow
     {

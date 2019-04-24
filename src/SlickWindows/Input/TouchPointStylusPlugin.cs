@@ -1,7 +1,7 @@
 ﻿using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
 
-namespace SlickWindows
+namespace SlickWindows.Input
 {
     /// <summary>
     /// Trigger a component when we get input data

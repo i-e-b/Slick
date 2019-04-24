@@ -4,10 +4,9 @@ using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
-using SlickWindows.Gui;
 using SlickWindows.Input;
 
-namespace SlickWindows
+namespace SlickWindows.Gui
 {
     public partial class MainWindow : Form, IDataTriggered
     {

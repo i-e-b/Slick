@@ -2,7 +2,7 @@
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 
-namespace SlickWindows
+namespace SlickWindows.Input
 {
     /// <summary>
     /// Helper used to store information about a given plugin.

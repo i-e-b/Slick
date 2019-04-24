@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
+using SlickWindows.Input;
 
 namespace SlickWindows.Gui
 {

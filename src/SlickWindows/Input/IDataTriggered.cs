@@ -1,6 +1,6 @@
 ﻿using Microsoft.StylusInput;
 
-namespace SlickWindows
+namespace SlickWindows.Input
 {
     public interface IDataTriggered
     {

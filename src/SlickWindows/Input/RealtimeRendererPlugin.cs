@@ -6,9 +6,8 @@ using Microsoft.Ink;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
 using SlickWindows.Canvas;
-using SlickWindows.Input;
 
-namespace SlickWindows
+namespace SlickWindows.Input
 {
     /// <summary>
     /// A real time stylus plugin that demonstrates
