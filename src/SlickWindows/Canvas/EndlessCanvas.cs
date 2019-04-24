@@ -12,13 +12,13 @@ namespace SlickWindows.Canvas
     public class EndlessCanvas : IEndlessCanvas
     {
         private double _xOffset, _yOffset;
-        private Color _penColor;
-        private double _penSize;
-        private InkType _penType;
+        private InkSettings _lastPen;
         private readonly string _basePath;
 
         [NotNull]private readonly HashSet<PositionKey> _changedTiles;
         [NotNull]private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
+        
+        [NotNull]private readonly Dictionary<int, InkSettings> _inkSettings;
 
         public double X { get { return _xOffset; } }
         public double Y { get { return _yOffset; } }
@@ -33,6 +33,7 @@ namespace SlickWindows.Canvas
         /// <param name="basePath">Storage folder</param>
         public EndlessCanvas(int deviceDpi, string basePath)
         {
+            _inkSettings = new Dictionary<int, InkSettings>();
             _canvasTiles = new Dictionary<PositionKey, TileImage>();
             _changedTiles = new HashSet<PositionKey>();
 
@@ -52,9 +53,12 @@ namespace SlickWindows.Canvas
                 }
             }
 
-            _penColor = Color.BlueViolet;
-            _penSize = 5.0;
-            _penType = InkType.Overwrite;
+            _lastPen = new InkSettings
+            {
+                PenColor = Color.BlueViolet,
+                PenSize = 5.0,
+                PenType = InkType.Overwrite
+            };
         }
 
         /// <summary>
@@ -96,16 +100,18 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
-        public void Ink(DPoint start, DPoint end)
+        public void Ink(int stylusId, DPoint start, DPoint end)
         {
             var pt = start;
             var dx = end.X - start.X;
             var dy = end.Y - start.Y;
             var dp = end.Pressure - start.Pressure;
+            
+            var penSet = _inkSettings.ContainsKey(stylusId) ? _inkSettings[stylusId] : _lastPen;
 
             var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
             
-            _changedTiles.Add(InkPoint(pt));
+            _changedTiles.Add(InkPoint(penSet, pt));
             if (dd < 1) { return; }
 
             dx /= dd;
@@ -113,7 +119,7 @@ namespace SlickWindows.Canvas
             dp /= dd;
             for (int i = 0; i < dd; i++)
             {
-                _changedTiles.Add(InkPoint(pt));
+                _changedTiles.Add(InkPoint(penSet, pt));
                 pt.X += dx;
                 pt.Y += dy;
                 pt.Pressure += dp;
@@ -133,7 +139,7 @@ namespace SlickWindows.Canvas
             _changedTiles.Clear();
         }
 
-        private PositionKey InkPoint(DPoint pt)
+        private PositionKey InkPoint(InkSettings ink, DPoint pt)
         {
             var xIdx = Math.Floor((pt.X + _xOffset) / TileImage.Size);
             var yIdx = Math.Floor((pt.Y + _yOffset) / TileImage.Size);
@@ -148,13 +154,13 @@ namespace SlickWindows.Canvas
             if (ax < 0) ax += TileImage.Size;
             if (ay < 0) ay += TileImage.Size;
 
-            if (_penType == InkType.Overwrite)
+            if (ink.PenType == InkType.Overwrite)
             {
-                img?.Overwrite(ax, ay, pt.Pressure * _penSize, _penColor);
+                img?.Overwrite(ax, ay, pt.Pressure * ink.PenSize, ink.PenColor);
             }
             else
             {
-                img?.Highlight(ax, ay, pt.Pressure * _penSize, _penColor);
+                img?.Highlight(ax, ay, pt.Pressure * ink.PenSize, ink.PenColor);
             }
             return pk;
         }
@@ -163,9 +169,14 @@ namespace SlickWindows.Canvas
         /// Set current inking color, size, etc
         /// </summary>
         public void SetPen(int stylusId, Color color, double size, InkType type) {
-            _penColor = color;
-            _penSize = size;
-            _penType = type;
+            _lastPen = new InkSettings
+            {
+                PenColor = color,
+                PenSize = size,
+                PenType = type
+            };
+            if (!_inkSettings.ContainsKey(stylusId)) _inkSettings.Add(stylusId, _lastPen);
+            else _inkSettings[stylusId] = _lastPen;
         }
     }
 }

@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
 using SlickWindows.Gui;
+using SlickWindows.Input;
 
 namespace SlickWindows
 {
@@ -27,7 +29,7 @@ namespace SlickWindows
             // Async calls get triggered on the UI thread, so we use this to trigger updates to WinForms visuals.
             _stylusInput.AsyncPluginCollection?.Add(new DataTriggerStylusPlugin(this));
 
-            AddInputPlugin(_stylusInput, new RealtimeRendererPlugin(_canvas));
+            AddInputPlugin(_stylusInput, new RealtimeRendererPlugin(_canvas, new WinFormsKeyboard()));
 
             _stylusInput.Enabled = true; 
         }
@@ -56,7 +58,12 @@ namespace SlickWindows
 
         private void paletteButton_Click(object sender, EventArgs e)
         {
-            new PaletteWindow { Canvas = _canvas }.ShowDialog();
+            var pal = new PaletteWindow
+            {
+                Canvas = _canvas,
+                Location = paletteButton.PointToScreen(new Point(0,0))
+            };
+            pal.ShowDialog();
         }
 
         private void mapButton_Click(object sender, EventArgs e)

@@ -6,6 +6,7 @@ using Microsoft.Ink;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
 using SlickWindows.Canvas;
+using SlickWindows.Input;
 
 namespace SlickWindows
 {
@@ -15,32 +16,30 @@ namespace SlickWindows
     /// </summary>
     public class RealtimeRendererPlugin:IStylusSyncPlugin
     {
-        // Declare the graphics object used for dynamic rendering
+        [NotNull]private static readonly object _tlock = new object();
         [NotNull]private readonly EndlessCanvas _canvas;
+        [NotNull]private readonly IKeyboard _keyboard;
 
         [NotNull] private readonly Dictionary<int,TabletDeviceKind> StylusId_to_DeviceKind;
         [NotNull] private readonly Dictionary<int,Queue<DPoint>> StylusId_to_Points;
 
-        DPoint? _lastTouch;
-        private static readonly object _tlock = new object();
 
         /// <summary>
         /// The highest pressure value we've seen (initial guess, updated as we collect data)
         /// </summary>
         private static float maxPressure = 2540.0F;
 
-        private int _touchId;
-
         /// <summary>
         /// Constructor for this plugin
         /// </summary>
         /// <param name="g">The graphics object used for dynamic rendering.</param>
-        public RealtimeRendererPlugin(EndlessCanvas g)
+        /// <param name="keyboard">Key state helper</param>
+        public RealtimeRendererPlugin(EndlessCanvas g, IKeyboard keyboard)
         {
             StylusId_to_Points = new Dictionary<int, Queue<DPoint>>();
             StylusId_to_DeviceKind = new Dictionary<int, TabletDeviceKind>();
             _canvas = g ?? throw new ArgumentNullException(nameof(g));
-            _lastTouch = null;
+            _keyboard = keyboard ?? throw new ArgumentNullException(nameof(keyboard));
         }
 
 
@@ -54,7 +53,10 @@ namespace SlickWindows
         public void Packets(RealTimeStylus sender, PacketsData data)
         {
             if (sender == null || data?.Stylus == null) return;
-            if (!StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return; // unmapped!
+            lock (_tlock)
+            {
+                if (!StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return; // unmapped!
+            }
 
             // For each new packet received, extract the x,y data
             // and draw a small circle around the result.
@@ -66,7 +68,7 @@ namespace SlickWindows
                 // Since the packet data is in Ink Space coordinates, we need to convert to Pixels...
                 point.X = (int)Math.Round(point.X * _canvas.DpiX / 2540.0F);
                 point.Y = (int)Math.Round(point.Y * _canvas.DpiY / 2540.0F);
-                var pressure = 1.0F;
+                var pressure = 0.5F;
 
                 if (data.PacketPropertyCount > 2) // Contains pressure info
                 {
@@ -76,33 +78,53 @@ namespace SlickWindows
 
                 var thisPt = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
 
-                var tabletKind = StylusId_to_DeviceKind[data.Stylus.Id];
-                var ptQ = StylusId_to_Points[data.Stylus.Id];
-                if (ptQ == null) break;
-                ptQ.Enqueue(thisPt);
+                TabletDeviceKind tabletKind;
+                Queue<DPoint> ptQ;
+                lock (_tlock)
+                {
+                    tabletKind = StylusId_to_DeviceKind[data.Stylus.Id];
+                    ptQ = StylusId_to_Points[data.Stylus.Id];
+                    if (ptQ == null) break;
+                    ptQ.Enqueue(thisPt);
+                }
 
                 // Draw a circle corresponding to the packet
                 switch (tabletKind)
                 {
                     case TabletDeviceKind.Pen:
                     case TabletDeviceKind.Mouse:
-                        // TODO: if shift key is pressed, drop through to scroll.
-                        while (ptQ.Count > 1) {
-                            var a = ptQ.Dequeue();
-                            var b = ptQ.Peek();
-                            _canvas.Ink(a, b);
+                        if (_keyboard.IsPanKeyHeld()) {
+                            Scroll(ptQ);
+                        } else {
+                            Draw(data.Stylus.Id, ptQ);
                         }
                         break;
 
                     case TabletDeviceKind.Touch:
-                        while (ptQ.Count > 1) {
-                            var a = ptQ.Dequeue();
-                            var b = ptQ.Peek();
-                            _canvas.Scroll(a.X - b.X, a.Y - b.Y);
-                        }
+                        Scroll(ptQ);
                         break;
 
                 }
+            }
+        }
+
+        private void Draw(int stylusId, [NotNull]Queue<DPoint> ptQ)
+        {
+            while (ptQ.Count > 1)
+            {
+                var a = ptQ.Dequeue();
+                var b = ptQ.Peek();
+                _canvas.Ink(stylusId, a, b);
+            }
+        }
+
+        private void Scroll([NotNull]Queue<DPoint> ptQ)
+        {
+            while (ptQ.Count > 1)
+            {
+                var a = ptQ.Dequeue();
+                var b = ptQ.Peek();
+                _canvas.Scroll(a.X - b.X, a.Y - b.Y);
             }
         }
 
@@ -138,16 +160,15 @@ namespace SlickWindows
 
         public void StylusUp(RealTimeStylus sender, StylusUpData data)
         {
+            if (data?.Stylus == null) return;
             lock (_tlock)
             {
-                
                 if (StylusId_to_DeviceKind[data.Stylus.Id] != TabletDeviceKind.Touch) {
                     _canvas.SaveChanges();
                 }
 
                 StylusId_to_DeviceKind.Remove(data.Stylus.Id);
                 StylusId_to_Points.Remove(data.Stylus.Id);
-                _lastTouch = null;
             }
         }
 

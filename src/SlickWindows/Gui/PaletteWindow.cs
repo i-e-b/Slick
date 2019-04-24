@@ -1,4 +1,7 @@
-﻿using System.Windows.Forms;
+﻿using System;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
@@ -8,17 +11,20 @@ namespace SlickWindows.Gui
     public partial class PaletteWindow : Form, ITouchTriggered
     {
         [NotNull]private readonly RealTimeStylus _stylusInput;
+        private bool _shouldClose;
 
         public PaletteWindow()
         {
-            InitializeComponent();
-            
-            _stylusInput = new RealTimeStylus(this, true);
-            _stylusInput.AllTouchEnabled = true;
+            _shouldClose = false;
 
-            // Async calls get triggered on the UI thread, so we use this to trigger updates to WinForms visuals.
+            InitializeComponent();
+            if (pictureBox == null) throw new Exception("Components not initialised correctly");
+            
+            pictureBox.Image = PaintPalette();
+            _stylusInput = new RealTimeStylus(pictureBox, true) {AllTouchEnabled = true};
             _stylusInput.AsyncPluginCollection?.Add(new TouchPointStylusPlugin(this, DeviceDpi));
             _stylusInput.Enabled = true;
+
         }
 
         public IEndlessCanvas Canvas { get; set; }
@@ -32,14 +38,68 @@ namespace SlickWindows.Gui
         /// <inheritdoc />
         protected override void OnPaint(PaintEventArgs e)
         {
-            // TODO: render a standard colour palette.
+            if (_shouldClose) {
+                Close();
+                return;
+            }
+            base.OnPaint(e);
+        }
+
+        /// <summary>
+        /// render a standard colour palette.
+        /// </summary>
+        private Image PaintPalette()
+        {
+            var width = pictureBox.Width;
+            var qheight = pictureBox.Height / 4;
+            var height = pictureBox.Height - qheight;
+
+            var bmp = new Bitmap(pictureBox.Width, pictureBox.Height, PixelFormat.Format16bppRgb565);
+
+            // Fixed black and white targets
+            using (var gr = Graphics.FromImage(bmp))
+            {
+                gr.FillRectangle(Brushes.Black, 0, 0, width / 2, qheight);
+                gr.FillRectangle(Brushes.White, width / 2, 0, width / 2, qheight);
+            }
+
+            var sx = Math.PI / (width * 2);
+            var sy = Math.PI / (height * 2);
+
+            for (int y = 0; y < height; y++)
+            {
+                var g = Math.Cos(y * sy) * 255;
+                var b = 255 - g;
+                for (int x = 0; x < width; x++)
+                {
+                    var r = Math.Sin(x * sx) * 255;
+                    bmp.SetPixel(x, y + qheight, Color.FromArgb((int)r, (int)g, (int)b));
+                }
+            }
+
+            return bmp;
         }
 
         /// <inheritdoc />
         public void Touched(int stylusId, int x, int y)
         {
-            //TODO_IMPLEMENT_ME();
+            if (Canvas == null) return;
+
             // Work out what colour or size was clicked, send it back to canvas
+            using (Bitmap bmp = new Bitmap(pictureBox.Image))
+            {
+                var color = bmp.GetPixel(x, y);
+                Canvas.SetPen(stylusId, color, 4, InkType.Overwrite);
+            }
+
+            // Trigger the palette to close (must do it outside this call)
+            _shouldClose = true;
+            Invalidate();
+        }
+
+        private void PaletteWindow_SizeChanged(object sender, EventArgs e)
+        {
+            Invalidate();
         }
     }
 }

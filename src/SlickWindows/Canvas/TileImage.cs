@@ -12,7 +12,6 @@ namespace SlickWindows.Canvas
     /// </summary>
     internal class TileImage
     {
-        // TODO: add load & save to disk support.
         // TODO: ability to merge (darkest pixel wins?)
         public const int Size = 64;
         public const int Pixels = Size * Size;
@@ -44,14 +43,7 @@ namespace SlickWindows.Canvas
             {
                 for (int x = 0; x < Size; x++)
                 {
-                    var color = img.GetPixel(x,y);
-                    
-                    // 16 bit color in 565 format
-                    int bits = ((color.R & 0xF8) << 8)
-                             | ((color.G & 0xFC) << 3)
-                             | ((color.B & 0xF8) >> 3);
-
-                    tile.data[(y*Size)+x] = (short) bits;
+                    tile.data[(y*Size)+x] = ColorEncoding.To16Bit(img.GetPixel(x,y));
                 }
             }
             return tile;
@@ -90,11 +82,7 @@ namespace SlickWindows.Canvas
 
         private static short PreparePen(double px, double py, double radius, Color penColor, out int top, out int left, out int right, out int bottom)
         {
-            // 16 bit color in 565 format
-            int color = ((penColor.R & 0xF8) << 8)
-                        | ((penColor.G & 0xFC) << 3)
-                        | ((penColor.B & 0xF8) >> 3);
-            short cdata = (short) color;
+            var cdata = ColorEncoding.To16Bit(penColor);
 
             // simple square for now...
             var ol = (int) (radius / 2);
