@@ -11,21 +11,22 @@ namespace SlickWindows.Gui
 {
     public partial class PaletteWindow : Form, ITouchTriggered
     {
-        [NotNull]private readonly RealTimeStylus _stylusInput;
+        [NotNull] private readonly RealTimeStylus _colorInput;
+        [NotNull] private readonly RealTimeStylus _sizeInput;
         private bool _shouldClose;
+        private int _penSize = 5;
 
         public PaletteWindow()
         {
             _shouldClose = false;
 
             InitializeComponent();
-            if (pictureBox == null) throw new Exception("Components not initialised correctly");
+            if (colorBox == null) throw new Exception("Components not initialised correctly");
             
-            pictureBox.Image = PaintPalette();
-            _stylusInput = new RealTimeStylus(pictureBox, true) {AllTouchEnabled = true};
-            _stylusInput.AsyncPluginCollection?.Add(new TouchPointStylusPlugin(this, DeviceDpi));
-            _stylusInput.Enabled = true;
-
+            colorBox.Image = PaintPalette();
+            _colorInput = new RealTimeStylus(colorBox, true) {AllTouchEnabled = true};
+            _colorInput.AsyncPluginCollection?.Add(new TouchPointStylusPlugin(this, DeviceDpi));
+            _colorInput.Enabled = true;
         }
 
         public IEndlessCanvas Canvas { get; set; }
@@ -33,7 +34,7 @@ namespace SlickWindows.Gui
         private void PaletteWindow_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Clean up the touch control
-            _stylusInput.Dispose();
+            _colorInput.Dispose();
         }
 
         /// <inheritdoc />
@@ -51,11 +52,11 @@ namespace SlickWindows.Gui
         /// </summary>
         private Image PaintPalette()
         {
-            var width = pictureBox.Width;
-            var qheight = pictureBox.Height / 4;
-            var height = pictureBox.Height - qheight;
+            var width = colorBox.Width;
+            var qheight = colorBox.Height / 4;
+            var height = colorBox.Height - qheight;
 
-            var bmp = new Bitmap(pictureBox.Width, pictureBox.Height, PixelFormat.Format16bppRgb565);
+            var bmp = new Bitmap(colorBox.Width, colorBox.Height, PixelFormat.Format16bppRgb565);
 
             // Fixed black and white targets
             using (var gr = Graphics.FromImage(bmp))
@@ -67,18 +68,26 @@ namespace SlickWindows.Gui
             var sx = Math.PI / (width * 2);
             var sy = Math.PI / (height * 2);
 
+            // this image generation is really slow!
             for (int y = 0; y < height; y++)
             {
-                var g = Math.Cos(y * sy) * 255;
-                var b = 255 - g;
+                var r = Saturate(Math.Sin(y * sy) * 255);
+                var g = 255 - r;
                 for (int x = 0; x < width; x++)
                 {
-                    var r = Math.Sin(x * sx) * 255;
-                    bmp.SetPixel(x, y + qheight, Color.FromArgb((int)r, (int)g, (int)b));
+                    var b = Saturate(Math.Sin(x * sx) * 255);
+                    bmp.SetPixel(x, y + qheight, Color.FromArgb(r, g, b));
                 }
             }
 
             return bmp;
+        }
+
+        private int Saturate(double v)
+        {
+            if (v < 0) return 0;
+            if (v > 255) return 255;
+            return (int)v;
         }
 
         /// <inheritdoc />
@@ -87,10 +96,10 @@ namespace SlickWindows.Gui
             if (Canvas == null) return;
 
             // Work out what colour or size was clicked, send it back to canvas
-            using (Bitmap bmp = new Bitmap(pictureBox.Image))
+            using (Bitmap bmp = new Bitmap(colorBox.Image))
             {
                 var color = bmp.GetPixel(x, y);
-                Canvas.SetPen(stylusId, color, 4, InkType.Overwrite);
+                Canvas.SetPen(stylusId, color, _penSize, InkType.Overwrite);
             }
 
             // Trigger the palette to close (must do it outside this call)
@@ -100,7 +109,30 @@ namespace SlickWindows.Gui
 
         private void PaletteWindow_SizeChanged(object sender, EventArgs e)
         {
+            if (colorBox.Image != null) colorBox.Image.Dispose();
+            colorBox.Image = PaintPalette();
+
             Invalidate();
+        }
+
+        private void smallPenButton_Click(object sender, EventArgs e)
+        {
+            _penSize = 2;
+        }
+
+        private void medButton_Click(object sender, EventArgs e)
+        {
+            _penSize = 5;
+        }
+
+        private void largeButton_Click(object sender, EventArgs e)
+        {
+            _penSize = 10;
+        }
+
+        private void hugeButton_Click(object sender, EventArgs e)
+        {
+            _penSize = 20;
         }
     }
 }

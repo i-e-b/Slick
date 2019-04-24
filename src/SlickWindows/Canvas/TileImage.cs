@@ -85,6 +85,7 @@ namespace SlickWindows.Canvas
             var cdata = ColorEncoding.To16Bit(penColor);
 
             // simple square for now...
+            if (radius < 1) radius = 1;
             var ol = (int) (radius / 2);
             var or = (int) (radius - ol);
 
