@@ -132,7 +132,7 @@ namespace SlickWindows.Gui
 
         private void hugeButton_Click(object sender, EventArgs e)
         {
-            _penSize = 20;
+            _penSize = 30;
         }
     }
 }

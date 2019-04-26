@@ -34,9 +34,10 @@
             // 
             // paletteButton
             // 
-            this.paletteButton.Location = new System.Drawing.Point(12, 12);
+            this.paletteButton.Location = new System.Drawing.Point(6, 6);
+            this.paletteButton.Margin = new System.Windows.Forms.Padding(2);
             this.paletteButton.Name = "paletteButton";
-            this.paletteButton.Size = new System.Drawing.Size(150, 66);
+            this.paletteButton.Size = new System.Drawing.Size(75, 34);
             this.paletteButton.TabIndex = 0;
             this.paletteButton.Text = "Palette";
             this.paletteButton.UseVisualStyleBackColor = true;
@@ -45,9 +46,10 @@
             // mapButton
             // 
             this.mapButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.mapButton.Location = new System.Drawing.Point(12, 573);
+            this.mapButton.Location = new System.Drawing.Point(6, 298);
+            this.mapButton.Margin = new System.Windows.Forms.Padding(2);
             this.mapButton.Name = "mapButton";
-            this.mapButton.Size = new System.Drawing.Size(150, 66);
+            this.mapButton.Size = new System.Drawing.Size(75, 34);
             this.mapButton.TabIndex = 1;
             this.mapButton.Text = "Map";
             this.mapButton.UseVisualStyleBackColor = true;
@@ -55,13 +57,16 @@
             // 
             // MainWindow
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 25F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(975, 651);
+            this.AutoScroll = true;
+            this.ClientSize = new System.Drawing.Size(488, 339);
             this.Controls.Add(this.mapButton);
             this.Controls.Add(this.paletteButton);
             this.DoubleBuffered = true;
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "MainWindow";
+            this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
             this.Text = "Slick";
             this.ResumeLayout(false);
 

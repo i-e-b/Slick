@@ -63,12 +63,14 @@
     <Compile Include="Canvas\InkType.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
+    <Compile Include="Input\IScrollTarget.cs" />
     <Compile Include="Gui\PaletteWindow.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Gui\PaletteWindow.Designer.cs">
       <DependentUpon>PaletteWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="Input\PanScrollReceiver.cs" />
     <Compile Include="Input\DataTriggerStylusPlugin.cs" />
     <Compile Include="Canvas\EndlessCanvas.cs" />
     <Compile Include="Input\IDataTriggered.cs" />

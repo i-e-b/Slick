@@ -8,7 +8,7 @@ using SlickWindows.Input;
 
 namespace SlickWindows.Gui
 {
-    public partial class MainWindow : Form, IDataTriggered
+    public partial class MainWindow : Form, IDataTriggered, IScrollTarget
     {
         // Declare the real time stylus.
         [NotNull]private readonly RealTimeStylus _stylusInput;
@@ -16,9 +16,14 @@ namespace SlickWindows.Gui
 
         public MainWindow()
         {
-            InitializeComponent();
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
+            //this.VerticalScroll.Enabled = true;
+            //this.HorizontalScroll.Enabled = true;
 
-            DoubleBuffered = true;
+            InitializeComponent();
+            PanScrollReceiver.Initialise(this);
+
+            //DoubleBuffered = true;
             _canvas = new EndlessCanvas(DeviceDpi, @"C:\Temp\CanvTest");
 
             _stylusInput = new RealTimeStylus(this, true);
@@ -42,10 +47,14 @@ namespace SlickWindows.Gui
             stylusInput.Enabled = rtsEnabled;
         }
 
+        [NotNull]private static readonly object _drawLock = new object();
         /// <inheritdoc />
         protected override void OnPaint(PaintEventArgs e)
         {
-            _canvas.RenderToGraphics(e.Graphics, Width, Height);
+            lock (_drawLock)
+            {
+                _canvas.RenderToGraphics(e.Graphics, Width, Height);
+            }
         }
 
         /// <inheritdoc />
@@ -67,7 +76,13 @@ namespace SlickWindows.Gui
 
         private void mapButton_Click(object sender, EventArgs e)
         {
+        }
 
+        /// <inheritdoc />
+        public void Scroll2D(int dx, int dy)
+        {
+            _canvas.Scroll(dx, dy);
+            Invalidate();
         }
     }
 }
