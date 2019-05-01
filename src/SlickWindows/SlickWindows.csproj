@@ -58,6 +58,7 @@
   <ItemGroup>
     <Compile Include="Canvas\ColorEncoding.cs" />
     <Compile Include="Canvas\DPoint.cs" />
+    <Compile Include="Canvas\DrawResult.cs" />
     <Compile Include="Canvas\IEndlessCanvas.cs" />
     <Compile Include="Canvas\InkSettings.cs" />
     <Compile Include="Canvas\InkType.cs" />

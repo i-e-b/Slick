@@ -27,13 +27,30 @@ namespace SlickWindows.Canvas
             }
         }
 
-        public void Save(string basePath, PositionKey pos) {
+        // TODO: move this to an separate archiver
+        public bool UpdateStorage([NotNull]string basePath, [NotNull]PositionKey pos) {
             var actual = Path.Combine(basePath, pos.ToString());
-            
+
+            if (ImageIsBlank())
+            {
+                if (File.Exists(actual)) File.Delete(actual); // no longer needed
+                return false;
+            }
+
             var img = CopyDataToBitmap(data);
             img.Save(actual, ImageFormat.Gif); // TODO: better storage
+            return true;
         }
-        
+
+        private bool ImageIsBlank()
+        {
+            for (int i = 0; i < data.Length; i++)
+            {
+                if (data[i] != -1) return false; // -1 is same as white
+            }
+            return true;
+        }
+
         public static TileImage Load(string path)
         {
             var img = new Bitmap(Image.FromFile(path));
@@ -96,7 +113,7 @@ namespace SlickWindows.Canvas
             return cdata;
         }
         
-        private Bitmap CopyDataToBitmap(short[] imgData)
+        private Bitmap CopyDataToBitmap([NotNull]short[] imgData)
         {
             var bmp = new Bitmap(Size, Size, PixelFormat.Format16bppRgb565);
 

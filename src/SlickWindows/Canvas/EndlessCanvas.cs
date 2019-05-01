@@ -134,7 +134,9 @@ namespace SlickWindows.Canvas
             foreach (var key in _changedTiles)
             {
                 if (!_canvasTiles.ContainsKey(key)) continue;
-                _canvasTiles[key]?.Save(_basePath, key);
+                if (_canvasTiles[key]?.UpdateStorage(_basePath, key) == false) {
+                    _canvasTiles.Remove(key);
+                }
             }
             _changedTiles.Clear();
         }

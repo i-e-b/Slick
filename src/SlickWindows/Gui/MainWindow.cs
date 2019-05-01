@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Threading;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
@@ -48,13 +49,18 @@ namespace SlickWindows.Gui
         }
 
         [NotNull]private static readonly object _drawLock = new object();
+        private volatile bool _ignoreDraw = false;
+
         /// <inheritdoc />
         protected override void OnPaint(PaintEventArgs e)
         {
+            if (_ignoreDraw) return;
+            _ignoreDraw = true;
             lock (_drawLock)
             {
                 _canvas.RenderToGraphics(e.Graphics, Width, Height);
             }
+            _ignoreDraw = false;
         }
 
         /// <inheritdoc />

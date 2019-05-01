@@ -12,7 +12,6 @@ namespace SlickWindows.Gui
     public partial class PaletteWindow : Form, ITouchTriggered
     {
         [NotNull] private readonly RealTimeStylus _colorInput;
-        [NotNull] private readonly RealTimeStylus _sizeInput;
         private bool _shouldClose;
         private int _penSize = 5;
 
@@ -52,7 +51,9 @@ namespace SlickWindows.Gui
         /// </summary>
         private Image PaintPalette()
         {
+            if (colorBox == null) return null;
             var width = colorBox.Width;
+            var thirdWidth = colorBox.Width / 3;
             var qheight = colorBox.Height / 4;
             var height = colorBox.Height - qheight;
 
@@ -61,8 +62,9 @@ namespace SlickWindows.Gui
             // Fixed black and white targets
             using (var gr = Graphics.FromImage(bmp))
             {
-                gr.FillRectangle(Brushes.Black, 0, 0, width / 2, qheight);
-                gr.FillRectangle(Brushes.White, width / 2, 0, width / 2, qheight);
+                gr.FillRectangle(Brushes.Black, 0, 0, thirdWidth, qheight);
+                gr.FillRectangle(Brushes.BlueViolet, thirdWidth, 0, thirdWidth, qheight);
+                gr.FillRectangle(Brushes.White, thirdWidth * 2, 0, thirdWidth, qheight);
             }
 
             var sx = Math.PI / (width * 2);
@@ -93,7 +95,7 @@ namespace SlickWindows.Gui
         /// <inheritdoc />
         public void Touched(int stylusId, int x, int y)
         {
-            if (Canvas == null) return;
+            if (Canvas == null || colorBox?.Image == null) return;
 
             // Work out what colour or size was clicked, send it back to canvas
             using (Bitmap bmp = new Bitmap(colorBox.Image))
@@ -109,6 +111,7 @@ namespace SlickWindows.Gui
 
         private void PaletteWindow_SizeChanged(object sender, EventArgs e)
         {
+            if (colorBox == null) return;
             if (colorBox.Image != null) colorBox.Image.Dispose();
             colorBox.Image = PaintPalette();
 
