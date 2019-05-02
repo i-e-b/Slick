@@ -137,5 +137,10 @@ namespace SlickWindows.Gui
         {
             _penSize = 30;
         }
+
+        private void giganticButton_Click(object sender, EventArgs e)
+        {
+            _penSize = 200;
+        }
     }
 }

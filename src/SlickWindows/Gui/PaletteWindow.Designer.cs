@@ -35,6 +35,7 @@
             this.medButton = new System.Windows.Forms.Button();
             this.largeButton = new System.Windows.Forms.Button();
             this.hugeButton = new System.Windows.Forms.Button();
+            this.giganticButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.colorBox)).BeginInit();
             this.flowLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
@@ -67,6 +68,7 @@
             this.flowLayoutPanel1.Controls.Add(this.medButton);
             this.flowLayoutPanel1.Controls.Add(this.largeButton);
             this.flowLayoutPanel1.Controls.Add(this.hugeButton);
+            this.flowLayoutPanel1.Controls.Add(this.giganticButton);
             this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 271);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
@@ -113,6 +115,16 @@
             this.hugeButton.UseVisualStyleBackColor = true;
             this.hugeButton.Click += new System.EventHandler(this.hugeButton_Click);
             // 
+            // giganticButton
+            // 
+            this.giganticButton.Location = new System.Drawing.Point(327, 3);
+            this.giganticButton.Name = "giganticButton";
+            this.giganticButton.Size = new System.Drawing.Size(75, 23);
+            this.giganticButton.TabIndex = 4;
+            this.giganticButton.Text = "Gigantic";
+            this.giganticButton.UseVisualStyleBackColor = true;
+            this.giganticButton.Click += new System.EventHandler(this.giganticButton_Click);
+            // 
             // PaletteWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -151,5 +163,6 @@
         private System.Windows.Forms.Button medButton;
         private System.Windows.Forms.Button largeButton;
         private System.Windows.Forms.Button hugeButton;
+        private System.Windows.Forms.Button giganticButton;
     }
 }
