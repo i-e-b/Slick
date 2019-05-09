@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Threading;
 using JetBrains.Annotations;
 
 namespace SlickWindows.Canvas
@@ -43,15 +44,8 @@ namespace SlickWindows.Canvas
             _xOffset = 0.0;
             _yOffset = 0.0;
 
-            if (!string.IsNullOrWhiteSpace(basePath)) {
-                Directory.CreateDirectory(basePath);
-                var saved = Directory.GetFiles(basePath);
-                foreach (var path in saved)
-                {
-                    var key = PositionKey.Parse(Path.GetFileNameWithoutExtension(path));
-                    _canvasTiles.Add(key, TileImage.Load(path));
-                }
-            }
+            // Load on a different thread so the screen comes up fast
+            LoadImagesAsync(basePath);
 
             _lastPen = new InkSettings
             {
@@ -59,6 +53,24 @@ namespace SlickWindows.Canvas
                 PenSize = 5.0,
                 PenType = InkType.Overwrite
             };
+        }
+
+        private void LoadImagesAsync(string basePath)
+        {
+            new Thread(() =>
+                {
+                    if (!string.IsNullOrWhiteSpace(basePath))
+                    {
+                        Directory.CreateDirectory(basePath);
+                        var saved = Directory.GetFiles(basePath);
+                        foreach (var path in saved)
+                        {
+                            var key = PositionKey.Parse(Path.GetFileNameWithoutExtension(path));
+                            _canvasTiles.Add(key, TileImage.Load(path));
+                        }
+                    }
+                })
+                {IsBackground = true}.Start();
         }
 
         /// <summary>
@@ -70,8 +82,8 @@ namespace SlickWindows.Canvas
             // work out the indexes we need, find in dictionary, draw
             int ox = (int)(_xOffset / TileImage.Size);
             int oy = (int)(_yOffset / TileImage.Size);
-            int mx = width / TileImage.Size;
-            int my = height / TileImage.Size;
+            int mx = (int)Math.Round((double)width / TileImage.Size);
+            int my = (int)Math.Round((double)height / TileImage.Size);
 
             for (int y = -1; y <= my; y++)
             {
@@ -95,6 +107,15 @@ namespace SlickWindows.Canvas
         public void Scroll(double dx, double dy){
             _xOffset += dx;
             _yOffset += dy;
+        }
+        
+        /// <summary>
+        /// Set an absolute scroll position
+        /// </summary>
+        public void ScrollTo(double x, double y)
+        {
+            _xOffset = x;
+            _yOffset = y;
         }
 
         /// <summary>
