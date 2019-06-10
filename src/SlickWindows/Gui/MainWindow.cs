@@ -25,7 +25,7 @@ namespace SlickWindows.Gui
             PanScrollReceiver.Initialise(this);
 
             //DoubleBuffered = true;
-            _canvas = new EndlessCanvas(DeviceDpi, @"C:\Temp\CanvTest");
+            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, @"C:\Temp\CanvTest", CanvasChanged);
 
             _stylusInput = new RealTimeStylus(this, true);
             _stylusInput.MultiTouchEnabled = true;
@@ -61,6 +61,10 @@ namespace SlickWindows.Gui
                 _canvas.RenderToGraphics(e.Graphics, Width, Height);
             }
             _ignoreDraw = false;
+        }
+
+        public void CanvasChanged() {
+            Invalidate();
         }
 
         /// <inheritdoc />

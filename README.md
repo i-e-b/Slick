@@ -1,6 +1,12 @@
 # Slick
 A light-weight group communication tool [Experimental]
 
+## To do
+Immediate next steps:
+
+* [ ] Dynamic load/unload images
+  * [ ] Proxy for unloaded tiles?
+
 ## Plan
 
 * [ ] mediator endpoint (Azure func or similar? RabbitMQ?)

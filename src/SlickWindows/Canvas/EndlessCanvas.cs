@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using JetBrains.Annotations;
 
@@ -12,9 +13,12 @@ namespace SlickWindows.Canvas
     /// </summary>
     public class EndlessCanvas : IEndlessCanvas
     {
+        public int Width { get; set; }
+        public int Height { get; set; }
         private double _xOffset, _yOffset;
         private InkSettings _lastPen;
         private readonly string _basePath;
+        private readonly Action _invalidateAction;
 
         [NotNull]private readonly HashSet<PositionKey> _changedTiles;
         [NotNull]private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
@@ -32,14 +36,22 @@ namespace SlickWindows.Canvas
         /// </summary>
         /// <param name="deviceDpi">Screen resolution</param>
         /// <param name="basePath">Storage folder</param>
-        public EndlessCanvas(int deviceDpi, string basePath)
+        /// <param name="invalidateAction">Optional action to call when drawing area becomes invalid</param>
+        /// <param name="width">Initial display width (can be oversize if not known)</param>
+        /// <param name="height">Initial display height (can be oversize if not known)</param>
+        public EndlessCanvas(int width, int height, int deviceDpi, string basePath, Action invalidateAction)
         {
+            if (basePath == null) throw new ArgumentNullException(nameof(basePath));
+
+            Width = width;
+            Height = height;
             _inkSettings = new Dictionary<int, InkSettings>();
             _canvasTiles = new Dictionary<PositionKey, TileImage>();
             _changedTiles = new HashSet<PositionKey>();
 
             DpiX = deviceDpi; // TODO: derive from the context
             _basePath = basePath;
+            _invalidateAction = invalidateAction;
             DpiY = deviceDpi;
             _xOffset = 0.0;
             _yOffset = 0.0;
@@ -55,29 +67,54 @@ namespace SlickWindows.Canvas
             };
         }
 
-        private void LoadImagesAsync(string basePath)
+        private void LoadImagesAsync([NotNull]string basePath)
         {
+            // Try to load images for any visible tiles,
+            // and remove any loaded tiles that are far
+            // offscreen.
+            // Trigger a re-draw as images come in.
             new Thread(() =>
                 {
-                    if (!string.IsNullOrWhiteSpace(basePath))
+                    Directory.CreateDirectory(basePath);
+
+                    while (true)
                     {
-                        Directory.CreateDirectory(basePath);
-                        var saved = Directory.GetFiles(basePath);
-                        foreach (var path in saved)
+                        // load any new tiles
+                        var visibleTiles = VisibleTiles(Width, Height);
+                        var loadedTiles = _canvasTiles.Keys.ToArray();
+
+                        bool changed = false;
+
+                        foreach (var tile in visibleTiles)
                         {
-                            var key = PositionKey.Parse(Path.GetFileNameWithoutExtension(path));
-                            _canvasTiles.Add(key, TileImage.Load(path));
+                            if (_canvasTiles.ContainsKey(tile)) continue; // already in memory
+
+                            var path = Path.Combine(basePath, tile.ToString());
+                            if (!File.Exists(path)) continue; // no such tile written
+
+                            _canvasTiles.Add(tile, TileImage.Load(path));
+                            changed = true;
                         }
+                        if (changed) _invalidateAction?.Invoke(); // redraw with what we have
+
+                        // unload any old tiles
+                        foreach (var old in loadedTiles)
+                        {
+                            if (visibleTiles.Contains(old)) continue; // still visible
+                            _canvasTiles.Remove(old);
+                        }
+                        Thread.Sleep(250); // TODO: put a wait/reset in here rather than just pausing
                     }
                 })
                 {IsBackground = true}.Start();
         }
 
-        /// <summary>
-        /// Display from the current offset into a graphics output
-        /// </summary>
-        public void RenderToGraphics(Graphics g, int width, int height){
-            // TODO: generalise graphics
+
+        [NotNull]
+        private List<PositionKey> VisibleTiles(int width, int height)
+        {
+            Width = width;
+            Height = height;
 
             // work out the indexes we need, find in dictionary, draw
             int ox = (int)(_xOffset / TileImage.Size);
@@ -85,6 +122,7 @@ namespace SlickWindows.Canvas
             int mx = (int)Math.Round((double)width / TileImage.Size);
             int my = (int)Math.Round((double)height / TileImage.Size);
 
+            var result = new List<PositionKey>();
             for (int y = -1; y <= my; y++)
             {
                 var yIdx = oy + y;
@@ -92,12 +130,22 @@ namespace SlickWindows.Canvas
                 for (int x = -1; x <= mx; x++)
                 {
                     var xIdx = ox + x;
-                    var pk = new PositionKey(xIdx, yIdx);
-                    if (!_canvasTiles.ContainsKey(pk)) continue;
-
-                    var tile = _canvasTiles[pk];
-                    tile.Render(g, (xIdx * TileImage.Size) - _xOffset, (yIdx * TileImage.Size) - _yOffset);
+                    result.Add(new PositionKey(xIdx, yIdx));
                 }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Display from the current offset into a graphics output
+        /// </summary>
+        public void RenderToGraphics(Graphics g, int width, int height) {
+
+            var toDraw = VisibleTiles(width, height);
+            foreach (var index in toDraw)
+            {
+                if (!_canvasTiles.ContainsKey(index)) continue;
+                _canvasTiles[index]?.Render(g, (index.X * TileImage.Size) - _xOffset, (index.Y * TileImage.Size) - _yOffset);
             }
         }
 

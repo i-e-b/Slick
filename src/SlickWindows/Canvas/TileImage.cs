@@ -55,10 +55,11 @@ namespace SlickWindows.Canvas
         {
             var img = new Bitmap(Image.FromFile(path));
             var tile = new TileImage();
-            
-            for (int y = 0; y < Size; y++)
+
+            // TODO: this is crazy slow. Fix it.
+            for (int y = 0; y < Size>>2; y++)
             {
-                for (int x = 0; x < Size; x++)
+                for (int x = 0; x < Size>>2; x++)
                 {
                     tile.data[(y*Size)+x] = ColorEncoding.To16Bit(img.GetPixel(x,y));
                 }
