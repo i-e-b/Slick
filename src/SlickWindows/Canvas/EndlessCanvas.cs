@@ -49,7 +49,7 @@ namespace SlickWindows.Canvas
             _canvasTiles = new Dictionary<PositionKey, TileImage>();
             _changedTiles = new HashSet<PositionKey>();
 
-            DpiX = deviceDpi; // TODO: derive from the context
+            DpiX = deviceDpi;
             _basePath = basePath;
             _invalidateAction = invalidateAction;
             DpiY = deviceDpi;
@@ -80,7 +80,7 @@ namespace SlickWindows.Canvas
                     while (true)
                     {
                         // load any new tiles
-                        var visibleTiles = VisibleTiles(Width, Height);
+                        var visibleTiles = VisibleTiles(Width, Height, Width / 2, Height / 2); // load extra tiles outside the viewport
                         var loadedTiles = _canvasTiles.Keys.ToArray();
 
                         bool changed = false;
@@ -111,16 +111,16 @@ namespace SlickWindows.Canvas
 
 
         [NotNull]
-        private List<PositionKey> VisibleTiles(int width, int height)
+        private List<PositionKey> VisibleTiles(int width, int height, int extraX = 0, int extraY = 0)
         {
             Width = width;
             Height = height;
 
             // work out the indexes we need, find in dictionary, draw
-            int ox = (int)(_xOffset / TileImage.Size);
-            int oy = (int)(_yOffset / TileImage.Size);
-            int mx = (int)Math.Round((double)width / TileImage.Size);
-            int my = (int)Math.Round((double)height / TileImage.Size);
+            int ox = (int)((_xOffset - extraX) / TileImage.Size);
+            int oy = (int)((_yOffset - extraY) / TileImage.Size);
+            int mx = (int)Math.Round((double)(width + (extraX*2)) / TileImage.Size);
+            int my = (int)Math.Round((double)(height + (extraY*2)) / TileImage.Size);
 
             var result = new List<PositionKey>();
             for (int y = -1; y <= my; y++)
@@ -133,6 +133,7 @@ namespace SlickWindows.Canvas
                     result.Add(new PositionKey(xIdx, yIdx));
                 }
             }
+
             return result;
         }
 

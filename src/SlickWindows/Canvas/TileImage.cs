@@ -51,20 +51,27 @@ namespace SlickWindows.Canvas
             return true;
         }
 
-        public static TileImage Load(string path)
+        public static TileImage Load([NotNull]string path)
         {
-            var img = new Bitmap(Image.FromFile(path));
-            var tile = new TileImage();
-
-            // TODO: this is crazy slow. Fix it.
-            for (int y = 0; y < Size>>2; y++)
+            using (var bmp = new Bitmap(Image.FromFile(path)))
             {
-                for (int x = 0; x < Size>>2; x++)
+                var tile = new TileImage();
+
+                var bmpData = bmp.LockBits(
+                    new Rectangle(0, 0, bmp.Width, bmp.Height),
+                    ImageLockMode.ReadOnly, PixelFormat.Format16bppRgb565);
+
+                try
                 {
-                    tile.data[(y*Size)+x] = ColorEncoding.To16Bit(img.GetPixel(x,y));
+                    Marshal.Copy(bmpData.Scan0, tile.data, 0, tile.data.Length);
                 }
+                finally
+                {
+                    bmp.UnlockBits(bmpData);
+                }
+
+                return tile;
             }
-            return tile;
         }
 
         public void Render(Graphics g, double dx, double dy) {
