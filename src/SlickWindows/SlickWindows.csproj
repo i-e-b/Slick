@@ -22,6 +22,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -31,6 +32,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>mona-lisa.ico</ApplicationIcon>
@@ -67,6 +69,11 @@
     <Compile Include="Canvas\InkType.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
+    <Compile Include="ImageFormats\CDF.cs" />
+    <Compile Include="ImageFormats\DataEncoding.cs" />
+    <Compile Include="ImageFormats\InterleavedFile.cs" />
+    <Compile Include="ImageFormats\QuantiseType.cs" />
+    <Compile Include="ImageFormats\WaveletCompress.cs" />
     <Compile Include="Input\IScrollTarget.cs" />
     <Compile Include="Gui\PaletteWindow.cs">
       <SubType>Form</SubType>
@@ -91,7 +98,7 @@
     <Compile Include="Input\PluginListItem.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Input\RealtimeRendererPlugin.cs" />
+    <Compile Include="Input\CanvasDrawingPlugin.cs" />
     <EmbeddedResource Include="Gui\PaletteWindow.resx">
       <DependentUpon>PaletteWindow.cs</DependentUpon>
     </EmbeddedResource>

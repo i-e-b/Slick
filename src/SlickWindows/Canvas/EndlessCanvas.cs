@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using JetBrains.Annotations;
+using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Canvas
 {
@@ -20,16 +21,18 @@ namespace SlickWindows.Canvas
         private readonly string _basePath;
         private readonly Action _invalidateAction;
 
-        [NotNull]private readonly HashSet<PositionKey> _changedTiles;
-        [NotNull]private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
-        
-        [NotNull]private readonly Dictionary<int, InkSettings> _inkSettings;
+        [NotNull] private readonly HashSet<PositionKey> _changedTiles;
+        [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
+
+        [NotNull] private readonly Dictionary<int, InkSettings> _inkSettings;
 
         public double X { get { return _xOffset; } }
         public double Y { get { return _yOffset; } }
-        
+
         public int DpiY;
         public int DpiX;
+
+        public volatile bool IsRunning;
 
         /// <summary>
         /// Load and run a canvas from a storage folder
@@ -41,7 +44,10 @@ namespace SlickWindows.Canvas
         /// <param name="height">Initial display height (can be oversize if not known)</param>
         public EndlessCanvas(int width, int height, int deviceDpi, string basePath, Action invalidateAction)
         {
-            if (basePath == null) throw new ArgumentNullException(nameof(basePath));
+            _basePath = basePath ?? throw new ArgumentNullException(nameof(basePath));
+            Directory.CreateDirectory(basePath);
+
+            IsRunning = true;
 
             Width = width;
             Height = height;
@@ -50,7 +56,6 @@ namespace SlickWindows.Canvas
             _changedTiles = new HashSet<PositionKey>();
 
             DpiX = deviceDpi;
-            _basePath = basePath;
             _invalidateAction = invalidateAction;
             DpiY = deviceDpi;
             _xOffset = 0.0;
@@ -75,9 +80,7 @@ namespace SlickWindows.Canvas
             // Trigger a re-draw as images come in.
             new Thread(() =>
                 {
-                    Directory.CreateDirectory(basePath);
-
-                    while (true)
+                    while (IsRunning)
                     {
                         // load any new tiles
                         var visibleTiles = VisibleTiles(Width, Height, Width / 2, Height / 2); // load extra tiles outside the viewport
@@ -92,7 +95,14 @@ namespace SlickWindows.Canvas
                             var path = Path.Combine(basePath, tile.ToString());
                             if (!File.Exists(path)) continue; // no such tile written
 
-                            _canvasTiles.Add(tile, TileImage.Load(path));
+                            //_canvasTiles.Add(tile, TileImage.Load(path));
+                            
+                            using (var fs = File.Open(path, FileMode.Open, FileAccess.Read))
+                            {
+                                var fileData = InterleavedFile.ReadFromStream(fs);
+                                _canvasTiles.Add(tile, WaveletCompress.Decompress(fileData));
+                            }
+
                             changed = true;
                         }
                         if (changed) _invalidateAction?.Invoke(); // redraw with what we have
@@ -106,7 +116,7 @@ namespace SlickWindows.Canvas
                         Thread.Sleep(250); // TODO: put a wait/reset in here rather than just pausing
                     }
                 })
-                {IsBackground = true}.Start();
+            { IsBackground = true }.Start();
         }
 
 
@@ -119,8 +129,8 @@ namespace SlickWindows.Canvas
             // work out the indexes we need, find in dictionary, draw
             int ox = (int)((_xOffset - extraX) / TileImage.Size);
             int oy = (int)((_yOffset - extraY) / TileImage.Size);
-            int mx = (int)Math.Round((double)(width + (extraX*2)) / TileImage.Size);
-            int my = (int)Math.Round((double)(height + (extraY*2)) / TileImage.Size);
+            int mx = (int)Math.Round((double)(width + (extraX * 2)) / TileImage.Size);
+            int my = (int)Math.Round((double)(height + (extraY * 2)) / TileImage.Size);
 
             var result = new List<PositionKey>();
             for (int y = -1; y <= my; y++)
@@ -140,7 +150,8 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Display from the current offset into a graphics output
         /// </summary>
-        public void RenderToGraphics(Graphics g, int width, int height) {
+        public void RenderToGraphics(Graphics g, int width, int height)
+        {
 
             var toDraw = VisibleTiles(width, height);
             foreach (var index in toDraw)
@@ -153,11 +164,12 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// move the offset
         /// </summary>
-        public void Scroll(double dx, double dy){
+        public void Scroll(double dx, double dy)
+        {
             _xOffset += dx;
             _yOffset += dy;
         }
-        
+
         /// <summary>
         /// Set an absolute scroll position
         /// </summary>
@@ -170,17 +182,17 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
-        public void Ink(int stylusId, DPoint start, DPoint end)
+        public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
         {
             var pt = start;
             var dx = end.X - start.X;
             var dy = end.Y - start.Y;
             var dp = end.Pressure - start.Pressure;
-            
-            var penSet = _inkSettings.ContainsKey(stylusId) ? _inkSettings[stylusId] : _lastPen;
+
+            var penSet = _inkSettings.ContainsKey(stylusId) ? _inkSettings[stylusId] : GuessPen(isErase);
 
             var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
-            
+
             _changedTiles.Add(InkPoint(penSet, pt));
             if (dd < 1) { return; }
 
@@ -196,26 +208,53 @@ namespace SlickWindows.Canvas
             }
         }
 
+        private InkSettings GuessPen(bool isErase)
+        {
+            if (isErase) return new InkSettings { PenColor = Color.White, PenSize = 15, PenType = InkType.Overwrite };
+            return _lastPen;
+        }
+
         /// <summary>
         /// Save any tiles changed since last save
         /// </summary>
-        public void SaveChanges() {
+        public void SaveChanges()
+        {
             if (string.IsNullOrWhiteSpace(_basePath)) return;
             foreach (var key in _changedTiles)
             {
                 if (!_canvasTiles.ContainsKey(key)) continue;
-                if (_canvasTiles[key]?.UpdateStorage(_basePath, key) == false) {
+                var tile = _canvasTiles[key];
+                if (tile == null) continue;
+
+                var filePath = Path.Combine(_basePath, key.ToString());
+
+                if (tile.ImageIsBlank())
+                {
+                    DeleteFile(filePath);
                     _canvasTiles.Remove(key);
+                }
+                else
+                {
+                    var storage = WaveletCompress.Compress(tile);
+                    using (var fs = File.Open(filePath, FileMode.Create, FileAccess.Write))
+                    {
+                        storage.WriteToStream(fs);
+                    }
                 }
             }
             _changedTiles.Clear();
+        }
+
+        private void DeleteFile([NotNull]string filePath)
+        {
+            if (File.Exists(filePath)) File.Delete(filePath);
         }
 
         private PositionKey InkPoint(InkSettings ink, DPoint pt)
         {
             var xIdx = Math.Floor((pt.X + _xOffset) / TileImage.Size);
             var yIdx = Math.Floor((pt.Y + _yOffset) / TileImage.Size);
-            var pk = new PositionKey((int) xIdx, (int) yIdx);
+            var pk = new PositionKey((int)xIdx, (int)yIdx);
 
             if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
             var img = _canvasTiles[pk];
@@ -240,7 +279,8 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Set current inking color, size, etc
         /// </summary>
-        public void SetPen(int stylusId, Color color, double size, InkType type) {
+        public void SetPen(int stylusId, Color color, double size, InkType type)
+        {
             _lastPen = new InkSettings
             {
                 PenColor = color,

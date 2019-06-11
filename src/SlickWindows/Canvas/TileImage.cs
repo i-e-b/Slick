@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.IO;
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
 
@@ -10,73 +9,43 @@ namespace SlickWindows.Canvas
     /// <summary>
     /// small image fragment
     /// </summary>
-    internal class TileImage
+    public class TileImage
     {
         // TODO: ability to merge (darkest pixel wins?)
-        public const int Size = 64;
+        public const int Size = 256; // make this bigger -- like 256-ish?
         public const int Pixels = Size * Size;
 
-        [NotNull]private readonly short[] data;
+        [NotNull]public readonly short[] Data;
 
         public TileImage()
         {
-            data = new short[Pixels];
-            for (int i = 0; i < data.Length; i++)
+            Data = new short[Pixels];
+            for (int i = 0; i < Data.Length; i++)
             {
-                data[i] = -1;
+                Data[i] = -1;
             }
         }
 
-        // TODO: move this to an separate archiver
-        public bool UpdateStorage([NotNull]string basePath, [NotNull]PositionKey pos) {
-            var actual = Path.Combine(basePath, pos.ToString());
-
-            if (ImageIsBlank())
-            {
-                if (File.Exists(actual)) File.Delete(actual); // no longer needed
-                return false;
-            }
-
-            var img = CopyDataToBitmap(data);
-            img.Save(actual, ImageFormat.Gif); // TODO: better storage
-            return true;
-        }
-
-        private bool ImageIsBlank()
+        public TileImage(short[] data)
         {
-            for (int i = 0; i < data.Length; i++)
+            Data = data ?? throw new ArgumentNullException(nameof(data));
+        }
+
+        public int Width { get { return Size; } }
+        public int Height { get { return Size; } }
+
+        public bool ImageIsBlank()
+        {
+            for (int i = 0; i < Data.Length; i++)
             {
-                if (data[i] != -1) return false; // -1 is same as white
+                if (Data[i] != -1) return false; // -1 is same as white
             }
             return true;
-        }
-
-        public static TileImage Load([NotNull]string path)
-        {
-            using (var bmp = new Bitmap(Image.FromFile(path)))
-            {
-                var tile = new TileImage();
-
-                var bmpData = bmp.LockBits(
-                    new Rectangle(0, 0, bmp.Width, bmp.Height),
-                    ImageLockMode.ReadOnly, PixelFormat.Format16bppRgb565);
-
-                try
-                {
-                    Marshal.Copy(bmpData.Scan0, tile.data, 0, tile.data.Length);
-                }
-                finally
-                {
-                    bmp.UnlockBits(bmpData);
-                }
-
-                return tile;
-            }
         }
 
         public void Render(Graphics g, double dx, double dy) {
-            var img = CopyDataToBitmap(data);
-            g.DrawImageUnscaled(img, (int)dx, (int)dy);
+            var img = CopyDataToBitmap(Data);
+            g?.DrawImageUnscaled(img, (int)dx, (int)dy);
         }
 
         public void Overwrite(double px, double py, double radius, Color penColor)
@@ -87,7 +56,7 @@ namespace SlickWindows.Canvas
             {
                 for (int x = left; x < right; x++)
                 {
-                    data[(y*Size)+x] = cdata;
+                    Data[(y*Size)+x] = cdata;
                 }
             }
         }
@@ -100,7 +69,7 @@ namespace SlickWindows.Canvas
                 for (int x = left; x < right; x++)
                 {
                     // TODO: do highlighter mode
-                    data[(y*Size)+x] = cdata;
+                    Data[(y*Size)+x] = cdata;
                 }
             }
         }
@@ -121,7 +90,7 @@ namespace SlickWindows.Canvas
             return cdata;
         }
         
-        private Bitmap CopyDataToBitmap([NotNull]short[] imgData)
+        [NotNull]private Bitmap CopyDataToBitmap([NotNull]short[] imgData)
         {
             var bmp = new Bitmap(Size, Size, PixelFormat.Format16bppRgb565);
 

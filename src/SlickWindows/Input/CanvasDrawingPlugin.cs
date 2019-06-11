@@ -13,7 +13,7 @@ namespace SlickWindows.Input
     /// A real time stylus plugin that demonstrates
     /// custom dynamic rendering.  
     /// </summary>
-    public class RealtimeRendererPlugin:IStylusSyncPlugin
+    public class CanvasDrawingPlugin:IStylusSyncPlugin
     {
         [NotNull]private static readonly object _tlock = new object();
         [NotNull]private readonly EndlessCanvas _canvas;
@@ -33,7 +33,7 @@ namespace SlickWindows.Input
         /// </summary>
         /// <param name="g">The graphics object used for dynamic rendering.</param>
         /// <param name="keyboard">Key state helper</param>
-        public RealtimeRendererPlugin(EndlessCanvas g, IKeyboard keyboard)
+        public CanvasDrawingPlugin(EndlessCanvas g, IKeyboard keyboard)
         {
             StylusId_to_Points = new Dictionary<int, Queue<DPoint>>();
             StylusId_to_DeviceKind = new Dictionary<int, TabletDeviceKind>();
@@ -56,6 +56,7 @@ namespace SlickWindows.Input
             {
                 if (!StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return; // unmapped!
             }
+            var guessErase = data.Stylus.Name == "Eraser";
 
             // For each new packet received, extract the x,y data
             // and draw a small circle around the result.
@@ -95,7 +96,7 @@ namespace SlickWindows.Input
                         if (_keyboard.IsPanKeyHeld()) {
                             Scroll(ptQ);
                         } else {
-                            Draw(data.Stylus.Id, ptQ);
+                            Draw(data.Stylus.Id, guessErase, ptQ);
                         }
                         break;
 
@@ -107,13 +108,13 @@ namespace SlickWindows.Input
             }
         }
 
-        private void Draw(int stylusId, [NotNull]Queue<DPoint> ptQ)
+        private void Draw(int stylusId, bool isErase, [NotNull] Queue<DPoint> ptQ)
         {
             while (ptQ.Count > 1)
             {
                 var a = ptQ.Dequeue();
                 var b = ptQ.Peek();
-                _canvas.Ink(stylusId, a, b);
+                _canvas.Ink(stylusId, isErase, a, b);
             }
         }
 
@@ -165,6 +166,8 @@ namespace SlickWindows.Input
                 if (StylusId_to_DeviceKind[data.Stylus.Id] != TabletDeviceKind.Touch) {
                     _canvas.SaveChanges();
                 }
+
+                // TODO: write out any waiting points?
 
                 StylusId_to_DeviceKind.Remove(data.Stylus.Id);
                 StylusId_to_Points.Remove(data.Stylus.Id);

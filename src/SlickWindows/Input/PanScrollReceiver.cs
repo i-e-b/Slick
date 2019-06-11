@@ -73,7 +73,7 @@ namespace SlickWindows.Gui
                         // wheel delta
                         var delta = m.WParam.ToInt32() >> 16;
 
-                        Target?.Scroll2D(delta, 0);
+                        Target?.Scroll2D(-delta, 0);
 
                         return true;
                     }

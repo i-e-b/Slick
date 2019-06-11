@@ -7,7 +7,7 @@ namespace SlickWindows.Canvas
     /// <summary>
     /// position on plane
     /// </summary>
-    internal class PositionKey: PartiallyOrdered
+    public class PositionKey: PartiallyOrdered
     {
         public readonly int X;
         public readonly int Y;

@@ -4,8 +4,11 @@ A light-weight group communication tool [Experimental]
 ## To do
 Immediate next steps:
 
-* [ ] Dynamic load/unload images
-  * [ ] Proxy for unloaded tiles?
+* [x] Dynamic load/unload images
+* [ ] Multiple pages (target different folders)
+  * [ ] import from old format
+* [ ] Change image file format, use larger tiles.
+  * [ ] Packed single file format?
 
 ## Plan
 
@@ -17,8 +20,10 @@ Immediate next steps:
   * [ ] a way to push off-topic or humourous chat aside without removing it
 * [ ] peer-to-peer audio/video link
   * [ ] try the 3D CDF wavelet thing here?
-* [ ] Non-euclidian surface -- as you scroll away, content is reduced but not hidden. ( https://www.researchgate.net/profile/Eugenio_Urdapilleta/publication/272195274/figure/fig1/AS:295001616601089@1447345274310/A-2D-model-of-hyperbolic-geometry-a-The-half-PS-is-generated-by-revolution-of-the.png )
+* [ ] Non-euclidian surface -- as you scroll away, content is reduced but not hidden.
+* [ ] Android client
 
 ## Links
 
 https://docs.microsoft.com/en-us/dotnet/api/system.windows.input.stylus?view=netframework-4.7.2
+https://www.researchgate.net/profile/Eugenio_Urdapilleta/publication/272195274/figure/fig1/AS:295001616601089@1447345274310/A-2D-model-of-hyperbolic-geometry-a-The-half-PS-is-generated-by-revolution-of-the.png

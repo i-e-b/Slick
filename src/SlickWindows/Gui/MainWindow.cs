@@ -25,7 +25,7 @@ namespace SlickWindows.Gui
             PanScrollReceiver.Initialise(this);
 
             //DoubleBuffered = true;
-            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, @"C:\Temp\CanvTest", CanvasChanged);
+            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, @"C:\Temp\CanvTest_CDF", CanvasChanged);
 
             _stylusInput = new RealTimeStylus(this, true);
             _stylusInput.MultiTouchEnabled = true;
@@ -34,7 +34,7 @@ namespace SlickWindows.Gui
             // Async calls get triggered on the UI thread, so we use this to trigger updates to WinForms visuals.
             _stylusInput.AsyncPluginCollection?.Add(new DataTriggerStylusPlugin(this));
 
-            AddInputPlugin(_stylusInput, new RealtimeRendererPlugin(_canvas, new WinFormsKeyboard()));
+            AddInputPlugin(_stylusInput, new CanvasDrawingPlugin(_canvas, new WinFormsKeyboard()));
 
             _stylusInput.Enabled = true; 
         }
