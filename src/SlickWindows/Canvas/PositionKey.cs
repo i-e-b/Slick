@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using Containers;
+using JetBrains.Annotations;
 
 namespace SlickWindows.Canvas
 {
@@ -25,7 +26,7 @@ namespace SlickWindows.Canvas
                 if (key.X == X) return Y - key.Y;
                 return X - key.X;
             }
-            return 0;
+            return -1;
         }
 
         /// <inheritdoc />

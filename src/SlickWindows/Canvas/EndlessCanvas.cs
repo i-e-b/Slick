@@ -18,9 +18,10 @@ namespace SlickWindows.Canvas
         public int Height { get; set; }
         private double _xOffset, _yOffset;
         private InkSettings _lastPen;
-        private readonly string _basePath;
         private readonly Action _invalidateAction;
 
+        private volatile string _basePath;
+        [NotNull] private static readonly object _storageLock = new object();
         [NotNull] private readonly HashSet<PositionKey> _changedTiles;
         [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
 
@@ -62,7 +63,7 @@ namespace SlickWindows.Canvas
             _yOffset = 0.0;
 
             // Load on a different thread so the screen comes up fast
-            LoadImagesAsync(basePath);
+            LoadImagesAsync();
 
             _lastPen = new InkSettings
             {
@@ -72,7 +73,7 @@ namespace SlickWindows.Canvas
             };
         }
 
-        private void LoadImagesAsync([NotNull]string basePath)
+        private void LoadImagesAsync()
         {
             // Try to load images for any visible tiles,
             // and remove any loaded tiles that are far
@@ -82,36 +83,39 @@ namespace SlickWindows.Canvas
                 {
                     while (IsRunning)
                     {
-                        // load any new tiles
-                        var visibleTiles = VisibleTiles(Width, Height, Width / 2, Height / 2); // load extra tiles outside the viewport
-                        var loadedTiles = _canvasTiles.Keys.ToArray();
-
-                        bool changed = false;
-
-                        foreach (var tile in visibleTiles)
+                        lock (_storageLock) // prevent conflict with changing page
                         {
-                            if (_canvasTiles.ContainsKey(tile)) continue; // already in memory
+                            // load any new tiles
+                            var visibleTiles = VisibleTiles(Width, Height, Width / 2, Height / 2); // load extra tiles outside the viewport
+                            var loadedTiles = _canvasTiles.Keys.ToArray();
 
-                            var path = Path.Combine(basePath, tile.ToString());
-                            if (!File.Exists(path)) continue; // no such tile written
+                            bool changed = false;
 
-                            //_canvasTiles.Add(tile, TileImage.Load(path));
-                            
-                            using (var fs = File.Open(path, FileMode.Open, FileAccess.Read))
+                            foreach (var tile in visibleTiles)
                             {
-                                var fileData = InterleavedFile.ReadFromStream(fs);
-                                _canvasTiles.Add(tile, WaveletCompress.Decompress(fileData));
+                                if (_canvasTiles.ContainsKey(tile)) continue; // already in memory
+
+                                if (_basePath == null) break; // volatile
+                                var path = Path.Combine(_basePath, tile.ToString());
+                                if (!File.Exists(path)) continue; // no such tile written
+
+                                using (var fs = File.Open(path, FileMode.Open, FileAccess.Read))
+                                {
+                                    var fileData = InterleavedFile.ReadFromStream(fs);
+                                    if (fileData != null) _canvasTiles.Add(tile, WaveletCompress.Decompress(fileData));
+                                }
+
+                                changed = true;
                             }
+                            if (changed) _invalidateAction?.Invoke(); // redraw with what we have
 
-                            changed = true;
-                        }
-                        if (changed) _invalidateAction?.Invoke(); // redraw with what we have
-
-                        // unload any old tiles
-                        foreach (var old in loadedTiles)
-                        {
-                            if (visibleTiles.Contains(old)) continue; // still visible
-                            _canvasTiles.Remove(old);
+                            // unload any old tiles
+                            foreach (var old in loadedTiles)
+                            {
+                                if (visibleTiles.Contains(old)) continue; // still visible
+                                if (_changedTiles.Contains(old)) continue; // don't delete anything changed off-screen.
+                                _canvasTiles.Remove(old);
+                            }
                         }
                         Thread.Sleep(250); // TODO: put a wait/reset in here rather than just pausing
                     }
@@ -226,6 +230,7 @@ namespace SlickWindows.Canvas
                 var tile = _canvasTiles[key];
                 if (tile == null) continue;
 
+                if (string.IsNullOrWhiteSpace(_basePath)) return; // the base path is volatile
                 var filePath = Path.Combine(_basePath, key.ToString());
 
                 if (tile.ImageIsBlank())
@@ -289,6 +294,45 @@ namespace SlickWindows.Canvas
             };
             if (!_inkSettings.ContainsKey(stylusId)) _inkSettings.Add(stylusId, _lastPen);
             else _inkSettings[stylusId] = _lastPen;
+        }
+
+        public void ChangeBasePath(string newPath) {
+            lock (_storageLock)
+            {
+                _changedTiles.Clear();
+                _canvasTiles.Clear();
+                _basePath = newPath;
+            }
+        }
+
+        public void SetScale(double scale)
+        {
+            // TODO: scale loading and rendering.
+        }
+
+        /// <summary>
+        /// Set a single pixel on the canvas.
+        /// This is very slow, you should use the `InkPoint` method unless you're doing something special.
+        /// This is used for importing.
+        /// </summary>
+        public void SetPixel(Color color, int x, int y)
+        {
+            var xIdx = Math.Floor((x + _xOffset) / TileImage.Size);
+            var yIdx = Math.Floor((y + _yOffset) / TileImage.Size);
+
+            var pk = new PositionKey((int)xIdx, (int)yIdx);
+
+            if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
+            var img = _canvasTiles[pk];
+
+            var ax = (x + _xOffset) % TileImage.Size;
+            var ay = (y + _yOffset) % TileImage.Size;
+
+            if (ax < 0) ax += TileImage.Size;
+            if (ay < 0) ay += TileImage.Size;
+
+            img?.Overwrite(ax, ay, 1, color);
+            _changedTiles.Add(pk);
         }
     }
 }

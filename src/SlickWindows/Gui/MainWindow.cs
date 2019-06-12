@@ -88,6 +88,7 @@ namespace SlickWindows.Gui
         {
             // TODO: centre on canvas and zoom out.
             // Until zoom is done, just centre
+            _canvas.SetScale(0.2);
             _canvas.ScrollTo(0,0);
             Invalidate();
         }
@@ -97,6 +98,28 @@ namespace SlickWindows.Gui
         {
             _canvas.Scroll(dx, dy);
             Invalidate();
+        }
+
+        private void SetPageButton_Click(object sender, EventArgs e)
+        {
+            var result = pickFolderDialog?.ShowDialog();
+            switch (result) {
+                case DialogResult.OK:
+                case DialogResult.Yes:
+                    _canvas.ChangeBasePath(pickFolderDialog.SelectedPath);
+                    Invalidate();
+                    return;
+
+                default:
+                    return;
+            }
+        }
+
+        private void MoreButton_Click(object sender, EventArgs e)
+        {
+            // show extras interface
+            var form = new ExtrasWindow(_canvas);
+            form.ShowDialog();
         }
     }
 }

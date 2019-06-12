@@ -5,9 +5,9 @@ A light-weight group communication tool [Experimental]
 Immediate next steps:
 
 * [x] Dynamic load/unload images
-* [ ] Multiple pages (target different folders)
+* [x] Multiple pages (target different folders)
   * [ ] import from old format
-* [ ] Change image file format, use larger tiles.
+* [x] Change image file format, use larger tiles.
   * [ ] Packed single file format?
 
 ## Plan

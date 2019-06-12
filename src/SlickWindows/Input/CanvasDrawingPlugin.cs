@@ -52,69 +52,89 @@ namespace SlickWindows.Input
         public void Packets(RealTimeStylus sender, PacketsData data)
         {
             if (sender == null || data?.Stylus == null) return;
+            Queue<DPoint> ptQ;
+
             lock (_tlock)
             {
-                if (!StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return; // unmapped!
+                if (!StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return; // unmapped
+                ptQ = StylusId_to_Points[data.Stylus.Id];
+                if (ptQ == null) return; // unmapped
             }
-            var guessErase = data.Stylus.Name == "Eraser";
+
+            ReadPacketDataToQueue(data, ptQ);
+            DrawPointQueue(data.Stylus, ptQ, exhaust: false);
+        }
+
+        private void DrawPointQueue(Stylus stylus, Queue<DPoint> ptQ, bool exhaust)
+        {
+            if (stylus == null || ptQ == null) return;
+
+            TabletDeviceKind tabletKind;
+            lock (_tlock)
+            {
+                tabletKind = StylusId_to_DeviceKind[stylus.Id];
+            }
+
+            var guessErase = stylus.Name == "Eraser";
+            switch (tabletKind)
+            {
+                case TabletDeviceKind.Pen:
+                case TabletDeviceKind.Mouse:
+                    if (_keyboard.IsPanKeyHeld())
+                    {
+                        Scroll(ptQ);
+                    }
+                    else
+                    {
+                        Draw(stylus.Id, guessErase, ptQ, exhaust);
+                    }
+
+                    break;
+
+                case TabletDeviceKind.Touch:
+                    Scroll(ptQ);
+                    break;
+            }
+        }
+
+        private void ReadPacketDataToQueue(StylusDataBase data, Queue<DPoint> ptQ)
+        {
+            if (data?.Stylus == null || ptQ == null) return;
 
             // For each new packet received, extract the x,y data
             // and draw a small circle around the result.
             for (int i = 0; i < data.Count; i += data.PacketPropertyCount)
             {
                 // Packet data always has x followed by y followed by the rest
-                var point = new Point(data[i], data[i+1]);
+                var point = new Point(data[i], data[i + 1]);
 
                 // Since the packet data is in Ink Space coordinates, we need to convert to Pixels...
-                point.X = (int)Math.Round(point.X * _canvas.DpiX / 2540.0F);
-                point.Y = (int)Math.Round(point.Y * _canvas.DpiY / 2540.0F);
+                point.X = (int) Math.Round(point.X * _canvas.DpiX / 2540.0F);
+                point.Y = (int) Math.Round(point.Y * _canvas.DpiY / 2540.0F);
                 var pressure = 0.5F;
 
                 if (data.PacketPropertyCount > 2) // Contains pressure info
                 {
-                    if (data[i+2] > maxPressure) maxPressure = data[i+2];
-                    pressure = data[i+2] / maxPressure;
+                    if (data[i + 2] > maxPressure) maxPressure = data[i + 2];
+                    pressure = data[i + 2] / maxPressure;
                 }
 
-                var thisPt = new DPoint{ X = point.X, Y = point.Y, Pressure = pressure};
-
-                TabletDeviceKind tabletKind;
-                Queue<DPoint> ptQ;
-                lock (_tlock)
-                {
-                    tabletKind = StylusId_to_DeviceKind[data.Stylus.Id];
-                    ptQ = StylusId_to_Points[data.Stylus.Id];
-                    if (ptQ == null) break;
-                    ptQ.Enqueue(thisPt);
-                }
-
-                // Draw a circle corresponding to the packet
-                switch (tabletKind)
-                {
-                    case TabletDeviceKind.Pen:
-                    case TabletDeviceKind.Mouse:
-                        if (_keyboard.IsPanKeyHeld()) {
-                            Scroll(ptQ);
-                        } else {
-                            Draw(data.Stylus.Id, guessErase, ptQ);
-                        }
-                        break;
-
-                    case TabletDeviceKind.Touch:
-                        Scroll(ptQ);
-                        break;
-
-                }
+                var thisPt = new DPoint {X = point.X, Y = point.Y, Pressure = pressure};
+                ptQ.Enqueue(thisPt);
             }
         }
 
-        private void Draw(int stylusId, bool isErase, [NotNull] Queue<DPoint> ptQ)
+        private void Draw(int stylusId, bool isErase, [NotNull] Queue<DPoint> ptQ, bool exhaust)
         {
             while (ptQ.Count > 1)
             {
                 var a = ptQ.Dequeue();
                 var b = ptQ.Peek();
                 _canvas.Ink(stylusId, isErase, a, b);
+            }
+            if (exhaust && ptQ.Count == 1) {
+                var a = ptQ.Dequeue();
+                _canvas.Ink(stylusId, isErase, a, a);
             }
         }
 
@@ -148,13 +168,19 @@ namespace SlickWindows.Input
 
             lock (_tlock)
             {
-                if (StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id)) return;
+                // make sure the stylus is mapped
+                if (!StylusId_to_DeviceKind.ContainsKey(data.Stylus.Id))
+                {
+                    var currentTablet = sender?.GetTabletFromTabletContextId(data.Stylus.TabletContextId);
+                    if (currentTablet != null)
+                    {
+                        StylusId_to_DeviceKind.Add(data.Stylus.Id, currentTablet.DeviceKind);
+                        StylusId_to_Points.Add(data.Stylus.Id, new Queue<DPoint>());
 
-                var currentTablet = sender?.GetTabletFromTabletContextId(data.Stylus.TabletContextId);
-                if (currentTablet != null) {
-                    StylusId_to_DeviceKind.Add(data.Stylus.Id, currentTablet.DeviceKind);
-                    StylusId_to_Points.Add(data.Stylus.Id, new Queue<DPoint>());
+                    }
                 }
+                // use first 'down' point:
+                ReadPacketDataToQueue(data, StylusId_to_Points[data.Stylus.Id]);
             }
         }
 
@@ -163,11 +189,12 @@ namespace SlickWindows.Input
             if (data?.Stylus == null) return;
             lock (_tlock)
             {
+                // write out any waiting points. (this prevents us losing single-touch dots)
+                DrawPointQueue(data.Stylus, StylusId_to_Points[data.Stylus.Id], exhaust: true);
+
                 if (StylusId_to_DeviceKind[data.Stylus.Id] != TabletDeviceKind.Touch) {
                     _canvas.SaveChanges();
                 }
-
-                // TODO: write out any waiting points?
 
                 StylusId_to_DeviceKind.Remove(data.Stylus.Id);
                 StylusId_to_Points.Remove(data.Stylus.Id);

@@ -69,6 +69,12 @@
     <Compile Include="Canvas\InkType.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
+    <Compile Include="Gui\ExtrasWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Gui\ExtrasWindow.Designer.cs">
+      <DependentUpon>ExtrasWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="ImageFormats\CDF.cs" />
     <Compile Include="ImageFormats\DataEncoding.cs" />
     <Compile Include="ImageFormats\InterleavedFile.cs" />
@@ -99,6 +105,9 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Input\CanvasDrawingPlugin.cs" />
+    <EmbeddedResource Include="Gui\ExtrasWindow.resx">
+      <DependentUpon>ExtrasWindow.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Gui\PaletteWindow.resx">
       <DependentUpon>PaletteWindow.cs</DependentUpon>
     </EmbeddedResource>
