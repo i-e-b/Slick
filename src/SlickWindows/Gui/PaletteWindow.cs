@@ -11,6 +11,7 @@ namespace SlickWindows.Gui
 {
     public partial class PaletteWindow : Form, ITouchTriggered
     {
+        private static Image _paletteImage = null;
         [NotNull] private readonly RealTimeStylus _colorInput;
         private bool _shouldClose;
         private int _penSize = 5;
@@ -51,6 +52,7 @@ namespace SlickWindows.Gui
         /// </summary>
         private Image PaintPalette()
         {
+            if (_paletteImage != null) return _paletteImage;
             if (colorBox == null) return null;
             var width = colorBox.Width;
             var thirdWidth = colorBox.Width / 3;
@@ -67,29 +69,22 @@ namespace SlickWindows.Gui
                 gr.FillRectangle(Brushes.White, thirdWidth * 2, 0, thirdWidth, qheight);
             }
 
-            var sx = Math.PI / (width * 2);
-            var sy = Math.PI / (height * 2);
-
-            // this image generation is really slow!
+            // Generate a color swatch at two brightness levels
+            var halfWidth = width >> 1;
+            var dy = 255.0f / height;
+            var dx = 255.0f / halfWidth;
             for (int y = 0; y < height; y++)
             {
-                var r = Saturate(Math.Sin(y * sy) * 255);
-                var g = 255 - r;
-                for (int x = 0; x < width; x++)
+                for (int x = 0; x < halfWidth; x++)
                 {
-                    var b = Saturate(Math.Sin(x * sx) * 255);
-                    bmp.SetPixel(x, y + qheight, Color.FromArgb(r, g, b));
-                }
-            }
+                    var c = ColorEncoding.YcbcrToColor(100, (int)(y * dy), (int)(x * dx));
+                    bmp.SetPixel(x, y + qheight, c);
+                    
+                    c = ColorEncoding.YcbcrToColor(200, (int)(y * dy), (int)(x * dx));
+                    bmp.SetPixel(x + halfWidth, y + qheight, c);
+                }            }
 
             return bmp;
-        }
-
-        private int Saturate(double v)
-        {
-            if (v < 0) return 0;
-            if (v > 255) return 255;
-            return (int)v;
         }
 
         /// <inheritdoc />
@@ -112,7 +107,11 @@ namespace SlickWindows.Gui
         private void PaletteWindow_SizeChanged(object sender, EventArgs e)
         {
             if (colorBox == null) return;
-            if (colorBox.Image != null) colorBox.Image.Dispose();
+            if (_paletteImage != null) {
+                _paletteImage.Dispose();
+                _paletteImage = null;
+            }
+
             colorBox.Image = PaintPalette();
 
             Invalidate();

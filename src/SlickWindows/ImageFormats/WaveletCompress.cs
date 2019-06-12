@@ -45,8 +45,8 @@ namespace SlickWindows.ImageFormats
             // Fibonacci coding strongly prefers small numbers
 
             // pretty good:
-            var fYs = new[] { 5, 4, 3, 2, 1.0 };
-            var fCs = new[] { 15, 10, 2.0 };
+            var fYs = new[] { 10, 8, 5, 3, 2, 1.0 };
+            var fCs = new[] { 10, 8, 4.0 };
 
             var rounds = (int)Math.Log(packedLength, 2);
             for (int r = 0; r < rounds; r++)
@@ -115,7 +115,6 @@ namespace SlickWindows.ImageFormats
                     }
                 }
 
-                // Unquantised: native: 708kb; Ordered:  705kb
                 // Reorder, Quantise and reduce co-efficients
                 var packedLength = ToStorageOrder2D(buffer, planeWidth, planeHeight, rounds, imgWidth, imgHeight);
                 QuantisePlanar2(buffer, ch, packedLength, QuantiseType.Reduce);
@@ -368,18 +367,20 @@ namespace SlickWindows.ImageFormats
 
         public static short YUV_To_RGB565(float Y, float U, float V)
         {
-            var R = 1.164f * (Y - 16) + 0.0f * (U - 128) + 1.596f * (V - 128);
-            var G = 1.164f * (Y - 16) + -0.392f * (U - 128) + -0.813f * (V - 128);
-            var B = 1.164f * (Y - 16) + 2.017f * (U - 128) + 0.0f * (V - 128);
-            int bits = ((ClipAndThreshold(R) & 0xF8) << 8)
-                       | ((ClipAndThreshold(G) & 0xFC) << 3)
-                       | ((ClipAndThreshold(B) & 0xF8) >> 3);
+            if (Y > 220) return -1; // threshold to white
+
+            var R = 1.164f * (Y - 16) + 0.0f * (U - 127.5f) + 1.596f * (V - 127.5f);
+            var G = 1.164f * (Y - 16) + -0.392f * (U - 127.5f) + -0.813f * (V - 127.5f);
+            var B = 1.164f * (Y - 16) + 2.017f * (U - 127.5f) + 0.0f * (V - 127.5f);
+            int bits =   ((Clip(R) & 0xF8) << 8)
+                       | ((Clip(G) & 0xFC) << 3)
+                       | ((Clip(B) & 0xF8) >> 3);
             return (short)bits;
         }
 
-        private static int ClipAndThreshold(float s)
+        private static int Clip(float s)
         {
-            if (s > 220.0f) return 255; // we threshold bright colors to white
+            if (s > 255.0f) return 255; // we threshold bright colors to white
             if (s < 0.0f) return 0;
             return (int)s;
         }
@@ -391,8 +392,8 @@ namespace SlickWindows.ImageFormats
             int B = (c << 3) & 0xF8;
 
             Y = 16 + (0.257f * R + 0.504f * G + 0.098f * B);
-            U = 128 + (-0.148f * R + -0.291f * G + 0.439f * B);
-            V = 128 + (0.439f * R + -0.368f * G + -0.071f * B);
+            U = 127.5f + (-0.148f * R + -0.291f * G + 0.439f * B);
+            V = 127.5f + (0.439f * R + -0.368f * G + -0.071f * B);
         }
 
         public static short[] YuvPlanes_To_Rgb565([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,

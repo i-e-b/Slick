@@ -6,9 +6,10 @@ Immediate next steps:
 
 * [x] Dynamic load/unload images
 * [x] Multiple pages (target different folders)
-  * [ ] import from old format
+  * [x] import from old format (basic)
 * [x] Change image file format, use larger tiles.
-  * [ ] Packed single file format?
+  * [ ] Packed single file format? (blob database or similar)
+        - Maybe the version control could be linked in with this? (COW-like block store?)
 
 ## Plan
 

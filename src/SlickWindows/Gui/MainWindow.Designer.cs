@@ -34,8 +34,8 @@
             this.mapButton = new System.Windows.Forms.Button();
             this.setPageButton = new System.Windows.Forms.Button();
             this.CanvasToolTips = new System.Windows.Forms.ToolTip(this.components);
-            this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.moreButton = new System.Windows.Forms.Button();
+            this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.SuspendLayout();
             // 
             // paletteButton
@@ -85,11 +85,6 @@
             // 
             this.CanvasToolTips.IsBalloon = true;
             // 
-            // pickFolderDialog
-            // 
-            this.pickFolderDialog.Description = "Pick a storage location for this page. It should be an empty folder";
-            this.pickFolderDialog.RootFolder = System.Environment.SpecialFolder.MyComputer;
-            // 
             // moreButton
             // 
             this.moreButton.AccessibleDescription = "Access less frequently needed settings and features";
@@ -104,6 +99,11 @@
             this.CanvasToolTips.SetToolTip(this.moreButton, "Access less frequently needed settings and features");
             this.moreButton.UseVisualStyleBackColor = true;
             this.moreButton.Click += new System.EventHandler(this.MoreButton_Click);
+            // 
+            // pickFolderDialog
+            // 
+            this.pickFolderDialog.Description = "Pick a storage location for this page. It should be an empty folder";
+            this.pickFolderDialog.RootFolder = System.Environment.SpecialFolder.MyComputer;
             // 
             // MainWindow
             // 
