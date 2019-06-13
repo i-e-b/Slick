@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Drawing;
-using System.Threading;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
@@ -12,20 +11,21 @@ namespace SlickWindows.Gui
     public partial class MainWindow : Form, IDataTriggered, IScrollTarget
     {
         // Declare the real time stylus.
+        // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
         [NotNull]private readonly RealTimeStylus _stylusInput;
         [NotNull]private readonly EndlessCanvas _canvas;
 
         public MainWindow()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
-            //this.VerticalScroll.Enabled = true;
-            //this.HorizontalScroll.Enabled = true;
+            VerticalScroll.Enabled = true;
+            HorizontalScroll.Enabled = true;
 
             InitializeComponent();
             PanScrollReceiver.Initialise(this);
 
             //DoubleBuffered = true;
-            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, @"C:\Temp\CanvTest_CDF", CanvasChanged);
+            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, @"C:\Temp\Canv3\Default.slick", CanvasChanged);
 
             _stylusInput = new RealTimeStylus(this, true);
             _stylusInput.MultiTouchEnabled = true;
@@ -79,7 +79,7 @@ namespace SlickWindows.Gui
             var pal = new PaletteWindow
             {
                 Canvas = _canvas,
-                Location = paletteButton.PointToScreen(new Point(0,0))
+                Location = paletteButton?.PointToScreen(new Point(0, 0)) ?? new Point(Left, Top)
             };
             pal.ShowDialog();
         }
@@ -120,6 +120,11 @@ namespace SlickWindows.Gui
             // show extras interface
             var form = new ExtrasWindow(_canvas);
             form.ShowDialog();
+        }
+
+        private void MainWindow_ClientSizeChanged(object sender, EventArgs e)
+        {
+            _canvas.SetSizeHint(Width, Height);
         }
     }
 }

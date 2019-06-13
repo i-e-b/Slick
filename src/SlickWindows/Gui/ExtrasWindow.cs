@@ -43,9 +43,13 @@ namespace SlickWindows.Gui
                 Application.DoEvents(); // prevent freezing in a half-assed way.
                 i++;
             }
+
+            Text = "Import: saving to disk";
+            Application.DoEvents();
             _target.SaveChanges();
 
 
+            Text = "Import: COMPLETE";
             if (importButton != null) importButton.Enabled = true;
             Refresh();
         }

@@ -122,6 +122,7 @@
             this.Name = "MainWindow";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
             this.Text = "Slick";
+            this.ClientSizeChanged += new System.EventHandler(this.MainWindow_ClientSizeChanged);
             this.ResumeLayout(false);
 
         }

@@ -41,12 +41,15 @@
     <Reference Include="Containers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll</HintPath>
     </Reference>
+    <Reference Include="LiteDB, Version=4.1.4.0, Culture=neutral, PublicKeyToken=4ee40123013c9f27, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\LiteDB.4.1.4\lib\net40\LiteDB.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Ink, Version=1.7.2600.2180, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\..\..\Reference Assemblies\Microsoft\Tablet PC\v1.7\Microsoft.Ink.dll</HintPath>
     </Reference>
     <Reference Include="ResharperAnnotations, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\MiniResharperAnnotations.1.0.1\lib\netstandard1.0\ResharperAnnotations.dll</HintPath>
+      <HintPath>..\..\packages\MiniResharperAnnotations.1.0.2\lib\netstandard1.0\ResharperAnnotations.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -105,6 +108,9 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Input\CanvasDrawingPlugin.cs" />
+    <Compile Include="Storage\IStorageContainer.cs" />
+    <Compile Include="Storage\LiteDbStorageContainer.cs" />
+    <Compile Include="Storage\StorageNode.cs" />
     <EmbeddedResource Include="Gui\ExtrasWindow.resx">
       <DependentUpon>ExtrasWindow.cs</DependentUpon>
     </EmbeddedResource>
@@ -140,5 +146,6 @@
   <ItemGroup>
     <Content Include="mona-lisa.ico" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

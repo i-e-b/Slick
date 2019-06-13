@@ -25,15 +25,17 @@ namespace SlickWindows.ImageFormats
             return WaveletDecomposePlanar2(Y, U, V, width, height, img.Width, img.Height);
         }
 
-        [NotNull]
-        public static TileImage Decompress([NotNull]InterleavedFile file)
+        public static void Decompress([NotNull]InterleavedFile file, [NotNull]TileImage target)
         {
             WaveletRestorePlanar2(file, out var Y, out var U, out var V);
             var pwidth = NextPow2(file.Width);
 
             var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, file.Width, file.Height);
 
-            return new TileImage(data);
+            for (int i = 0; i < target.Data.Length; i++)
+            {
+                target.Data[i] = data[i];
+            }
         }
 
         // This controls the overall size and quality of the output
@@ -45,8 +47,8 @@ namespace SlickWindows.ImageFormats
             // Fibonacci coding strongly prefers small numbers
 
             // pretty good:
-            var fYs = new[] { 10, 8, 5, 3, 2, 1.0 };
-            var fCs = new[] { 10, 8, 4.0 };
+            var fYs = new[] { 15, 8, 5, 3, 2.0};
+            var fCs = new[] { 20, 10, 4.0 };
 
             var rounds = (int)Math.Log(packedLength, 2);
             for (int r = 0; r < rounds; r++)
@@ -396,6 +398,7 @@ namespace SlickWindows.ImageFormats
             V = 127.5f + (0.439f * R + -0.368f * G + -0.071f * B);
         }
 
+        [NotNull]
         public static short[] YuvPlanes_To_Rgb565([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
             int srcWidth, int dstWidth, int dstHeight)
         {

@@ -26,6 +26,19 @@ namespace SlickWindows.Canvas
             }
         }
 
+        /// <summary>
+        /// Tile image where we expect data to be loaded later
+        /// </summary>
+        public TileImage(Color background)
+        {
+            Data = new short[Pixels];
+            var c = ColorEncoding.To16Bit(background);
+            for (int i = 0; i < Data.Length; i++)
+            {
+                Data[i] = c;
+            }
+        }
+
         public TileImage(short[] data)
         {
             Data = data ?? throw new ArgumentNullException(nameof(data));

@@ -8,8 +8,8 @@ Immediate next steps:
 * [x] Multiple pages (target different folders)
   * [x] import from old format (basic)
 * [x] Change image file format, use larger tiles.
-  * [ ] Packed single file format? (blob database or similar)
-        - Maybe the version control could be linked in with this? (COW-like block store?)
+  * [x] Packed single file format? (blob database or similar) - Maybe the version control could be linked in with this? (COW-like block store?)
+  * [ ] Implement Undo
 
 ## Plan
 
