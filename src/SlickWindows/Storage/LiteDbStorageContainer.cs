@@ -38,6 +38,19 @@ namespace SlickWindows.Storage
         }
 
         /// <inheritdoc />
+        public Result<Nothing> UpdateNode(string path, StorageNode node)
+        {
+            lock (_storageLock)
+                using (var db = new LiteDatabase(_pageFilePath))
+                {
+                    var nodes = db.GetCollection<StorageNode>("map");
+                    if (nodes == null) return Result<Nothing>.Failure(NoDb);
+                    nodes.Upsert(path, node);
+                    return Result<Nothing>.Success(Nothing.Instance);
+                }
+        }
+
+        /// <inheritdoc />
         public Result<StorageNode> Store(string path, string type, Stream data)
         {
             lock (_storageLock)

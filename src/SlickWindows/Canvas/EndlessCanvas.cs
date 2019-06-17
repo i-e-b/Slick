@@ -15,32 +15,27 @@ namespace SlickWindows.Canvas
     /// </summary>
     public class EndlessCanvas : IEndlessCanvas
     {
-        public int Width { get; set; }
-        public int Height { get; set; }
-        private double _xOffset, _yOffset;
-        private InkSettings _lastPen;
-        private readonly Action _invalidateAction;
-
-        class TileSource {
-            [NotNull]public readonly TileImage Image;
-            [NotNull]public readonly Stream Data;
-
-            public TileSource([NotNull] TileImage image, [NotNull] Stream data)
-            {
-                Image = image;
-                Data = data;
-            }
-        }
-
-        private volatile IStorageContainer _storage;
+        // For tile cache
         [NotNull] private static readonly object _storageLock = new object();
         [NotNull] private readonly HashSet<PositionKey> _changedTiles;
         [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
-
-        [NotNull] private readonly Dictionary<int, InkSettings> _inkSettings;
-        private readonly Queue<TileSource> _imageQueue = new Queue<TileSource>();
-
+        [NotNull] private readonly Queue<TileSource> _imageQueue = new Queue<TileSource>();
         [NotNull] private readonly ManualResetEventSlim _updateTileCache;
+        public volatile bool IsRunning;
+        [CanBeNull] private volatile IStorageContainer _storage;
+
+        // For drawing/inking
+        [NotNull] private readonly Dictionary<int, InkSettings> _inkSettings;
+        private InkSettings _lastPen;
+        private readonly Action _invalidateAction;
+
+        // History
+        [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
+
+        // Rendering properties
+        public int Width { get; set; }
+        public int Height { get; set; }
+        private double _xOffset, _yOffset;
 
         public double X { get { return _xOffset; } }
         public double Y { get { return _yOffset; } }
@@ -48,7 +43,6 @@ namespace SlickWindows.Canvas
         public int DpiY;
         public int DpiX;
 
-        public volatile bool IsRunning;
 
         /// <summary>
         /// Load and run a canvas from a storage path
@@ -72,6 +66,7 @@ namespace SlickWindows.Canvas
             _inkSettings = new Dictionary<int, InkSettings>();
             _canvasTiles = new Dictionary<PositionKey, TileImage>();
             _changedTiles = new HashSet<PositionKey>();
+            _lastChangedTiles = new HashSet<PositionKey>();
 
             DpiX = deviceDpi;
             _invalidateAction = invalidateAction;
@@ -109,15 +104,13 @@ namespace SlickWindows.Canvas
                         lock (_storageLock) // prevent conflict with changing page
                         {
                             // load any new tiles
-                            var visibleTiles = VisibleTiles(Width, Height, Width / 2, Height / 2); // load extra tiles outside the viewport
+                            var visibleTiles = VisibleTiles(Width, Height, TileImage.Size, TileImage.Size); // load extra tiles outside the viewport
 
                             bool changed = false;
 
                             foreach (var tile in visibleTiles)
                             {
                                 if (_canvasTiles.ContainsKey(tile)) continue; // already in memory
-
-
                                 if (_storage == null) break; // volatile
 
                                 var name = tile.ToString();
@@ -127,12 +120,12 @@ namespace SlickWindows.Canvas
                                 var version = thing.ResultData?.CurrentVersion ?? 1;
 
                                 var data = _storage.Read(name, "img", version);
-                                if (!data.IsSuccess) return;
+                                if (!data.IsSuccess) continue; // bad node data
 
                                 var image = new TileImage(Color.DarkGray);
                                 _canvasTiles.Add(tile, image);
 
-                                _imageQueue?.Enqueue(new TileSource(image, data));
+                                _imageQueue.Enqueue(new TileSource(image, data));
                                 changed = true;
                             }
 
@@ -158,25 +151,22 @@ namespace SlickWindows.Canvas
 
             // load the actual images.
             // Using the thread pool kills app performance :-(
-            new Thread(()=>{ 
-                while (IsRunning) {
-
-                    if (_imageQueue != null)
+            new Thread(() =>
+            {
+                while (IsRunning)
+                {
+                    while (_imageQueue.Count > 0)
                     {
-                        while (_imageQueue.Count > 0)
-                        {
-                            var info = _imageQueue.Dequeue();
-                            if (info == null) continue;
-                            var fileData = InterleavedFile.ReadFromStream(info.Data);
-                            if (fileData != null) WaveletCompress.Decompress(fileData, info.Image);
-                            _invalidateAction?.Invoke(); // redraw with final image
-                        }
+                        var info = _imageQueue.Dequeue();
+                        if (info == null) continue;
+                        var fileData = InterleavedFile.ReadFromStream(info.Data);
+                        if (fileData != null) WaveletCompress.Decompress(fileData, info.Image);
+                        _invalidateAction?.Invoke(); // redraw with final image
                     }
                     Thread.Sleep(250);
-
                 }
-
-            }){IsBackground = true, Name = "Image loading worker"}.Start();
+            })
+            { IsBackground = true, Name = "Image loading worker" }.Start();
         }
 
 
@@ -251,6 +241,14 @@ namespace SlickWindows.Canvas
         }
 
         /// <summary>
+        /// Signal that a drawing curve is starting.
+        /// This is used to delimit undo/redo actions
+        /// </summary>
+        public void StartStroke() {
+            _lastChangedTiles.Clear();
+        }
+
+        /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
         public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
@@ -264,7 +262,9 @@ namespace SlickWindows.Canvas
 
             var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
 
-            _changedTiles.Add(InkPoint(penSet, pt));
+            var tile = InkPoint(penSet, pt);
+            _changedTiles.Add(tile);
+            _lastChangedTiles.Add(tile);
             if (dd < 1) { return; }
 
             dx /= dd;
@@ -272,7 +272,9 @@ namespace SlickWindows.Canvas
             dp /= dd;
             for (int i = 0; i < dd; i++)
             {
-                _changedTiles.Add(InkPoint(penSet, pt));
+                var ctile = InkPoint(penSet, pt);
+                _changedTiles.Add(ctile);
+                _lastChangedTiles.Add(ctile);
                 pt.X += dx;
                 pt.Y += dy;
                 pt.Pressure += dp;
@@ -401,6 +403,62 @@ namespace SlickWindows.Canvas
 
             img?.Overwrite(ax, ay, 1, color);
             _changedTiles.Add(pk);
+        }
+        
+
+        private class TileSource {
+            [NotNull]public readonly TileImage Image;
+            [NotNull]public readonly Stream Data;
+
+            public TileSource([NotNull] TileImage image, [NotNull] Stream data)
+            {
+                Image = image;
+                Data = data;
+            }
+        }
+
+        /// <summary>
+        /// Toggle the version of the last changed tiles.
+        /// </summary>
+        public void Undo()
+        {
+            if (_storage == null) return;
+            // multi-undo: Could store prev. changed tiles set in the metadata store.
+
+            foreach (var tile in _lastChangedTiles)
+            {
+                // if tiles exist for version-1:
+                // - roll the version back in meta
+                // - reload tile (purge from cache and flip the reload trigger)
+                var path = tile.ToString();
+                var node = _storage.Exists(path);
+                if (node.IsFailure) continue;
+                if (node.ResultData == null) continue;
+
+                var prevVersion = node.ResultData.CurrentVersion - 1;
+
+                if (prevVersion < 1) {
+                    // undoing the first stroke. Mark it deleted.
+                    var deadNode = new StorageNode { CurrentVersion = node.ResultData.CurrentVersion, Id = node.ResultData.Id, IsDeleted = true };
+                    _storage.UpdateNode(path, deadNode);
+                    _canvasTiles.Remove(tile);
+                    _updateTileCache.Set();
+                }
+                else
+                {
+                    var ok = _storage.Read(path, "img", prevVersion);
+                    if (ok.IsFailure) continue;
+
+                    var newNode = new StorageNode { CurrentVersion = prevVersion, Id = node.ResultData.Id, IsDeleted = false };
+                    _storage.UpdateNode(path, newNode);
+                    _canvasTiles.Remove(tile);
+                    _updateTileCache.Set();
+                }
+            }
+
+            // Reset the last update set
+            // For multi-undo, we should roll back to a previous undo set.
+            _lastChangedTiles.Clear();
         }
     }
 }

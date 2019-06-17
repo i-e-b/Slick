@@ -13,6 +13,11 @@ namespace SlickWindows.Storage
         Result<StorageNode> Exists(string path);
 
         /// <summary>
+        /// Directly update storage metadata without changing stored data
+        /// </summary>
+        Result<Nothing> UpdateNode(string path, StorageNode node);
+
+        /// <summary>
         /// Write data to a storage path. Existing data is updated, or a new node created
         /// </summary>
         Result<StorageNode> Store(string path, string type, Stream data);

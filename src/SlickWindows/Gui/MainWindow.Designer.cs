@@ -35,13 +35,19 @@
             this.setPageButton = new System.Windows.Forms.Button();
             this.CanvasToolTips = new System.Windows.Forms.ToolTip(this.components);
             this.moreButton = new System.Windows.Forms.Button();
+            this.undoButton = new System.Windows.Forms.Button();
             this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
+            this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             this.SuspendLayout();
             // 
             // paletteButton
             // 
             this.paletteButton.AccessibleDescription = "Set the pen color and size for drawing";
             this.paletteButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
+            this.paletteButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.paletteButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.paletteButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.paletteButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.paletteButton.Location = new System.Drawing.Point(6, 6);
             this.paletteButton.Margin = new System.Windows.Forms.Padding(2);
             this.paletteButton.Name = "paletteButton";
@@ -55,6 +61,10 @@
             // mapButton
             // 
             this.mapButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.mapButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.mapButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.mapButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.mapButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.mapButton.Location = new System.Drawing.Point(6, 298);
             this.mapButton.Margin = new System.Windows.Forms.Padding(2);
             this.mapButton.Name = "mapButton";
@@ -70,6 +80,10 @@
             this.setPageButton.AccessibleDescription = "Change the storage location used for the canvas";
             this.setPageButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
             this.setPageButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.setPageButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.setPageButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.setPageButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.setPageButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.setPageButton.Location = new System.Drawing.Point(402, 294);
             this.setPageButton.Margin = new System.Windows.Forms.Padding(2);
             this.setPageButton.Name = "setPageButton";
@@ -89,21 +103,52 @@
             // 
             this.moreButton.AccessibleDescription = "Access less frequently needed settings and features";
             this.moreButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
-            this.moreButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.moreButton.Location = new System.Drawing.Point(402, 6);
+            this.moreButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.moreButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.moreButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.moreButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.moreButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.moreButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.moreButton.Location = new System.Drawing.Point(426, 268);
             this.moreButton.Margin = new System.Windows.Forms.Padding(2);
             this.moreButton.Name = "moreButton";
-            this.moreButton.Size = new System.Drawing.Size(75, 34);
+            this.moreButton.Size = new System.Drawing.Size(51, 22);
             this.moreButton.TabIndex = 3;
             this.moreButton.Text = "More...";
             this.CanvasToolTips.SetToolTip(this.moreButton, "Access less frequently needed settings and features");
             this.moreButton.UseVisualStyleBackColor = true;
             this.moreButton.Click += new System.EventHandler(this.MoreButton_Click);
             // 
+            // undoButton
+            // 
+            this.undoButton.AccessibleDescription = "Undo the last ink stroke";
+            this.undoButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
+            this.undoButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.undoButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.undoButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.undoButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.undoButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.undoButton.Location = new System.Drawing.Point(402, 11);
+            this.undoButton.Margin = new System.Windows.Forms.Padding(2);
+            this.undoButton.Name = "undoButton";
+            this.undoButton.Size = new System.Drawing.Size(75, 34);
+            this.undoButton.TabIndex = 4;
+            this.undoButton.Text = "Undo";
+            this.CanvasToolTips.SetToolTip(this.undoButton, "Undo the last ink stroke");
+            this.undoButton.UseVisualStyleBackColor = true;
+            this.undoButton.Click += new System.EventHandler(this.UndoButton_Click);
+            // 
             // pickFolderDialog
             // 
             this.pickFolderDialog.Description = "Pick a storage location for this page. It should be an empty folder";
             this.pickFolderDialog.RootFolder = System.Environment.SpecialFolder.MyComputer;
+            // 
+            // saveFileDialog
+            // 
+            this.saveFileDialog.DefaultExt = "slick";
+            this.saveFileDialog.Filter = "Slick Files|*.slick";
+            this.saveFileDialog.OverwritePrompt = false;
+            this.saveFileDialog.Title = "Pick page file";
             // 
             // MainWindow
             // 
@@ -112,6 +157,7 @@
             this.AutoScroll = true;
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(488, 339);
+            this.Controls.Add(this.undoButton);
             this.Controls.Add(this.moreButton);
             this.Controls.Add(this.setPageButton);
             this.Controls.Add(this.mapButton);
@@ -135,6 +181,8 @@
         private System.Windows.Forms.Button setPageButton;
         private System.Windows.Forms.FolderBrowserDialog pickFolderDialog;
         private System.Windows.Forms.Button moreButton;
+        private System.Windows.Forms.SaveFileDialog saveFileDialog;
+        private System.Windows.Forms.Button undoButton;
     }
 }
 

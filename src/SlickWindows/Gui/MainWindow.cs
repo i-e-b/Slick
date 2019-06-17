@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
@@ -15,6 +16,9 @@ namespace SlickWindows.Gui
         [NotNull]private readonly RealTimeStylus _stylusInput;
         [NotNull]private readonly EndlessCanvas _canvas;
 
+        // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
+        [NotNull] private readonly string DefaultLocation;
+
         public MainWindow()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
@@ -24,8 +28,10 @@ namespace SlickWindows.Gui
             InitializeComponent();
             PanScrollReceiver.Initialise(this);
 
-            //DoubleBuffered = true;
-            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, @"C:\Temp\Canv3\Default.slick", CanvasChanged);
+            DoubleBuffered = true;
+            DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
+            if (saveFileDialog != null) saveFileDialog.InitialDirectory = DefaultLocation;
+            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, Path.Combine(DefaultLocation, "default.slick"), CanvasChanged);
 
             _stylusInput = new RealTimeStylus(this, true);
             _stylusInput.MultiTouchEnabled = true;
@@ -102,11 +108,11 @@ namespace SlickWindows.Gui
 
         private void SetPageButton_Click(object sender, EventArgs e)
         {
-            var result = pickFolderDialog?.ShowDialog();
+            var result = saveFileDialog?.ShowDialog();
             switch (result) {
                 case DialogResult.OK:
                 case DialogResult.Yes:
-                    _canvas.ChangeBasePath(pickFolderDialog.SelectedPath);
+                    _canvas.ChangeBasePath(saveFileDialog.FileName);
                     Invalidate();
                     return;
 
@@ -125,6 +131,12 @@ namespace SlickWindows.Gui
         private void MainWindow_ClientSizeChanged(object sender, EventArgs e)
         {
             _canvas.SetSizeHint(Width, Height);
+        }
+
+        private void UndoButton_Click(object sender, EventArgs e)
+        {
+            _canvas.Undo();
+            Invalidate();
         }
     }
 }

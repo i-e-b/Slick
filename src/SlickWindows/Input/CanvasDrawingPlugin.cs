@@ -96,6 +96,24 @@ namespace SlickWindows.Input
                     break;
             }
         }
+        
+        private bool IsInkStroke(Stylus stylus)
+        {
+            if (stylus == null) return false;
+
+            TabletDeviceKind tabletKind;
+            lock (_tlock) { tabletKind = StylusId_to_DeviceKind[stylus.Id]; }
+
+            switch (tabletKind)
+            {
+                case TabletDeviceKind.Pen:
+                case TabletDeviceKind.Mouse:
+                    return !_keyboard.IsPanKeyHeld();
+
+                default:
+                    return false;
+            }
+        }
 
         private void ReadPacketDataToQueue(StylusDataBase data, Queue<DPoint> ptQ)
         {
@@ -181,6 +199,10 @@ namespace SlickWindows.Input
                 }
                 // use first 'down' point:
                 ReadPacketDataToQueue(data, StylusId_to_Points[data.Stylus.Id]);
+
+                if (IsInkStroke(data.Stylus)) {
+                    _canvas.StartStroke();
+                }
             }
         }
 
