@@ -19,19 +19,22 @@ namespace SlickWindows.Gui
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
         [NotNull] private readonly string DefaultLocation;
 
-        public MainWindow()
+        public MainWindow(string[] args)
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
             VerticalScroll.Enabled = true;
             HorizontalScroll.Enabled = true;
 
+            DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
+
             InitializeComponent();
             PanScrollReceiver.Initialise(this);
 
+            var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(DefaultLocation, "default.slick");
+            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, initialFile, CanvasChanged);
+
             DoubleBuffered = true;
-            DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
             if (saveFileDialog != null) saveFileDialog.InitialDirectory = DefaultLocation;
-            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, Path.Combine(DefaultLocation, "default.slick"), CanvasChanged);
 
             _stylusInput = new RealTimeStylus(this, true);
             _stylusInput.MultiTouchEnabled = true;
@@ -93,6 +96,9 @@ namespace SlickWindows.Gui
         private void mapButton_Click(object sender, EventArgs e)
         {
             var scale = _canvas.SwitchScale();
+
+            var pc = 100.0 / (1 << (scale - 1));
+            Text = $"Slick {pc:#.0}%";
 
             mapButton.Text = (scale == EndlessCanvas.MaxScale) ? "Canvas" : "Map";
         }

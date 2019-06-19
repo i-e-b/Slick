@@ -19,7 +19,7 @@ namespace SlickWindows
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             // Setup the embed dll reader
             LoadEmbeddedAssemblies();
@@ -27,7 +27,7 @@ namespace SlickWindows
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainWindow());
+            Application.Run(new MainWindow(args));
         }
 
         /// <summary>
