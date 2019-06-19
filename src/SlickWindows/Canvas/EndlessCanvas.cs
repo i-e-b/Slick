@@ -44,6 +44,8 @@ namespace SlickWindows.Canvas
         public int DpiX;
         private byte _drawScale = 1;
 
+        public const int MaxScale = 3;
+
 
         /// <summary>
         /// Load and run a canvas from a storage path
@@ -281,9 +283,11 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
         {
-            if (_drawScale != 1) return; // prevent drawing in map mode
-            // TODO: possible enable it?
-
+            if (_drawScale != 1) {
+                // If we're scaled out, use pens to scroll
+                Scroll(start.X - end.X, start.Y - end.Y);
+                return;
+            }
 
             var pt = start;
             var dx = end.X - start.X;
@@ -415,34 +419,44 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Rotate through scaling options
         /// </summary>
-        public void SwitchScale()
+        public int SwitchScale()
         {
+            // Keep the centre of the view in the same visual place, switching scale
+            if (_drawScale >= MaxScale)
+            { // reset to 1:1
+                _xOffset += (Width << (_drawScale - 1)) / 2.0;
+                _yOffset += (Height << (_drawScale - 1)) / 2.0;
+                _xOffset -= Width / 2.0;
+                _yOffset -= Height / 2.0;
+                _drawScale = 1;
+            }
+            else
+            {   // zoom out a step
+                _xOffset -= (Width << (_drawScale - 1)) / 2.0;
+                _yOffset -= (Height << (_drawScale - 1)) / 2.0;
+                _drawScale++;
+            }
+            ResetTileCache();
+            return _drawScale;
+        }
+
+        /// <summary>
+        /// Clear all tiles and start reloading
+        /// </summary>
+        public void ResetTileCache() {
+
             lock (_storageLock)
             {
                 lock (_canvasTiles)
                 {
-                    // Keep the centre of the view in the same visual place, switching scale
-                    if (_drawScale >= 4) { // reset to 1:1
-                        _xOffset += (Width << (_drawScale - 1)) / 2.0;
-                        _yOffset += (Height << (_drawScale - 1)) / 2.0;
-                        _xOffset -= Width / 2.0;
-                        _yOffset -= Height / 2.0;
-                        _drawScale = 1;
-                    }
-                    else
-                    {   // zoom out a step
-                        _xOffset -= (Width << (_drawScale - 1)) / 2.0;
-                        _yOffset -= (Height << (_drawScale - 1)) / 2.0;
-                        _drawScale++;
-                    }
 
                     // clear the caches and start processing
                     _changedTiles.Clear();
                     _canvasTiles.Clear();
-                    _updateTileCache.Set();
                 }
             }
 
+            _updateTileCache.Set();
             _invalidateAction?.Invoke();
         }
 
@@ -525,6 +539,33 @@ namespace SlickWindows.Canvas
             // Reset the last update set
             // For multi-undo, we should roll back to a previous undo set.
             _lastChangedTiles.Clear();
+        }
+
+        /// <summary>
+        /// Centre on the given point, and set scale as 1:1
+        /// </summary>
+        public void CentreAndZoom(int wX, int wY)
+        {
+            // wX,Y are in screen scale, window co-ordinates
+
+            // convert window coords to offsets
+            wX -= Width / 2;
+            wY -= Height / 2;
+            wX <<= (_drawScale - 1);
+            wY <<= (_drawScale - 1);
+
+            // centre on the clicked point
+            _xOffset += wX;
+            _yOffset += wY;
+            
+            // restore scale, position and start re-draw.
+            _xOffset += (Width << (_drawScale - 1)) / 2.0;
+            _yOffset += (Height << (_drawScale - 1)) / 2.0;
+            _xOffset -= Width / 2.0;
+            _yOffset -= Height / 2.0;
+            _drawScale = 1;
+
+            ResetTileCache();
         }
     }
 }

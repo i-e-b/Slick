@@ -92,7 +92,9 @@ namespace SlickWindows.Gui
 
         private void mapButton_Click(object sender, EventArgs e)
         {
-            _canvas.SwitchScale();
+            var scale = _canvas.SwitchScale();
+
+            mapButton.Text = (scale == EndlessCanvas.MaxScale) ? "Canvas" : "Map";
         }
 
         /// <inheritdoc />
@@ -132,6 +134,12 @@ namespace SlickWindows.Gui
         {
             _canvas.Undo();
             Invalidate();
+        }
+
+        private void MainWindow_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            _canvas.CentreAndZoom(e.X, e.Y);
+            mapButton.Text = "Map";
         }
     }
 }

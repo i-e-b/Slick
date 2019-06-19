@@ -115,7 +115,7 @@ namespace SlickWindows.Canvas
         [NotNull]private Bitmap CopyDataToBitmap([NotNull] short[] imgData, byte drawScale)
         {
             var size = Size >> (drawScale - 1);
-            var sampleCount = size * size;
+            var sampleCount = Math.Min(size * size, imgData.Length);
             var bmp = new Bitmap(size, size, PixelFormat.Format16bppRgb565);
 
             var bmpData = bmp.LockBits(
@@ -125,6 +125,10 @@ namespace SlickWindows.Canvas
             try
             {
                 Marshal.Copy(imgData, 0, bmpData.Scan0, sampleCount);
+            }
+            catch
+            {
+                //ignore draw races
             }
             finally
             {

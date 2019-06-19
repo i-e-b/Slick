@@ -169,6 +169,7 @@
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
             this.Text = "Slick";
             this.ClientSizeChanged += new System.EventHandler(this.MainWindow_ClientSizeChanged);
+            this.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.MainWindow_MouseDoubleClick);
             this.ResumeLayout(false);
 
         }
