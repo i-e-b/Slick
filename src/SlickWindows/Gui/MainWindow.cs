@@ -92,18 +92,13 @@ namespace SlickWindows.Gui
 
         private void mapButton_Click(object sender, EventArgs e)
         {
-            // TODO: centre on canvas and zoom out.
-            // Until zoom is done, just centre
-            _canvas.SetScale(0.2);
-            _canvas.ScrollTo(0,0);
-            Invalidate();
+            _canvas.SwitchScale();
         }
 
         /// <inheritdoc />
         public void Scroll2D(int dx, int dy)
         {
             _canvas.Scroll(dx, dy);
-            Invalidate();
         }
 
         private void SetPageButton_Click(object sender, EventArgs e)

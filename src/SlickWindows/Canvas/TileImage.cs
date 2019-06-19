@@ -61,8 +61,8 @@ namespace SlickWindows.Canvas
             return true;
         }
 
-        public void Render(Graphics g, double dx, double dy) {
-            var img = CopyDataToBitmap(Data);
+        public void Render(Graphics g, double dx, double dy, byte drawScale) {
+            var img = CopyDataToBitmap(Data, drawScale);
             g?.DrawImageUnscaled(img, (int)dx, (int)dy);
         }
 
@@ -111,9 +111,11 @@ namespace SlickWindows.Canvas
             return cdata;
         }
         
-        [NotNull]private Bitmap CopyDataToBitmap([NotNull]short[] imgData)
+        [NotNull]private Bitmap CopyDataToBitmap([NotNull] short[] imgData, byte drawScale)
         {
-            var bmp = new Bitmap(Size, Size, PixelFormat.Format16bppRgb565);
+            var size = Size >> (drawScale - 1);
+            var sampleCount = size * size;
+            var bmp = new Bitmap(size, size, PixelFormat.Format16bppRgb565);
 
             var bmpData = bmp.LockBits(
                 new Rectangle(0, 0, bmp.Width, bmp.Height),
@@ -121,7 +123,7 @@ namespace SlickWindows.Canvas
 
             try
             {
-                Marshal.Copy(imgData, 0, bmpData.Scan0, imgData.Length);
+                Marshal.Copy(imgData, 0, bmpData.Scan0, sampleCount);
             }
             finally
             {

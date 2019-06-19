@@ -42,6 +42,7 @@ namespace SlickWindows.Canvas
 
         public int DpiY;
         public int DpiX;
+        private byte _drawScale = 1;
 
 
         /// <summary>
@@ -161,7 +162,7 @@ namespace SlickWindows.Canvas
                         var info = _imageQueue.Dequeue();
                         if (info == null) continue;
                         var fileData = InterleavedFile.ReadFromStream(info.Data);
-                        if (fileData != null) WaveletCompress.Decompress(fileData, info.Image);
+                        if (fileData != null) WaveletCompress.Decompress(fileData, info.Image, _drawScale);
                         info.Image.Locked = false;
                         _invalidateAction?.Invoke(); // redraw with final image
                     }
@@ -177,12 +178,17 @@ namespace SlickWindows.Canvas
         {
             Width = width;
             Height = height;
+            
+            // change render locations based on scale
+            var displaySize = TileImage.Size >> (_drawScale - 1);
+            var offset_x = (int)_xOffset >> (_drawScale - 1);
+            var offset_y = (int)_yOffset >> (_drawScale - 1);
 
             // work out the indexes we need, find in dictionary, draw
-            int ox = (int)((_xOffset - extraX) / TileImage.Size);
-            int oy = (int)((_yOffset - extraY) / TileImage.Size);
-            int mx = (int)Math.Round((double)(width + (extraX * 2)) / TileImage.Size);
-            int my = (int)Math.Round((double)(height + (extraY * 2)) / TileImage.Size);
+            int ox = (offset_x - extraX) / displaySize;
+            int oy = (offset_y - extraY) / displaySize;
+            int mx = (int)Math.Round((double)(width + (extraX * 2)) / displaySize);
+            int my = (int)Math.Round((double)(height + (extraY * 2)) / displaySize);
 
             var result = new List<PositionKey>();
             for (int y = -1; y <= my; y++)
@@ -211,7 +217,14 @@ namespace SlickWindows.Canvas
             {
                 if (!_canvasTiles.ContainsKey(index)) continue;
                 var ti = _canvasTiles[index];
-                ti?.Render(g, (index.X * TileImage.Size) - _xOffset, (index.Y * TileImage.Size) - _yOffset);
+
+                // change render locations based on scale
+                var displaySize = TileImage.Size >> (_drawScale - 1);
+                var offset_x = (int)_xOffset >> (_drawScale - 1);
+                var offset_y = (int)_yOffset >> (_drawScale - 1);
+
+                // draw tile
+                ti?.Render(g, (index.X * displaySize) - offset_x, (index.Y * displaySize) - offset_y, _drawScale);
             }
         }
 
@@ -227,8 +240,8 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Scroll(double dx, double dy)
         {
-            _xOffset += dx;
-            _yOffset += dy;
+            _xOffset += dx * (1 << (_drawScale - 1));
+            _yOffset += dy * (1 << (_drawScale - 1));
             _updateTileCache.Set();
         }
 
@@ -255,6 +268,10 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
         {
+            if (_drawScale != 1) return; // prevent drawing in map mode
+            // TODO: possible enable it?
+
+
             var pt = start;
             var dx = end.X - start.X;
             var dy = end.Y - start.Y;
@@ -379,9 +396,18 @@ namespace SlickWindows.Canvas
             _updateTileCache.Set();
         }
 
-        public void SetScale(double scale)
+        /// <summary>
+        /// Rotate through scaling options
+        /// </summary>
+        public void SwitchScale()
         {
-            // TODO: scale loading and rendering.
+            _drawScale++;
+
+            if (_drawScale > 4) _drawScale = 1;
+
+            ScrollTo(0,0);
+            _changedTiles.Clear();
+            _canvasTiles.Clear();
             _updateTileCache.Set();
         }
 

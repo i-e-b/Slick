@@ -25,14 +25,14 @@ namespace SlickWindows.ImageFormats
             return WaveletDecomposePlanar2(Y, U, V, width, height, img.Width, img.Height);
         }
 
-        public static void Decompress([NotNull]InterleavedFile file, [NotNull]TileImage target)
+        public static void Decompress([NotNull]InterleavedFile file, [NotNull]TileImage target, byte scale)
         {
-            WaveletRestorePlanar2(file, out var Y, out var U, out var V);
-            var pwidth = NextPow2(file.Width);
+            var pwidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
 
-            var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, file.Width, file.Height);
+            //var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, file.Width, file.Height);
+            var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, pwidth, pwidth);
 
-            for (int i = 0; i < target.Data.Length; i++)
+            for (int i = 0; i < data.Length; i++)
             {
                 target.Data[i] = data[i];
             }
@@ -41,6 +41,7 @@ namespace SlickWindows.ImageFormats
         // This controls the overall size and quality of the output
         private static void QuantisePlanar2([NotNull]float[] buffer, int ch, int packedLength, QuantiseType mode)
         {
+            if (packedLength < buffer.Length) packedLength = buffer.Length;
             // Planar two splits in half, starting with top/bottom, and alternating between
             // vertical and horizontal
 
@@ -56,8 +57,14 @@ namespace SlickWindows.ImageFormats
                 var factors = (ch == 0) ? fYs : fCs;
                 float factor = (float)((r >= factors.Length) ? factors[factors.Length - 1] : factors[r]);
                 if (mode == QuantiseType.Reduce) factor = 1 / factor;
-
+                
                 var len = packedLength >> r;
+                
+                // handle scale reductions:
+                if (len >> 1 >= buffer.Length) continue;
+
+                // expand co-efficients
+                if (len >= buffer.Length) len = buffer.Length - 1;
                 for (int i = len >> 1; i < len; i++)
                 {
                     buffer[i] *= factor;
@@ -146,7 +153,7 @@ namespace SlickWindows.ImageFormats
             return container;
         }
 
-        public static void WaveletRestorePlanar2([NotNull]InterleavedFile container, out float[] Y, out float[] U, out float[] V)
+        public static int WaveletRestorePlanar2([NotNull]InterleavedFile container, byte scale, out float[] Y, out float[] U, out float[] V)
         {
             var Ybytes = container.Planes?[0];
             var Ubytes = container.Planes?[1];
@@ -154,8 +161,20 @@ namespace SlickWindows.ImageFormats
 
             if (Ybytes == null || Ubytes == null || Vbytes == null) throw new NullReferenceException("Planes were not read from image correctly");
 
-            var imgWidth = container.Width;
-            var imgHeight = container.Height;
+            int imgWidth = container.Width;
+            int imgHeight = container.Height;
+
+            // the original image source's internal buffer size
+            var packedLength = NextPow2(imgWidth) * NextPow2(imgHeight);
+
+            // scale by a power of 2
+            if (scale < 1) scale = 1;
+            var scaleShift = scale - 1;
+            if (scale > 1)
+            {
+                imgWidth >>= scaleShift;
+                imgHeight >>= scaleShift;
+            }
             var planeWidth = NextPow2(imgWidth);
             var planeHeight = NextPow2(imgHeight);
 
@@ -182,8 +201,8 @@ namespace SlickWindows.ImageFormats
                 }
 
                 // Re-expand co-efficients
-                QuantisePlanar2(buffer, ch, buffer.Length, QuantiseType.Expand);
-                FromStorageOrder2D(buffer, planeWidth, planeHeight, rounds, imgWidth, imgHeight);
+                QuantisePlanar2(buffer, ch, packedLength, QuantiseType.Expand);
+                FromStorageOrder2D(buffer, planeWidth, planeHeight, rounds, imgWidth, imgHeight, scaleShift);
 
                 // Restore
                 for (int i = rounds - 1; i >= 0; i--)
@@ -207,6 +226,7 @@ namespace SlickWindows.ImageFormats
                 // AC to DC
                 for (int i = 0; i < buffer.Length; i++) { buffer[i] += 127.5f; }
             }
+            return planeWidth;
         }
 
         /// <summary>
@@ -231,7 +251,7 @@ namespace SlickWindows.ImageFormats
         /// <summary>
         /// Restore image byte order from storage format to image format
         /// </summary>
-        public static void FromStorageOrder2D([NotNull]float[] buffer, int srcWidth, int srcHeight, int rounds, int imgWidth, int imgHeight)
+        public static void FromStorageOrder2D([NotNull]float[] buffer, int srcWidth, int srcHeight, int rounds, int imgWidth, int imgHeight, int scale = 0)
         {
             var storage = new float[buffer.Length];
 
@@ -254,6 +274,12 @@ namespace SlickWindows.ImageFormats
             var lowerDiff = (srcHeight - imgHeight) / 2;
             var eastDiff = (srcWidth - imgWidth) / 2;
 
+            // prevent over-reading on non-power-two images:
+            // this knocks-out the last two co-efficient blocks
+            var limit = (imgHeight / 2) * (imgWidth / 2);
+            if (scale < 1) limit = buffer.Length;
+
+
             // now the reduced coefficients in order from most to least significant
             for (int i = rounds - 1; i >= 0; i--)
             {
@@ -265,12 +291,14 @@ namespace SlickWindows.ImageFormats
                 var lowerEnd = height - (lowerDiff >> i);
                 var eastEnd = top - (lowerDiff >> i);
 
+                if (incrPos > limit) { break; }
+
                 // vertical block
                 // from top to the height of the horz block,
                 // from left=(right most of prev) to right
                 for (int x = left; x < right; x++) // each column
                 {
-                    for (int y = 0; y < eastEnd; y++)
+                    for (int y = 0; y < eastEnd ;y++)
                     {
                         var yo = y * srcWidth;
                         storage[yo + x] = buffer[incrPos++];
