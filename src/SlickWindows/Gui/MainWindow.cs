@@ -76,7 +76,7 @@ namespace SlickWindows.Gui
         /// <inheritdoc />
         public void DataCollected(RealTimeStylus sender)
         {
-            Text = $"Slick ({_canvas.X}, {_canvas.Y})";
+            Text = $"Slick ({_canvas.X}, {_canvas.Y}); ({Width} x {Height})";
             Invalidate();
         }
 

@@ -421,15 +421,28 @@ namespace SlickWindows.Canvas
             {
                 lock (_canvasTiles)
                 {
-                    if (_drawScale >= 4) _drawScale = 1;
-                    else _drawScale++;
+                    // Keep the centre of the view in the same visual place, switching scale
+                    if (_drawScale >= 4) { // reset to 1:1
+                        _xOffset += (Width << (_drawScale - 1)) / 2.0;
+                        _yOffset += (Height << (_drawScale - 1)) / 2.0;
+                        _xOffset -= Width / 2.0;
+                        _yOffset -= Height / 2.0;
+                        _drawScale = 1;
+                    }
+                    else
+                    {   // zoom out a step
+                        _xOffset -= (Width << (_drawScale - 1)) / 2.0;
+                        _yOffset -= (Height << (_drawScale - 1)) / 2.0;
+                        _drawScale++;
+                    }
 
+                    // clear the caches and start processing
                     _changedTiles.Clear();
                     _canvasTiles.Clear();
                     _updateTileCache.Set();
                 }
             }
-            ScrollTo(0, 0);
+
             _invalidateAction?.Invoke();
         }
 
