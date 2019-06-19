@@ -40,6 +40,19 @@ namespace SlickWindows.Canvas
 
             return Color.FromArgb(Clip((int)R), Clip((int)G), Clip((int)B));
         }
+        
+        public static Color ExpPaletteColor(int Y, int p1, int p2)
+        {
+            p1 = (p1 - 127) << 1;
+            p2 = (p2 - 127) << 1;
+
+            var tmp = Y - (p2 >> 1);
+            var G = p2 + tmp;
+            var B = tmp - (p1 >> 1);
+            var R = B + p1;
+
+            return Color.FromArgb(Clip(R), Clip(G), Clip(B));
+        }
 
 
         private static int Clip(int v)

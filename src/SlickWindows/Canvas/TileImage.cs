@@ -12,10 +12,15 @@ namespace SlickWindows.Canvas
     public class TileImage
     {
         // TODO: ability to merge (darkest pixel wins?)
-        public const int Size = 256; // make this bigger -- like 256-ish?
+        public const int Size = 256;
         public const int Pixels = Size * Size;
 
         [NotNull]public readonly short[] Data;
+
+        /// <summary>
+        /// If 'locked' is set, commands to draw will be ignored
+        /// </summary>
+        public bool Locked { get; set; }
 
         public TileImage()
         {
@@ -63,6 +68,7 @@ namespace SlickWindows.Canvas
 
         public void Overwrite(double px, double py, double radius, Color penColor)
         {
+            if (Locked) return;
             var cdata = PreparePen(px, py, radius, penColor, out var top, out var left, out var right, out var bottom);
 
             for (int y = top; y < bottom; y++)
@@ -74,7 +80,9 @@ namespace SlickWindows.Canvas
             }
         }
 
-        public void Highlight(double px, double py, double radius, Color penColor) {
+        public void Highlight(double px, double py, double radius, Color penColor)
+        {
+            if (Locked) return;
             var cdata = PreparePen(px, py, radius, penColor, out var top, out var left, out var right, out var bottom);
 
             for (int y = top; y < bottom; y++)

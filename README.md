@@ -10,7 +10,7 @@ Immediate next steps:
 * [x] Change image file format, use larger tiles.
   * [x] Packed single file format? (blob database or similar) - Maybe the version control could be linked in with this? (COW-like block store?)
   * [x] Implement Undo
-  * [ ] Lock tiles while they are loading (prevent drawing on or saving the grey proxies)
+  * [x] Lock tiles while they are loading (prevent drawing on or saving the grey proxies)
 
 ## Plan
 

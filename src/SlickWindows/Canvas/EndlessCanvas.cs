@@ -123,6 +123,7 @@ namespace SlickWindows.Canvas
                                 if (!data.IsSuccess) continue; // bad node data
 
                                 var image = new TileImage(Color.DarkGray);
+                                image.Locked = true;
                                 _canvasTiles.Add(tile, image);
 
                                 _imageQueue.Enqueue(new TileSource(image, data));
@@ -161,6 +162,7 @@ namespace SlickWindows.Canvas
                         if (info == null) continue;
                         var fileData = InterleavedFile.ReadFromStream(info.Data);
                         if (fileData != null) WaveletCompress.Decompress(fileData, info.Image);
+                        info.Image.Locked = false;
                         _invalidateAction?.Invoke(); // redraw with final image
                     }
                     Thread.Sleep(250);
@@ -300,6 +302,7 @@ namespace SlickWindows.Canvas
                     if (!_canvasTiles.ContainsKey(key)) continue;
                     var tile = _canvasTiles[key];
                     if (tile == null) continue;
+                    if (tile.Locked) continue;
 
                     if (_storage == null) return;
                     var name = key.ToString();
@@ -370,6 +373,8 @@ namespace SlickWindows.Canvas
                 _canvasTiles.Clear();
                 Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
                 _storage = new LiteDbStorageContainer(newPath);
+                _xOffset = 0;
+                _yOffset = 0;
             }
             _updateTileCache.Set();
         }

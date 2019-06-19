@@ -77,12 +77,13 @@ namespace SlickWindows.Gui
             {
                 for (int x = 0; x < halfWidth; x++)
                 {
-                    var c = ColorEncoding.YcbcrToColor(100, (int)(y * dy), (int)(x * dx));
+                    var c = ColorEncoding.ExpPaletteColor(100, (int)(y * dy), (int)(x * dx));
                     bmp.SetPixel(x, y + qheight, c);
-                    
-                    c = ColorEncoding.YcbcrToColor(200, (int)(y * dy), (int)(x * dx));
+
+                    c = ColorEncoding.ExpPaletteColor(200, (int)(y * dy), (int)(x * dx));
                     bmp.SetPixel(x + halfWidth, y + qheight, c);
-                }            }
+                }
+            }
 
             return bmp;
         }
