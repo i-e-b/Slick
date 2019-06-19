@@ -32,7 +32,9 @@ namespace SlickWindows.ImageFormats
             //var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, file.Width, file.Height);
             var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, pwidth, pwidth);
 
-            for (int i = 0; i < data.Length; i++)
+            var minSize = Math.Min(data.Length, target.Data.Length);
+
+            for (int i = 0; i < minSize; i++)
             {
                 target.Data[i] = data[i];
             }

@@ -34,11 +34,12 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Tile image where we expect data to be loaded later
         /// </summary>
-        public TileImage(Color background)
+        public TileImage(Color background, byte scale)
         {
-            Data = new short[Pixels];
+            var samples = Pixels >> (scale - 1);
+            Data = new short[samples];
             var c = ColorEncoding.To16Bit(background);
-            for (int i = 0; i < Data.Length; i++)
+            for (int i = 0; i < samples; i++)
             {
                 Data[i] = c;
             }

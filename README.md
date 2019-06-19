@@ -11,6 +11,11 @@ Immediate next steps:
   * [x] Packed single file format? (blob database or similar) - Maybe the version control could be linked in with this? (COW-like block store?)
   * [x] Implement Undo
   * [x] Lock tiles while they are loading (prevent drawing on or saving the grey proxies)
+* [x] Scaling 'map' mode
+  * [ ] double-click to zoom to position
+  * [ ] 'pinch' scale&zoom?
+  * [ ] change draw to scroll in map mode
+* [ ] Interest pins and quick-list
 
 ## Plan
 
