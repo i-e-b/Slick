@@ -549,6 +549,7 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void CentreAndZoom(int wX, int wY)
         {
+            if (_drawScale <= 1) return; // already zoomed in
             // wX,Y are in screen scale, window co-ordinates
 
             // convert window coords to offsets

@@ -144,6 +144,12 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll">
+      <Link>Embed\Containers.dll</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\packages\LiteDB.4.1.4\lib\net40\LiteDB.dll">
+      <Link>Embed\LiteDB.dll</Link>
+    </EmbeddedResource>
     <Content Include="mona-lisa.ico" />
   </ItemGroup>
   <ItemGroup />

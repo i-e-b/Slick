@@ -17,6 +17,7 @@ Immediate next steps:
   * [ ] 'pinch' scale&zoom?
   * [x] change draw to scroll in map mode
 * [ ] Interest pins and quick-list
+* [ ] Open through file
 
 ## Plan
 
