@@ -105,7 +105,7 @@ namespace SlickWindows.Canvas
                         _updateTileCache.Reset();
 
                         // load any new tiles
-                        var visibleTiles = VisibleTiles(Width, Height, 0, 0);//TileImage.Size, TileImage.Size); // load extra tiles outside the viewport
+                        var visibleTiles = VisibleTiles(Width, Height);
 
                         lock (_storageLock) // prevent conflict with changing page
                         {
@@ -172,7 +172,7 @@ namespace SlickWindows.Canvas
 
 
         [NotNull]
-        private List<PositionKey> VisibleTiles(int width, int height, int extraX = 0, int extraY = 0)
+        private List<PositionKey> VisibleTiles(int width, int height)
         {
             Width = width;
             Height = height;
@@ -183,10 +183,10 @@ namespace SlickWindows.Canvas
             var offset_y = (int)_yOffset >> (_drawScale - 1);
 
             // work out the indexes we need, find in dictionary, draw
-            int ox = (offset_x - extraX) / displaySize;
-            int oy = (offset_y - extraY) / displaySize;
-            int mx = (int)Math.Round((double)(width + (extraX * 2)) / displaySize);
-            int my = (int)Math.Round((double)(height + (extraY * 2)) / displaySize);
+            int ox = offset_x / displaySize;
+            int oy = offset_y / displaySize;
+            int mx = (int)Math.Round((double)width / displaySize);
+            int my = (int)Math.Round((double)height / displaySize);
 
             var result = new List<PositionKey>();
             for (int y = -1; y <= my; y++)
@@ -360,28 +360,31 @@ namespace SlickWindows.Canvas
 
         private PositionKey InkPoint(InkSettings ink, DPoint pt)
         {
-            var xIdx = Math.Floor((pt.X + _xOffset) / TileImage.Size);
-            var yIdx = Math.Floor((pt.Y + _yOffset) / TileImage.Size);
-            var pk = new PositionKey((int)xIdx, (int)yIdx);
-
-            if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
-            var img = _canvasTiles[pk];
-
-            var ax = (pt.X + _xOffset) % TileImage.Size;
-            var ay = (pt.Y + _yOffset) % TileImage.Size;
-
-            if (ax < 0) ax += TileImage.Size;
-            if (ay < 0) ay += TileImage.Size;
-
-            if (ink.PenType == InkType.Overwrite)
+            lock (_storageLock)
             {
-                img?.Overwrite(ax, ay, pt.Pressure * ink.PenSize, ink.PenColor);
+                var xIdx = Math.Floor((pt.X + _xOffset) / TileImage.Size);
+                var yIdx = Math.Floor((pt.Y + _yOffset) / TileImage.Size);
+                var pk = new PositionKey((int)xIdx, (int)yIdx);
+
+                if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
+                var img = _canvasTiles[pk];
+
+                var ax = (pt.X + _xOffset) % TileImage.Size;
+                var ay = (pt.Y + _yOffset) % TileImage.Size;
+
+                if (ax < 0) ax += TileImage.Size;
+                if (ay < 0) ay += TileImage.Size;
+
+                if (ink.PenType == InkType.Overwrite)
+                {
+                    img?.Overwrite(ax, ay, pt.Pressure * ink.PenSize, ink.PenColor);
+                }
+                else
+                {
+                    img?.Highlight(ax, ay, pt.Pressure * ink.PenSize, ink.PenColor);
+                }
+                return pk;
             }
-            else
-            {
-                img?.Highlight(ax, ay, pt.Pressure * ink.PenSize, ink.PenColor);
-            }
-            return pk;
         }
 
         /// <summary>
