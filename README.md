@@ -19,7 +19,7 @@ Immediate next steps:
 * [ ] Interest pins and quick-list
 * [x] Open through file
 
-## Plan
+## Possible features
 
 * [ ] mediator endpoint (Azure func or similar? RabbitMQ?)
 * [ ] peer-to-peer link up based on mediator?

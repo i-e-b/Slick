@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using Containers;
 using Containers.Types;
 using JetBrains.Annotations;
@@ -91,6 +92,50 @@ namespace SlickWindows.Storage
                     }
 
                     return Result<StorageNode>.Success(node);
+                }
+        }
+
+        /// <inheritdoc />
+        public Result<InfoPin> SetPin(string path, string description)
+        {
+            lock (_storageLock)
+                using (var db = new LiteDatabase(_pageFilePath))
+                {
+                    var pins = db.GetCollection<InfoPin>("pins");
+                    if (pins == null) return Result<InfoPin>.Failure(NoDb);
+                    var pin = new InfoPin{ Id = path, Description = description};
+                    pins.Upsert(path, pin);
+                    return Result<InfoPin>.Success(pin);
+                }
+        }
+
+        /// <inheritdoc />
+        public Result<InfoPin> GetPin(string path)
+        {
+            lock (_storageLock)
+                using (var db = new LiteDatabase(_pageFilePath))
+                {
+                    var pins = db.GetCollection<InfoPin>("pins");
+                    var pin = pins?.FindById(path);
+
+                    return (pin == null)
+                        ? Result<InfoPin>.Failure(NotFound)
+                        : Result<InfoPin>.Success(pin);
+                }
+        }
+
+        /// <inheritdoc />
+        public Result<InfoPin[]> ReadAllPins()
+        {
+            lock (_storageLock)
+                using (var db = new LiteDatabase(_pageFilePath))
+                {
+                    var pins = db.GetCollection<InfoPin>("pins");
+                    var allPins = pins?.FindAll()?.ToArray();
+
+                    return (allPins == null)
+                        ? Result<InfoPin[]>.Failure(NotFound)
+                        : Result<InfoPin[]>.Success(allPins);
                 }
         }
 

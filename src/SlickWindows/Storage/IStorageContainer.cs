@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using Containers;
 using Containers.Types;
 
@@ -21,6 +20,21 @@ namespace SlickWindows.Storage
         /// Write data to a storage path. Existing data is updated, or a new node created
         /// </summary>
         Result<StorageNode> Store(string path, string type, Stream data);
+
+        /// <summary>
+        /// Add a pin to a location
+        /// </summary>
+        Result<InfoPin> SetPin(string path, string description);
+
+        /// <summary>
+        /// Read a pin from a location, if there is one
+        /// </summary>
+        Result<InfoPin> GetPin(string path);
+
+        /// <summary>
+        /// List all pins in the storage
+        /// </summary>
+        Result<InfoPin[]> ReadAllPins();
 
         /// <summary>
         /// Read data from a storage path

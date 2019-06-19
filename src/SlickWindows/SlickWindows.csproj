@@ -78,6 +78,12 @@
     <Compile Include="Gui\ExtrasWindow.Designer.cs">
       <DependentUpon>ExtrasWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="Gui\PinsWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Gui\PinsWindow.Designer.cs">
+      <DependentUpon>PinsWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="ImageFormats\CDF.cs" />
     <Compile Include="ImageFormats\DataEncoding.cs" />
     <Compile Include="ImageFormats\InterleavedFile.cs" />
@@ -119,6 +125,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Gui\MainWindow.resx">
       <DependentUpon>MainWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Gui\PinsWindow.resx">
+      <DependentUpon>PinsWindow.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

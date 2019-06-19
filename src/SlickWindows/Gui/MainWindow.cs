@@ -85,12 +85,11 @@ namespace SlickWindows.Gui
 
         private void paletteButton_Click(object sender, EventArgs e)
         {
-            var pal = new PaletteWindow
+            new PaletteWindow
             {
                 Canvas = _canvas,
                 Location = paletteButton?.PointToScreen(new Point(0, 0)) ?? new Point(Left, Top)
-            };
-            pal.ShowDialog();
+            }.ShowDialog();
         }
 
         private void mapButton_Click(object sender, EventArgs e)
@@ -146,6 +145,14 @@ namespace SlickWindows.Gui
         {
             _canvas.CentreAndZoom(e.X, e.Y);
             mapButton.Text = "Map";
+        }
+
+        private void PinsButton_Click(object sender, EventArgs e)
+        {
+            new PinsWindow
+            {
+                Location = pinsButton?.PointToScreen(new Point(0, 0)) ?? new Point(Left, Top)
+            }.ShowDialog();
         }
     }
 }

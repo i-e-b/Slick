@@ -38,6 +38,7 @@
             this.undoButton = new System.Windows.Forms.Button();
             this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
+            this.pinsButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // paletteButton
@@ -60,6 +61,8 @@
             // 
             // mapButton
             // 
+            this.mapButton.AccessibleDescription = "Display an overview of the current canvas";
+            this.mapButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
             this.mapButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.mapButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
             this.mapButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
@@ -150,6 +153,25 @@
             this.saveFileDialog.OverwritePrompt = false;
             this.saveFileDialog.Title = "Pick page file";
             // 
+            // pinsButton
+            // 
+            this.pinsButton.AccessibleDescription = "Use pins to navigate larger pages";
+            this.pinsButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
+            this.pinsButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.pinsButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.pinsButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.pinsButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.pinsButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.pinsButton.Location = new System.Drawing.Point(6, 260);
+            this.pinsButton.Margin = new System.Windows.Forms.Padding(2);
+            this.pinsButton.Name = "pinsButton";
+            this.pinsButton.Size = new System.Drawing.Size(75, 34);
+            this.pinsButton.TabIndex = 5;
+            this.pinsButton.Text = "Pins";
+            this.CanvasToolTips.SetToolTip(this.pinsButton, "Use pins to navigate larger pages");
+            this.pinsButton.UseVisualStyleBackColor = true;
+            this.pinsButton.Click += new System.EventHandler(this.PinsButton_Click);
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -157,6 +179,7 @@
             this.AutoScroll = true;
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(488, 339);
+            this.Controls.Add(this.pinsButton);
             this.Controls.Add(this.undoButton);
             this.Controls.Add(this.moreButton);
             this.Controls.Add(this.setPageButton);
@@ -184,6 +207,7 @@
         private System.Windows.Forms.Button moreButton;
         private System.Windows.Forms.SaveFileDialog saveFileDialog;
         private System.Windows.Forms.Button undoButton;
+        private System.Windows.Forms.Button pinsButton;
     }
 }
 
