@@ -16,8 +16,9 @@ Immediate next steps:
   * [x] double-click to zoom to position
   * [ ] 'pinch' scale&zoom?
   * [x] change draw to scroll in map mode
-* [ ] Interest pins and quick-list
+* [x] Interest pins and quick-list
 * [x] Open through file
+* [ ] Select region and export
 
 ## Possible features
 

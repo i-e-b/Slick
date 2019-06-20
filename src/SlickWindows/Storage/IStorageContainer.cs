@@ -32,6 +32,11 @@ namespace SlickWindows.Storage
         Result<InfoPin> GetPin(string path);
 
         /// <summary>
+        /// Remove a pin by Id
+        /// </summary>
+        void RemovePin(string id);
+
+        /// <summary>
         /// List all pins in the storage
         /// </summary>
         Result<InfoPin[]> ReadAllPins();

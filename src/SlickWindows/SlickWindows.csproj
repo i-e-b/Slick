@@ -78,6 +78,7 @@
     <Compile Include="Gui\ExtrasWindow.Designer.cs">
       <DependentUpon>ExtrasWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="Gui\FormsHelper.cs" />
     <Compile Include="Gui\PinsWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -114,6 +115,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Input\CanvasDrawingPlugin.cs" />
+    <Compile Include="Storage\InfoPin.cs" />
     <Compile Include="Storage\IStorageContainer.cs" />
     <Compile Include="Storage\LiteDbStorageContainer.cs" />
     <Compile Include="Storage\StorageNode.cs" />

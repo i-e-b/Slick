@@ -19,6 +19,8 @@ namespace SlickWindows.Gui
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
         [NotNull] private readonly string DefaultLocation;
 
+        private double _lastScalePercent = 100.0;
+
         public MainWindow(string[] args)
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
@@ -79,7 +81,12 @@ namespace SlickWindows.Gui
         /// <inheritdoc />
         public void DataCollected(RealTimeStylus sender)
         {
-            Text = $"Slick ({_canvas.X}, {_canvas.Y}); ({Width} x {Height})";
+            UpdateWindowAndStatus();
+        }
+
+        private void UpdateWindowAndStatus()
+        {
+            Text = $"Slick ({_canvas.X}, {_canvas.Y}); ({Width} x {Height}) {_lastScalePercent:#}%";
             Invalidate();
         }
 
@@ -94,12 +101,14 @@ namespace SlickWindows.Gui
 
         private void mapButton_Click(object sender, EventArgs e)
         {
+            if (mapButton == null || e == null) return;
+
             var scale = _canvas.SwitchScale();
 
-            var pc = 100.0 / (1 << (scale - 1));
-            Text = $"Slick {pc:#.0}%";
-
+            _lastScalePercent = 100.0 / (1 << (scale - 1));
             mapButton.Text = (scale == EndlessCanvas.MaxScale) ? "Canvas" : "Map";
+
+            UpdateWindowAndStatus();
         }
 
         /// <inheritdoc />
@@ -143,13 +152,15 @@ namespace SlickWindows.Gui
 
         private void MainWindow_MouseDoubleClick(object sender, MouseEventArgs e)
         {
+            if (mapButton == null || e == null) return;
             _canvas.CentreAndZoom(e.X, e.Y);
+            _lastScalePercent = 100.0;
             mapButton.Text = "Map";
         }
 
         private void PinsButton_Click(object sender, EventArgs e)
         {
-            new PinsWindow
+            new PinsWindow(_canvas)
             {
                 Location = pinsButton?.PointToScreen(new Point(0, 0)) ?? new Point(Left, Top)
             }.ShowDialog();

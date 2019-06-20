@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Globalization;
 using Containers;
-using JetBrains.Annotations;
 
 namespace SlickWindows.Canvas
 {
@@ -45,10 +44,11 @@ namespace SlickWindows.Canvas
             var bits = s?.Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
             if (bits == null || bits.Length < 2) return null;
 
-            return new PositionKey(
-                int.Parse(bits[0], NumberStyles.HexNumber),
-                int.Parse(bits[1], NumberStyles.HexNumber)
-            );
+            var ok = int.TryParse(bits[0], NumberStyles.HexNumber, null, out var x);
+               ok &= int.TryParse(bits[1], NumberStyles.HexNumber, null, out var y);
+            if (!ok) return null;
+
+            return new PositionKey(x, y);
         }
     }
 }

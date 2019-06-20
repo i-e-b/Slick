@@ -125,6 +125,17 @@ namespace SlickWindows.Storage
         }
 
         /// <inheritdoc />
+        public void RemovePin(string id)
+        {
+            lock (_storageLock)
+                using (var db = new LiteDatabase(_pageFilePath))
+                {
+                    var pins = db.GetCollection<InfoPin>("pins");
+                    pins?.Delete(id);
+                }
+        }
+
+        /// <inheritdoc />
         public Result<InfoPin[]> ReadAllPins()
         {
             lock (_storageLock)

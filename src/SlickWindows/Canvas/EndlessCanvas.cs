@@ -331,27 +331,30 @@ namespace SlickWindows.Canvas
             if (_storage == null) return;
             lock (_storageLock)
             {
-                foreach (var key in _changedTiles)
+                lock (_canvasTiles)
                 {
-                    if (!_canvasTiles.ContainsKey(key)) continue;
-                    var tile = _canvasTiles[key];
-                    if (tile == null) continue;
-                    if (tile.Locked) continue;
-
-                    if (_storage == null) return;
-                    var name = key.ToString();
-
-                    if (tile.ImageIsBlank())
+                    foreach (var key in _changedTiles)
                     {
-                        _storage.Delete(name, "img");
-                        _canvasTiles.Remove(key);
-                    }
-                    else
-                    {
-                        var ms = new MemoryStream();
-                        WaveletCompress.Compress(tile).WriteToStream(ms);
-                        ms.Seek(0, SeekOrigin.Begin);
-                        _storage.Store(name, "img", ms);
+                        if (!_canvasTiles.ContainsKey(key)) continue;
+                        var tile = _canvasTiles[key];
+                        if (tile == null) continue;
+                        if (tile.Locked) continue;
+
+                        if (_storage == null) return;
+                        var name = key.ToString();
+
+                        if (tile.ImageIsBlank())
+                        {
+                            _storage.Delete(name, "img");
+                            _canvasTiles.Remove(key);
+                        }
+                        else
+                        {
+                            var ms = new MemoryStream();
+                            WaveletCompress.Compress(tile).WriteToStream(ms);
+                            ms.Seek(0, SeekOrigin.Begin);
+                            _storage.Store(name, "img", ms);
+                        }
                     }
                 }
                 _changedTiles.Clear();
@@ -570,6 +573,71 @@ namespace SlickWindows.Canvas
             _drawScale = 1;
 
             ResetTileCache();
+        }
+
+        [NotNull]public InfoPin[] AllPins()
+        {
+            if (_storage==null) return new InfoPin[0];
+
+            lock (_storageLock) {
+                var result = _storage.ReadAllPins();
+                if (result.IsFailure || result.ResultData == null) return new InfoPin[0];
+
+                return result.ResultData;
+            }
+        }
+
+        public void WritePinAtCurrentOffset(string text)
+        {
+            if (_storage==null) return;
+
+            lock (_storageLock) {
+                // tile location for middle of screen
+                
+                // offset is scale independent position of top-left window corner
+                var x = _xOffset;
+                var y = _yOffset;
+
+                // tiles from window corner to window centre
+                var wX = Width / 2;
+                var wY = Height / 2;
+                wX <<= (_drawScale - 1);
+                wY <<= (_drawScale - 1);
+
+                x += wX;
+                y += wY;
+
+                // tile of centre of screen
+                x /= TileImage.Size;
+                y /= TileImage.Size;
+
+                var pos = new PositionKey((int)x, (int)y);
+
+                _storage.SetPin(pos.ToString(), text);
+            }
+        }
+
+        public void CentreOnPin(InfoPin pin)
+        {
+            if (pin == null) return;
+            var pos = PositionKey.Parse(pin.Id);
+            if (pos == null) return;
+
+            // we have a tile index. Set the offset based on this
+            _xOffset = pos.X * TileImage.Size - Width / 2;
+            _yOffset = pos.Y * TileImage.Size - Height / 2;
+
+            _updateTileCache.Set();
+            _invalidateAction?.Invoke();
+        }
+
+        public void DeletePin(InfoPin pin)
+        {
+            if (_storage == null || pin == null) return;
+
+            lock (_storageLock) {
+                _storage.RemovePin(pin.Id);
+            }
         }
     }
 }
