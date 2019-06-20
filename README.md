@@ -19,6 +19,7 @@ Immediate next steps:
 * [x] Interest pins and quick-list
 * [x] Open through file
 * [ ] Select region and export
+* [ ] 'Purge' to remove old tile versions and deleted tiles, for transport.
 
 ## Possible features
 

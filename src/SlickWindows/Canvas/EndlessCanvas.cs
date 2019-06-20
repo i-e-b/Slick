@@ -623,9 +623,16 @@ namespace SlickWindows.Canvas
             var pos = PositionKey.Parse(pin.Id);
             if (pos == null) return;
 
+            
+            // tiles from window corner to window centre
+            var wX = Width / 2;
+            var wY = Height / 2;
+            wX <<= (_drawScale - 1);
+            wY <<= (_drawScale - 1);
+
             // we have a tile index. Set the offset based on this
-            _xOffset = pos.X * TileImage.Size - Width / 2;
-            _yOffset = pos.Y * TileImage.Size - Height / 2;
+            _xOffset = pos.X * TileImage.Size - wX;
+            _yOffset = pos.Y * TileImage.Size - wY;
 
             _updateTileCache.Set();
             _invalidateAction?.Invoke();

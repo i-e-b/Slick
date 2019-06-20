@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
+// ReSharper disable BuiltInTypeReferenceStyle
 
 namespace SlickWindows.Canvas
 {
@@ -15,7 +16,7 @@ namespace SlickWindows.Canvas
         public const int Size = 256;
         public const int Pixels = Size * Size;
 
-        [NotNull]public readonly short[] Data;
+        [NotNull]public readonly Int32[] Data;
 
         /// <summary>
         /// If 'locked' is set, commands to draw will be ignored
@@ -24,7 +25,7 @@ namespace SlickWindows.Canvas
 
         public TileImage()
         {
-            Data = new short[Pixels];
+            Data = new Int32[Pixels];
             for (int i = 0; i < Data.Length; i++)
             {
                 Data[i] = -1;
@@ -37,15 +38,15 @@ namespace SlickWindows.Canvas
         public TileImage(Color background, byte scale)
         {
             var samples = Pixels >> (scale - 1);
-            Data = new short[samples];
-            var c = ColorEncoding.To16Bit(background);
+            Data = new Int32[samples];
+            var c = ColorEncoding.ToRGB32(background);
             for (int i = 0; i < samples; i++)
             {
                 Data[i] = c;
             }
         }
 
-        public TileImage(short[] data)
+        public TileImage(Int32[] data)
         {
             Data = data ?? throw new ArgumentNullException(nameof(data));
         }
@@ -96,9 +97,9 @@ namespace SlickWindows.Canvas
             }
         }
 
-        private static short PreparePen(double px, double py, double radius, Color penColor, out int top, out int left, out int right, out int bottom)
+        private static int PreparePen(double px, double py, double radius, Color penColor, out int top, out int left, out int right, out int bottom)
         {
-            var cdata = ColorEncoding.To16Bit(penColor);
+            var cdata = ColorEncoding.ToRGB32(penColor);
 
             // simple square for now...
             if (radius < 1) radius = 1;
@@ -112,11 +113,11 @@ namespace SlickWindows.Canvas
             return cdata;
         }
         
-        [NotNull]private Bitmap CopyDataToBitmap([NotNull] short[] imgData, byte drawScale)
+        [NotNull]private Bitmap CopyDataToBitmap([NotNull] int[] imgData, byte drawScale)
         {
             var size = Size >> (drawScale - 1);
             var sampleCount = Math.Min(size * size, imgData.Length);
-            var bmp = new Bitmap(size, size, PixelFormat.Format16bppRgb565);
+            var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
 
             var bmpData = bmp.LockBits(
                 new Rectangle(0, 0, bmp.Width, bmp.Height),

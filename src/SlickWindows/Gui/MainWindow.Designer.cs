@@ -39,6 +39,7 @@
             this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             this.pinsButton = new System.Windows.Forms.Button();
+            this.selectButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // paletteButton
@@ -112,7 +113,7 @@
             this.moreButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
             this.moreButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.moreButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.moreButton.Location = new System.Drawing.Point(426, 268);
+            this.moreButton.Location = new System.Drawing.Point(347, 306);
             this.moreButton.Margin = new System.Windows.Forms.Padding(2);
             this.moreButton.Name = "moreButton";
             this.moreButton.Size = new System.Drawing.Size(51, 22);
@@ -172,6 +173,24 @@
             this.pinsButton.UseVisualStyleBackColor = true;
             this.pinsButton.Click += new System.EventHandler(this.PinsButton_Click);
             // 
+            // selectButton
+            // 
+            this.selectButton.AccessibleDescription = "Select regions of the canvas for export";
+            this.selectButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
+            this.selectButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.selectButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.selectButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.selectButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.selectButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.selectButton.Location = new System.Drawing.Point(402, 256);
+            this.selectButton.Margin = new System.Windows.Forms.Padding(2);
+            this.selectButton.Name = "selectButton";
+            this.selectButton.Size = new System.Drawing.Size(75, 34);
+            this.selectButton.TabIndex = 6;
+            this.selectButton.Text = "Select";
+            this.CanvasToolTips.SetToolTip(this.selectButton, "Select regions of the canvas for export");
+            this.selectButton.UseVisualStyleBackColor = true;
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -179,6 +198,7 @@
             this.AutoScroll = true;
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(488, 339);
+            this.Controls.Add(this.selectButton);
             this.Controls.Add(this.pinsButton);
             this.Controls.Add(this.undoButton);
             this.Controls.Add(this.moreButton);
@@ -208,6 +228,7 @@
         private System.Windows.Forms.SaveFileDialog saveFileDialog;
         private System.Windows.Forms.Button undoButton;
         private System.Windows.Forms.Button pinsButton;
+        private System.Windows.Forms.Button selectButton;
     }
 }
 

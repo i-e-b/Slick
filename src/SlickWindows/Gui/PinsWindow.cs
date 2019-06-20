@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickWindows.Canvas;
@@ -30,9 +31,10 @@ namespace SlickWindows.Gui
             pinListView.Items.Add(new ListViewItem("Page Centre") {Tag = InfoPin.Centre()});
 
             // Read current pins and fill in the list box
-            var pins = _canvas.AllPins();
+            var pins = _canvas.AllPins().OrderBy(p => p?.Description);
             foreach (var pin in pins)
             {
+                if (pin == null) continue;
                 pinListView.Items.Add(new ListViewItem(pin.Description) {Tag = pin});
             }
         }

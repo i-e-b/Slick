@@ -9,16 +9,19 @@ namespace SlickWindows.ImageFormats
 
     /// <summary>
     /// A low-loss image compression format.
-    /// It gives nearly the same quality as PNG at vastly lower sizes.
+    /// It gives nearly the same quality as PNG at lower sizes.
     /// This also allows us to load scaled-down versions of images at reduced processing / loading costs.
     /// </summary>
     public class WaveletCompress
     {
+        // This set of coefficients will be used for new and edited tiles
+        [NotNull] public static readonly double[] StandardYQuants = { 10, 3, 1.0 };
+        [NotNull] public static readonly double[] StandardCQuants = { 15, 3, 1.0 };
 
         [NotNull]
         public static InterleavedFile Compress([NotNull]TileImage img)
         {
-            Rgb565_To_YuvPlanes_ForcePower2(img.Data, img.Width, img.Height,
+            RGB32_To_YuvPlanes_ForcePower2(img.Data, img.Width, img.Height,
                 out var Y, out var U, out var V,
                 out var width, out var height);
 
@@ -28,9 +31,7 @@ namespace SlickWindows.ImageFormats
         public static void Decompress([NotNull]InterleavedFile file, [NotNull]TileImage target, byte scale)
         {
             var pwidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
-
-            //var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, file.Width, file.Height);
-            var data = YuvPlanes_To_Rgb565(Y, U, V, pwidth, pwidth, pwidth);
+            var data = YuvPlanes_To_RGB32(Y, U, V, pwidth, pwidth, pwidth);
 
             var minSize = Math.Min(data.Length, target.Data.Length);
 
@@ -41,18 +42,13 @@ namespace SlickWindows.ImageFormats
         }
 
         // This controls the overall size and quality of the output
-        private static void QuantisePlanar2([NotNull]float[] buffer, int ch, int packedLength, QuantiseType mode)
+        private static void QuantisePlanar2([NotNull]float[] buffer, int ch, int packedLength, QuantiseType mode, [NotNull]double[] fYs, [NotNull]double[] fCs)
         {
             if (packedLength < buffer.Length) packedLength = buffer.Length;
             // Planar two splits in half, starting with top/bottom, and alternating between
             // vertical and horizontal
 
             // Fibonacci coding strongly prefers small numbers
-
-            // pretty good:
-            var fYs = new[] { 15, 8, 5, 3, 2.0};
-            var fCs = new[] { 20, 10, 4.0 };
-
             var rounds = (int)Math.Log(packedLength, 2);
             for (int r = 0; r < rounds; r++)
             {
@@ -128,7 +124,7 @@ namespace SlickWindows.ImageFormats
 
                 // Reorder, Quantise and reduce co-efficients
                 var packedLength = ToStorageOrder2D(buffer, planeWidth, planeHeight, rounds, imgWidth, imgHeight);
-                QuantisePlanar2(buffer, ch, packedLength, QuantiseType.Reduce);
+                QuantisePlanar2(buffer, ch, packedLength, QuantiseType.Reduce, StandardYQuants, StandardCQuants);
 
                 // Write output
                 using (var tmp = new MemoryStream(buffer.Length))
@@ -146,7 +142,7 @@ namespace SlickWindows.ImageFormats
             msY.Seek(0, SeekOrigin.Begin);
             msU.Seek(0, SeekOrigin.Begin);
             msV.Seek(0, SeekOrigin.Begin);
-            var container = new InterleavedFile((ushort)imgWidth, (ushort)imgHeight, 1,
+            var container = new InterleavedFile((ushort)imgWidth, (ushort)imgHeight, 1, StandardYQuants, StandardCQuants,
                 msY.ToArray(), msU.ToArray(), msV.ToArray());
 
             msY.Dispose();
@@ -157,9 +153,12 @@ namespace SlickWindows.ImageFormats
 
         public static int WaveletRestorePlanar2([NotNull]InterleavedFile container, byte scale, out float[] Y, out float[] U, out float[] V)
         {
-            var Ybytes = container.Planes?[0];
-            var Ubytes = container.Planes?[1];
-            var Vbytes = container.Planes?[2];
+            var Ybytes = container.Planes[0];
+            var Ubytes = container.Planes[1];
+            var Vbytes = container.Planes[2];
+
+            var yQuants = container.QuantiserSettings_Y ?? StandardYQuants;
+            var cQuants = container.QuantiserSettings_C ?? StandardCQuants;
 
             if (Ybytes == null || Ubytes == null || Vbytes == null) throw new NullReferenceException("Planes were not read from image correctly");
 
@@ -203,7 +202,7 @@ namespace SlickWindows.ImageFormats
                 }
 
                 // Re-expand co-efficients
-                QuantisePlanar2(buffer, ch, packedLength, QuantiseType.Expand);
+                QuantisePlanar2(buffer, ch, packedLength, QuantiseType.Expand, yQuants, cQuants);
                 FromStorageOrder2D(buffer, planeWidth, planeHeight, rounds, imgWidth, imgHeight, scaleShift);
 
                 // Restore
@@ -397,17 +396,17 @@ namespace SlickWindows.ImageFormats
             return incrPos;
         }
 
-        public static short YUV_To_RGB565(float Y, float U, float V)
+        public static int YUV_To_RGB32(float Y, float U, float V)
         {
-            if (Y > 220) return -1; // threshold to white
+            unchecked
+            {
+                if (Y > 220) return -1; // threshold to white <-- this could be removed for newer tiles.
 
-            var R = 1.164f * (Y - 16) + 0.0f * (U - 127.5f) + 1.596f * (V - 127.5f);
-            var G = 1.164f * (Y - 16) + -0.392f * (U - 127.5f) + -0.813f * (V - 127.5f);
-            var B = 1.164f * (Y - 16) + 2.017f * (U - 127.5f) + 0.0f * (V - 127.5f);
-            int bits =   ((Clip(R) & 0xF8) << 8)
-                       | ((Clip(G) & 0xFC) << 3)
-                       | ((Clip(B) & 0xF8) >> 3);
-            return (short)bits;
+                var R = 1.164f * (Y - 16) + 0.0f * (U - 127.5f) + 1.596f * (V - 127.5f);
+                var G = 1.164f * (Y - 16) + -0.392f * (U - 127.5f) + -0.813f * (V - 127.5f);
+                var B = 1.164f * (Y - 16) + 2.017f * (U - 127.5f) + 0.0f * (V - 127.5f);
+                return (int)0xFF000000 + (Clip(R) << 16) + (Clip(G) << 8) + Clip(B);
+            }
         }
 
         private static int Clip(float s)
@@ -417,23 +416,28 @@ namespace SlickWindows.ImageFormats
             return (int)s;
         }
 
-        private static void RGB565_To_YUV(short c, out float Y, out float U, out float V)
+        private static void RGB32_To_YUV(int c, out float Y, out float U, out float V)
         {
-            int R = (c >> 8) & 0xF8;
-            int G = (c >> 3) & 0xFC;
-            int B = (c << 3) & 0xF8;
+            float R = (c >> 16) & 0xff;
+            float G = (c >>  8) & 0xff;
+            float B = (c      ) & 0xff;
 
-            Y = 16 + (0.257f * R + 0.504f * G + 0.098f * B);
+            if (R >= 254 && G >= 254 && B >= 254) {
+                Y = 280; U = 127.5f; V = 127.5f; // treat white specially
+                return;
+            }
+
+            Y = 16f + (0.257f * R + 0.504f * G + 0.098f * B);
             U = 127.5f + (-0.148f * R + -0.291f * G + 0.439f * B);
             V = 127.5f + (0.439f * R + -0.368f * G + -0.071f * B);
         }
 
         [NotNull]
-        public static short[] YuvPlanes_To_Rgb565([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
+        public static int[] YuvPlanes_To_RGB32([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
             int srcWidth, int dstWidth, int dstHeight)
         {
             var sampleCount = dstWidth * dstHeight;
-            var s = new short[sampleCount];
+            var s = new int[sampleCount];
             int stride = srcWidth;
 
             for (int y = 0; y < dstHeight; y++)
@@ -444,14 +448,14 @@ namespace SlickWindows.ImageFormats
                 {
                     var src_i = src_yo + x;
                     var dst_i = dst_yo + x;
-                    s[dst_i] = YUV_To_RGB565(Y[src_i], U[src_i], V[src_i]);
+                    s[dst_i] = YUV_To_RGB32(Y[src_i], U[src_i], V[src_i]);
                 }
             }
             return s;
         }
 
         // This handles non-power-two input sizes
-        private static void Rgb565_To_YuvPlanes_ForcePower2([NotNull]short[] src, int srcWidth, int srcHeight,
+        public static void RGB32_To_YuvPlanes_ForcePower2([NotNull]int[] src, int srcWidth, int srcHeight,
             out float[] Y, out float[] U, out float[] V,
             out int width, out int height)
         {
@@ -474,7 +478,7 @@ namespace SlickWindows.ImageFormats
                 {
                     var src_i = src_yo + x;
                     var dst_i = dst_yo + x;
-                    RGB565_To_YUV(s[src_i], out yv, out u, out v);
+                    RGB32_To_YUV(s[src_i], out yv, out u, out v);
                     Y[dst_i] = yv;
                     U[dst_i] = u;
                     V[dst_i] = v;

@@ -42,11 +42,10 @@
             this.pinListView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.pinListView.FullRowSelect = true;
             this.pinListView.Location = new System.Drawing.Point(12, 12);
             this.pinListView.MultiSelect = false;
             this.pinListView.Name = "pinListView";
-            this.pinListView.Size = new System.Drawing.Size(275, 196);
+            this.pinListView.Size = new System.Drawing.Size(420, 196);
             this.pinListView.TabIndex = 0;
             this.pinListView.UseCompatibleStateImageBehavior = false;
             this.pinListView.View = System.Windows.Forms.View.Tile;
@@ -70,7 +69,7 @@
             // 
             this.viewButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.viewButton.Enabled = false;
-            this.viewButton.Location = new System.Drawing.Point(212, 240);
+            this.viewButton.Location = new System.Drawing.Point(357, 240);
             this.viewButton.Name = "viewButton";
             this.viewButton.Size = new System.Drawing.Size(75, 37);
             this.viewButton.TabIndex = 2;
@@ -89,7 +88,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.newPinBox.Location = new System.Drawing.Point(13, 214);
             this.newPinBox.Name = "newPinBox";
-            this.newPinBox.Size = new System.Drawing.Size(274, 20);
+            this.newPinBox.Size = new System.Drawing.Size(419, 20);
             this.newPinBox.TabIndex = 3;
             this.pinsToolTips.SetToolTip(this.newPinBox, "Name of the new pin (required)");
             this.newPinBox.TextChanged += new System.EventHandler(this.NewPinBox_TextChanged);
@@ -111,7 +110,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(299, 289);
+            this.ClientSize = new System.Drawing.Size(444, 289);
             this.Controls.Add(this.deleteButton);
             this.Controls.Add(this.newPinBox);
             this.Controls.Add(this.viewButton);
