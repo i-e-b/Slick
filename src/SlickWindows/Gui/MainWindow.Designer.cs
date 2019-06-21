@@ -36,10 +36,10 @@
             this.CanvasToolTips = new System.Windows.Forms.ToolTip(this.components);
             this.moreButton = new System.Windows.Forms.Button();
             this.undoButton = new System.Windows.Forms.Button();
-            this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
-            this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             this.pinsButton = new System.Windows.Forms.Button();
             this.selectButton = new System.Windows.Forms.Button();
+            this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
+            this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             this.SuspendLayout();
             // 
             // paletteButton
@@ -112,11 +112,10 @@
             this.moreButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
             this.moreButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
             this.moreButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.moreButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 6.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.moreButton.Location = new System.Drawing.Point(347, 306);
+            this.moreButton.Location = new System.Drawing.Point(402, 219);
             this.moreButton.Margin = new System.Windows.Forms.Padding(2);
             this.moreButton.Name = "moreButton";
-            this.moreButton.Size = new System.Drawing.Size(51, 22);
+            this.moreButton.Size = new System.Drawing.Size(75, 33);
             this.moreButton.TabIndex = 3;
             this.moreButton.Text = "More...";
             this.CanvasToolTips.SetToolTip(this.moreButton, "Access less frequently needed settings and features");
@@ -141,18 +140,6 @@
             this.CanvasToolTips.SetToolTip(this.undoButton, "Undo the last ink stroke");
             this.undoButton.UseVisualStyleBackColor = true;
             this.undoButton.Click += new System.EventHandler(this.UndoButton_Click);
-            // 
-            // pickFolderDialog
-            // 
-            this.pickFolderDialog.Description = "Pick a storage location for this page. It should be an empty folder";
-            this.pickFolderDialog.RootFolder = System.Environment.SpecialFolder.MyComputer;
-            // 
-            // saveFileDialog
-            // 
-            this.saveFileDialog.DefaultExt = "slick";
-            this.saveFileDialog.Filter = "Slick Files|*.slick";
-            this.saveFileDialog.OverwritePrompt = false;
-            this.saveFileDialog.Title = "Pick page file";
             // 
             // pinsButton
             // 
@@ -190,6 +177,19 @@
             this.selectButton.Text = "Select";
             this.CanvasToolTips.SetToolTip(this.selectButton, "Select regions of the canvas for export");
             this.selectButton.UseVisualStyleBackColor = true;
+            this.selectButton.Click += new System.EventHandler(this.SelectButton_Click);
+            // 
+            // pickFolderDialog
+            // 
+            this.pickFolderDialog.Description = "Pick a storage location for this page. It should be an empty folder";
+            this.pickFolderDialog.RootFolder = System.Environment.SpecialFolder.MyComputer;
+            // 
+            // saveFileDialog
+            // 
+            this.saveFileDialog.DefaultExt = "slick";
+            this.saveFileDialog.Filter = "Slick Files|*.slick";
+            this.saveFileDialog.OverwritePrompt = false;
+            this.saveFileDialog.Title = "Pick page file";
             // 
             // MainWindow
             // 

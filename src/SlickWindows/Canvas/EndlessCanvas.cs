@@ -32,6 +32,10 @@ namespace SlickWindows.Canvas
         // History
         [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
 
+        // Selection / Export:
+        [NotNull] private readonly HashSet<PositionKey> _selectedTiles;
+        private bool _inSelectMode;
+
         // Rendering properties
         public int Width { get; set; }
         public int Height { get; set; }
@@ -70,6 +74,8 @@ namespace SlickWindows.Canvas
             _canvasTiles = new Dictionary<PositionKey, TileImage>();
             _changedTiles = new HashSet<PositionKey>();
             _lastChangedTiles = new HashSet<PositionKey>();
+            _selectedTiles = new HashSet<PositionKey>();
+            _inSelectMode=false;
 
             DpiX = deviceDpi;
             _invalidateAction = invalidateAction;
@@ -239,7 +245,54 @@ namespace SlickWindows.Canvas
                 if (dx > width || dx < -displaySize || dy > height || dy < -displaySize) continue;
 
                 // draw tile
-                ti?.Render(g, dx, dy, _drawScale);
+                var hilite = _selectedTiles.Contains(index);
+                ti?.Render(g, dx, dy, hilite, _drawScale);
+            }
+        }
+
+        private TileImage LoadTileSync(PositionKey tile) {
+            if (tile == null || _storage == null) return null;
+
+            var name = tile.ToString();
+
+            var thing = _storage.Exists(name);
+            if (thing.IsFailure) return null;
+            var version = thing.ResultData?.CurrentVersion ?? 1;
+
+            var data = _storage.Read(name, "img", version);
+            if (!data.IsSuccess) return null; // bad node data
+
+            var image = new TileImage();
+            var fileData = InterleavedFile.ReadFromStream(data);
+            if (fileData != null) WaveletCompress.Decompress(fileData, image, 1);
+            return image;
+        }
+        
+        /// <summary>
+        /// Draw the selected tiles, from a given offset, into a bitmap image.
+        /// </summary>
+        public void RenderToImage(Bitmap bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
+        {
+            if (bmp == null || selectedTiles == null) return;
+
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.White);
+                foreach (var tile in selectedTiles)
+                {
+                    if (tile == null) continue;
+                    var ti = LoadTileSync(tile);
+                    if (ti == null) continue;
+
+                    var dx = (tile.X - leftIdx) * TileImage.Size;
+                    var dy = (tile.Y - topIdx) * TileImage.Size;
+
+                    // if offscreen, don't bother
+                    if (dx > bmp.Width || dx < -TileImage.Size || dy > bmp.Height || dy < -TileImage.Size) continue;
+
+                    // draw tile
+                    ti.Render(g, dx, dy, false, 1);
+                }
             }
         }
 
@@ -278,11 +331,27 @@ namespace SlickWindows.Canvas
             _lastChangedTiles.Clear();
         }
 
+        private PositionKey ScreenToTile(double x, double y)
+        {
+            var displaySize = TileImage.Size >> (_drawScale - 1);
+
+            var xIdx = Math.Floor((x / displaySize) + (_xOffset / TileImage.Size));
+            var yIdx = Math.Floor((y / displaySize) + (_yOffset / TileImage.Size));
+
+            return new PositionKey((int)xIdx, (int)yIdx);
+        }
+
         /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
         public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
         {
+            if (_inSelectMode) {
+                // use pens to toggle selection
+                _selectedTiles.Add(ScreenToTile(start.X, start.Y));
+                return;
+            }
+            
             if (_drawScale != 1) {
                 // If we're scaled out, use pens to scroll
                 Scroll(start.X - end.X, start.Y - end.Y);
@@ -411,10 +480,16 @@ namespace SlickWindows.Canvas
             {
                 lock (_canvasTiles)
                 {
+                    // wipe state
                     _changedTiles.Clear();
                     _canvasTiles.Clear();
+                    _selectedTiles.Clear();
+
+                    // change storage
                     Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
                     _storage = new LiteDbStorageContainer(newPath);
+
+                    // re-centre
                     _xOffset = 0;
                     _yOffset = 0;
                 }
@@ -447,7 +522,7 @@ namespace SlickWindows.Canvas
         }
 
         /// <summary>
-        /// Clear all tiles and start reloading
+        /// Clear all tiles and start reloading. This is mostly used for changing display scale
         /// </summary>
         public void ResetTileCache() {
 
@@ -599,13 +674,8 @@ namespace SlickWindows.Canvas
                 var y = _yOffset;
 
                 // tiles from window corner to window centre
-                var wX = Width / 2;
-                var wY = Height / 2;
-                wX <<= (_drawScale - 1);
-                wY <<= (_drawScale - 1);
-
-                x += wX;
-                y += wY;
+                x += (Width / 2) << (_drawScale - 1);
+                y += (Height / 2) << (_drawScale - 1);
 
                 // tile of centre of screen
                 x /= TileImage.Size;
@@ -645,6 +715,21 @@ namespace SlickWindows.Canvas
             lock (_storageLock) {
                 _storage.RemovePin(pin.Id);
             }
+        }
+
+        public bool ToggleSelectMode()
+        {
+            _inSelectMode = !_inSelectMode;
+            if (_inSelectMode == false) {
+                _selectedTiles.Clear();
+                _invalidateAction?.Invoke();
+            }
+            return _inSelectMode;
+        }
+
+        [NotNull]public List<PositionKey> SelectedTiles()
+        {
+            return _selectedTiles.ToList();
         }
     }
 }

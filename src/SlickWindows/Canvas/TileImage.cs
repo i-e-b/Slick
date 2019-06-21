@@ -63,8 +63,9 @@ namespace SlickWindows.Canvas
             return true;
         }
 
-        public void Render(Graphics g, double dx, double dy, byte drawScale) {
-            var img = CopyDataToBitmap(Data, drawScale);
+        public void Render(Graphics g, double dx, double dy, bool hilite, byte drawScale)
+        {
+            var img = CopyDataToBitmap(Data, hilite, drawScale);
             g?.DrawImageUnscaled(img, (int)dx, (int)dy);
         }
 
@@ -113,7 +114,7 @@ namespace SlickWindows.Canvas
             return cdata;
         }
         
-        [NotNull]private Bitmap CopyDataToBitmap([NotNull] int[] imgData, byte drawScale)
+        [NotNull]private Bitmap CopyDataToBitmap([NotNull] int[] imgData, bool hilite, byte drawScale)
         {
             var size = Size >> (drawScale - 1);
             var sampleCount = Math.Min(size * size, imgData.Length);
@@ -125,7 +126,14 @@ namespace SlickWindows.Canvas
 
             try
             {
-                Marshal.Copy(imgData, 0, bmpData.Scan0, sampleCount);
+                if (hilite) {
+                    for (int i = 0; i < sampleCount; i++)
+                    {
+                        Marshal.WriteInt32(bmpData.Scan0, i * sizeof(Int32), (int)(imgData[i] & 0xFF7F7F7F)); // very rough darkening
+                    }
+                } else {
+                    Marshal.Copy(imgData, 0, bmpData.Scan0, sampleCount);
+                }
             }
             catch
             {

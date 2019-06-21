@@ -135,8 +135,9 @@ namespace SlickWindows.Gui
         private void MoreButton_Click(object sender, EventArgs e)
         {
             // show extras interface
-            var form = new ExtrasWindow(_canvas);
-            form.ShowDialog();
+            var dlog = new Extras(_canvas);
+            dlog.Location = moreButton?.PointToScreen(new Point(-dlog.Width, -dlog.Height)) ?? new Point(Right, Bottom);
+            dlog.ShowDialog();
         }
 
         private void MainWindow_ClientSizeChanged(object sender, EventArgs e)
@@ -164,6 +165,12 @@ namespace SlickWindows.Gui
             {
                 Location = pinsButton?.PointToScreen(new Point(0, 0)) ?? new Point(Left, Top)
             }.ShowDialog();
+        }
+
+        private void SelectButton_Click(object sender, EventArgs e)
+        {
+            var inSelect = _canvas.ToggleSelectMode();
+            if (selectButton != null) selectButton.BackColor = inSelect ? Color.DarkGray : Color.White;
         }
     }
 }

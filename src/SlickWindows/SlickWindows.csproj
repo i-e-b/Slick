@@ -89,6 +89,7 @@
     <Compile Include="ImageFormats\DataEncoding.cs" />
     <Compile Include="ImageFormats\InterleavedFile.cs" />
     <Compile Include="ImageFormats\QuantiseType.cs" />
+    <Compile Include="ImageFormats\Save.cs" />
     <Compile Include="ImageFormats\WaveletCompress.cs" />
     <Compile Include="Input\IScrollTarget.cs" />
     <Compile Include="Gui\PaletteWindow.cs">

@@ -18,8 +18,10 @@ Immediate next steps:
   * [x] change draw to scroll in map mode
 * [x] Interest pins and quick-list
 * [x] Open through file
-* [ ] Select region and export
+* [x] Select region and export
 * [ ] 'Purge' to remove old tile versions and deleted tiles, for transport.
+* [ ] Typing onto the canvas
+* [ ] Importing images onto the canvas
 
 ## Possible features
 

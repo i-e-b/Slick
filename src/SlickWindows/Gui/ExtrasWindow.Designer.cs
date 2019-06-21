@@ -1,6 +1,6 @@
 ﻿namespace SlickWindows.Gui
 {
-    partial class ExtrasWindow
+    partial class Extras
     {
         /// <summary>
         /// Required designer variable.
@@ -30,13 +30,18 @@
         {
             this.importButton = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
+            this.exportButton = new System.Windows.Forms.Button();
+            this.label2 = new System.Windows.Forms.Label();
+            this.saveJpegDialog = new System.Windows.Forms.SaveFileDialog();
             this.SuspendLayout();
             // 
             // importButton
             // 
-            this.importButton.Location = new System.Drawing.Point(12, 12);
+            this.importButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.importButton.Enabled = false;
+            this.importButton.Location = new System.Drawing.Point(320, 14);
             this.importButton.Name = "importButton";
-            this.importButton.Size = new System.Drawing.Size(75, 30);
+            this.importButton.Size = new System.Drawing.Size(75, 42);
             this.importButton.TabIndex = 0;
             this.importButton.Text = "Import...";
             this.importButton.UseVisualStyleBackColor = true;
@@ -44,23 +49,62 @@
             // 
             // label1
             // 
+            this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(93, 12);
+            this.label1.Location = new System.Drawing.Point(124, 17);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(269, 26);
+            this.label1.Size = new System.Drawing.Size(190, 39);
             this.label1.TabIndex = 1;
-            this.label1.Text = "Import another page onto this one. Merges existing tiles.\r\nThis will modify the c" +
-    "urrent page.";
+            this.label1.Text = "Draw an external image onto the page.\r\nMerges existing tiles.\r\nThis will modify t" +
+    "he current page.";
+            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
-            // ExtrasWindow
+            // exportButton
+            // 
+            this.exportButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.exportButton.Location = new System.Drawing.Point(320, 75);
+            this.exportButton.Name = "exportButton";
+            this.exportButton.Size = new System.Drawing.Size(75, 42);
+            this.exportButton.TabIndex = 2;
+            this.exportButton.Text = "Export...";
+            this.exportButton.UseVisualStyleBackColor = true;
+            this.exportButton.Click += new System.EventHandler(this.ExportButton_Click);
+            // 
+            // label2
+            // 
+            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(51, 75);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(263, 39);
+            this.label2.TabIndex = 3;
+            this.label2.Text = "Export selected area to an image file.\r\nResult is rendered at full size regardles" +
+    "s of \'map\' mode.\r\nDoes not modify the current page.";
+            this.label2.TextAlign = System.Drawing.ContentAlignment.BottomRight;
+            // 
+            // saveJpegDialog
+            // 
+            this.saveJpegDialog.DefaultExt = "jpg";
+            this.saveJpegDialog.FileName = "export.jpg";
+            this.saveJpegDialog.Filter = "JPEG files|*.jpg|All Files|*.*";
+            this.saveJpegDialog.RestoreDirectory = true;
+            this.saveJpegDialog.Title = "Save selected region";
+            // 
+            // Extras
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(407, 129);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.exportButton);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.importButton);
-            this.Name = "ExtrasWindow";
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.Name = "Extras";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "ExtrasWindow";
+            this.Shown += new System.EventHandler(this.Extras_Shown);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -70,5 +114,8 @@
 
         private System.Windows.Forms.Button importButton;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Button exportButton;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.SaveFileDialog saveJpegDialog;
     }
 }
