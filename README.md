@@ -22,6 +22,8 @@ Immediate next steps:
 * [ ] 'Purge' to remove old tile versions and deleted tiles, for transport.
 * [ ] Typing onto the canvas
 * [ ] Importing images onto the canvas
+* [ ] Fix the drawing-over-tile-edge issue
+  * [ ] Maybe do some nicer anti-aliasing
 
 ## Possible features
 
