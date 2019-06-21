@@ -138,6 +138,16 @@ namespace SlickWindows.Input
                 }
 
                 var thisPt = new DPoint {X = point.X, Y = point.Y, Pressure = pressure};
+
+                if (ptQ.Count > 0)
+                {
+                    var prev = ptQ.Peek();
+                    if (Math.Abs(thisPt.X - prev.X) + Math.Abs(thisPt.Y - prev.Y) < 10)
+                    {
+                        continue; // not enough of a difference
+                    }
+                }
+
                 ptQ.Enqueue(thisPt);
             }
         }

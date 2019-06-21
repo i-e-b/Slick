@@ -74,11 +74,38 @@ namespace SlickWindows.Canvas
             if (Locked) return;
             var cdata = PreparePen(px, py, radius, penColor, out var top, out var left, out var right, out var bottom);
 
+            var rsqi = (int)(radius / 2);
+            rsqi *= rsqi;
+            var rsqo = rsqi * 1.5;
+
             for (int y = top; y < bottom; y++)
             {
+                var ysq = (int)((y - py) * (y - py));
+
                 for (int x = left; x < right; x++)
                 {
-                    Data[(y*Size)+x] = cdata;
+                    // square pen:
+                    //Data[(y*Size)+x] = cdata;
+
+
+                    var xsq = (int)((x - px) * (x - px));
+                    if (xsq + ysq > rsqo) continue; // circular pen
+
+
+                    // blurry pen
+                    if (xsq + ysq > rsqi) {
+                        // mix colors (currently complex! need to simplify if we're going to do AA)
+                        var orig = Data[(y*Size)+x];
+                        var r = ((cdata & 0x00ff0000) + (orig & 0x00ff0000)) >> 1;
+                        var g = ((cdata & 0x0000ff00) + (orig & 0x0000ff00)) >> 1;
+                        var b = ((cdata & 0x000000ff) + (orig & 0x000000ff)) >> 1;
+
+                        var final = 0xff000000 | (r & 0x00ff0000) | (g & 0x0000ff00) | (b & 0x000000ff);
+                        Data[(y*Size)+x] = (int)final;
+                    }
+                    else {
+                        Data[(y*Size)+x] = cdata;
+                    }
                 }
             }
         }
