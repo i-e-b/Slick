@@ -21,7 +21,7 @@ namespace SlickWindows.ImageFormats
         [NotNull]
         public static InterleavedFile Compress([NotNull]TileImage img)
         {
-            RGB32_To_YuvPlanes_ForcePower2(img.Data, img.Width, img.Height,
+            RGBPlanes_To_YuvPlanes_ForcePower2(img.Red, img.Green, img.Blue, img.Width, img.Height,
                 out var Y, out var U, out var V,
                 out var width, out var height);
 
@@ -31,14 +31,8 @@ namespace SlickWindows.ImageFormats
         public static void Decompress([NotNull]InterleavedFile file, [NotNull]TileImage target, byte scale)
         {
             var pwidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
-            var data = YuvPlanes_To_RGB32(Y, U, V, pwidth, pwidth, pwidth);
-
-            var minSize = Math.Min(data.Length, target.Data.Length);
-
-            for (int i = 0; i < minSize; i++)
-            {
-                target.Data[i] = data[i];
-            }
+            YuvPlanes_To_RgbPlanes(Y, U, V, pwidth, pwidth, pwidth, target.Red, target.Green, target.Blue);
+            target.Invalidate();
         }
 
         // This controls the overall size and quality of the output
@@ -396,32 +390,31 @@ namespace SlickWindows.ImageFormats
             return incrPos;
         }
 
-        public static int YUV_To_RGB32(float Y, float U, float V)
+        public static void YUV_To_RGB(float Y, float U, float V, out byte R, out byte G, out byte B)
         {
             unchecked
             {
-                if (Y > 220) return -1; // threshold to white <-- this could be removed for newer tiles.
+                if (Y > 220) // threshold to white <-- this could be removed for newer tiles.
+                {
+                    R = 255; G = 255; B = 255;
+                    return;
+                }
 
-                var R = 1.164f * (Y - 16) + 0.0f * (U - 127.5f) + 1.596f * (V - 127.5f);
-                var G = 1.164f * (Y - 16) + -0.392f * (U - 127.5f) + -0.813f * (V - 127.5f);
-                var B = 1.164f * (Y - 16) + 2.017f * (U - 127.5f) + 0.0f * (V - 127.5f);
-                return (int)0xFF000000 + (Clip(R) << 16) + (Clip(G) << 8) + Clip(B);
+                R = Clip(1.164f * (Y - 16) + 0.0f * (U - 127.5f) + 1.596f * (V - 127.5f));
+                G = Clip(1.164f * (Y - 16) + -0.392f * (U - 127.5f) + -0.813f * (V - 127.5f));
+                B = Clip(1.164f * (Y - 16) + 2.017f * (U - 127.5f) + 0.0f * (V - 127.5f));
             }
         }
 
-        private static int Clip(float s)
+        private static byte Clip(float s)
         {
             if (s > 255.0f) return 255; // we threshold bright colors to white
             if (s < 0.0f) return 0;
-            return (int)s;
+            return (byte)s;
         }
 
-        private static void RGB32_To_YUV(int c, out float Y, out float U, out float V)
+        private static void RGB_To_YUV(byte R, byte G, byte B, out float Y, out float U, out float V)
         {
-            float R = (c >> 16) & 0xff;
-            float G = (c >>  8) & 0xff;
-            float B = (c      ) & 0xff;
-
             if (R >= 254 && G >= 254 && B >= 254) {
                 Y = 280; U = 127.5f; V = 127.5f; // treat white specially
                 return;
@@ -432,12 +425,10 @@ namespace SlickWindows.ImageFormats
             V = 127.5f + (0.439f * R + -0.368f * G + -0.071f * B);
         }
 
-        [NotNull]
-        public static int[] YuvPlanes_To_RGB32([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
-            int srcWidth, int dstWidth, int dstHeight)
+        public static void YuvPlanes_To_RgbPlanes([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
+            int srcWidth, int dstWidth, int dstHeight,
+             [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue)
         {
-            var sampleCount = dstWidth * dstHeight;
-            var s = new int[sampleCount];
             int stride = srcWidth;
 
             for (int y = 0; y < dstHeight; y++)
@@ -448,14 +439,18 @@ namespace SlickWindows.ImageFormats
                 {
                     var src_i = src_yo + x;
                     var dst_i = dst_yo + x;
-                    s[dst_i] = YUV_To_RGB32(Y[src_i], U[src_i], V[src_i]);
+                    YUV_To_RGB(Y[src_i], U[src_i], V[src_i], out var r, out var g, out var b);
+                    Red[dst_i] = r;
+                    Green[dst_i] = g;
+                    Blue[dst_i] = b;
                 }
             }
-            return s;
         }
 
         // This handles non-power-two input sizes
-        public static void RGB32_To_YuvPlanes_ForcePower2([NotNull]int[] src, int srcWidth, int srcHeight,
+        public static void RGBPlanes_To_YuvPlanes_ForcePower2(
+            [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue,
+            int srcWidth, int srcHeight,
             out float[] Y, out float[] U, out float[] V,
             out int width, out int height)
         {
@@ -469,7 +464,6 @@ namespace SlickWindows.ImageFormats
             V = new float[len];
             float yv = 0, u = 0, v = 0;
             int stride = srcWidth;
-            var s = src;
             for (int y = 0; y < srcHeight; y++)
             {
                 var src_yo = stride * y;
@@ -478,7 +472,7 @@ namespace SlickWindows.ImageFormats
                 {
                     var src_i = src_yo + x;
                     var dst_i = dst_yo + x;
-                    RGB32_To_YUV(s[src_i], out yv, out u, out v);
+                    RGB_To_YUV(Red[src_i], Green[src_i], Blue[src_i], out yv, out u, out v);
                     Y[dst_i] = yv;
                     U[dst_i] = u;
                     V[dst_i] = v;

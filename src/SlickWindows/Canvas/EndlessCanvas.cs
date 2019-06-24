@@ -268,13 +268,21 @@ namespace SlickWindows.Canvas
             return image;
         }
         
+
+        private volatile bool isDrawing = false;
         /// <summary>
         /// Draw the selected tiles, from a given offset, into a bitmap image.
         /// </summary>
         public void RenderToImage(Bitmap bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
         {
+            if (isDrawing) {
+                Console.WriteLine("bump");
+                return;
+
+            }
             if (bmp == null || selectedTiles == null) return;
 
+            isDrawing = true;
             using (var g = Graphics.FromImage(bmp))
             {
                 g.Clear(Color.White);
@@ -294,6 +302,7 @@ namespace SlickWindows.Canvas
                     ti.Render(g, dx, dy, false, 1);
                 }
             }
+            isDrawing = false;
         }
 
         public void SetSizeHint(int width, int height)
