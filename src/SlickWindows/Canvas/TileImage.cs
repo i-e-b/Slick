@@ -19,7 +19,9 @@ namespace SlickWindows.Canvas
         // The RGB planes are as you'd expect. Hilight is a special indexed plane: 0 is transparent.
         [NotNull] public readonly byte[] Red, Green, Blue, Hilight;
 
-        [CanBeNull]private Bitmap renderCache;
+        // caching
+        [CanBeNull]private Bitmap _renderCache;
+        private bool _lastSelectState;
 
         /// <summary>
         /// If 'locked' is set, commands to draw will be ignored
@@ -64,7 +66,7 @@ namespace SlickWindows.Canvas
                 if (Red[i] < 255) return false;
                 if (Green[i] < 255) return false;
                 if (Blue[i] < 255) return false;
-                if (Hilight[i] < 255) return false;
+                if (Hilight[i] != 0) return false;
             }
             return true;
         }
@@ -74,21 +76,29 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Invalidate()
         {
-            renderCache = null;
+            _renderCache = null;
         }
 
-        public void Render(Graphics g, double dx, double dy, bool hilite, byte drawScale)
+        public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale)
         {
-            if (renderCache == null) {
-                renderCache = CopyDataToBitmap(hilite, drawScale);
+            var cache = _renderCache;
+            if (cache == null || selected != _lastSelectState) {
+                cache = CopyDataToBitmap(selected, drawScale);
             }
-            g?.DrawImageUnscaled(renderCache, (int)dx, (int)dy);
+            g?.DrawImageUnscaled(cache, (int)dx, (int)dy);
+            _renderCache = cache;
+            _lastSelectState = selected;
         }
 
-        public void Overwrite(double px, double py, double radius, Color penColor)
+        /// <summary>
+        /// Draw an ink point on this tile. Returns true if the tile contents were changed, false otherwise
+        /// </summary>
+        public bool DrawOnTile(double px, double py, double radius, Color penColor, InkType inkPenType)
         {
-            if (Locked) return;
+            if (Locked) return false;
             PreparePen(px, py, radius, out var top, out var left, out var right, out var bottom);
+
+            if (bottom < 0 || right < 0 || top > Size || left > Size) return false;
 
             var r = penColor.R;
             var g = penColor.G;
@@ -116,22 +126,7 @@ namespace SlickWindows.Canvas
                 }
             }
             Invalidate();
-        }
-
-        public void Highlight(double px, double py, double radius, Color penColor)
-        {
-            if (Locked) return;
-            PreparePen(px, py, radius, out var top, out var left, out var right, out var bottom);
-
-            for (int y = top; y < bottom; y++)
-            {
-                for (int x = left; x < right; x++)
-                {
-                    // TODO: do highlighter mode
-                    Hilight[(y*Size)+x] = 1;
-                }
-            }
-            Invalidate();
+            return true;
         }
 
         private static void PreparePen(double px, double py, double radius, out int top, out int left, out int right, out int bottom)

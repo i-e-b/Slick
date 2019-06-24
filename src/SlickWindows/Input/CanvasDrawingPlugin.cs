@@ -26,7 +26,12 @@ namespace SlickWindows.Input
         /// <summary>
         /// The highest pressure value we've seen (initial guess, updated as we collect data)
         /// </summary>
-        private static float maxPressure = 2540.0F;
+        private static float maxPressure = 2540.0f;
+
+        /// <summary>
+        /// The 'pressure' value used when an input method doesn't supply one (0..1)
+        /// </summary>
+        public const float DefaultPressure = 0.65f;
 
         /// <summary>
         /// Constructor for this plugin
@@ -129,7 +134,7 @@ namespace SlickWindows.Input
                 // Since the packet data is in Ink Space coordinates, we need to convert to Pixels...
                 point.X = (int) Math.Round(point.X * _canvas.DpiX / 2540.0F);
                 point.Y = (int) Math.Round(point.Y * _canvas.DpiY / 2540.0F);
-                var pressure = 0.5F;
+                var pressure = DefaultPressure;
 
                 if (data.PacketPropertyCount > 2) // Contains pressure info
                 {

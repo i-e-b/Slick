@@ -18,6 +18,12 @@ namespace SlickWindows.Canvas
             Y = y;
         }
 
+        public PositionKey(double x, double y)
+        {
+            X = (int)x;
+            Y = (int)y;
+        }
+
         /// <inheritdoc />
         public override int CompareTo(object obj)
         {
