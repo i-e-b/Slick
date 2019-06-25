@@ -40,6 +40,7 @@
             this.selectButton = new System.Windows.Forms.Button();
             this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
+            this.floatingImage1 = new SlickWindows.Gui.FloatingImage();
             this.SuspendLayout();
             // 
             // paletteButton
@@ -191,13 +192,22 @@
             this.saveFileDialog.OverwritePrompt = false;
             this.saveFileDialog.Title = "Pick page file";
             // 
+            // floatingImage1
+            // 
+            this.floatingImage1.CandidateImage = null;
+            this.floatingImage1.Location = new System.Drawing.Point(171, 92);
+            this.floatingImage1.Name = "floatingImage1";
+            this.floatingImage1.Size = new System.Drawing.Size(150, 150);
+            this.floatingImage1.TabIndex = 7;
+            this.floatingImage1.Visible = false;
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.AutoScroll = true;
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(488, 339);
+            this.Controls.Add(this.floatingImage1);
             this.Controls.Add(this.selectButton);
             this.Controls.Add(this.pinsButton);
             this.Controls.Add(this.undoButton);
@@ -209,7 +219,6 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "MainWindow";
-            this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
             this.Text = "Slick";
             this.ClientSizeChanged += new System.EventHandler(this.MainWindow_ClientSizeChanged);
             this.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.MainWindow_MouseDoubleClick);
@@ -229,6 +238,7 @@
         private System.Windows.Forms.Button undoButton;
         private System.Windows.Forms.Button pinsButton;
         private System.Windows.Forms.Button selectButton;
+        private FloatingImage floatingImage1;
     }
 }
 

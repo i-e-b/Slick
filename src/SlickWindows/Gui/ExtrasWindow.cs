@@ -12,10 +12,12 @@ namespace SlickWindows.Gui
     public partial class Extras : Form
     {
         [NotNull] private readonly EndlessCanvas _target;
+        private readonly FloatingImage _importFloat;
 
-        public Extras(EndlessCanvas target)
+        public Extras(EndlessCanvas target, FloatingImage importFloat)
         {
             _target = target ?? throw new ArgumentNullException(nameof(target));
+            _importFloat = importFloat;
             InitializeComponent();
 
             if (exportButton != null) exportButton.Enabled = target.SelectedTiles().Count > 0;
@@ -23,58 +25,30 @@ namespace SlickWindows.Gui
 
         private void ImportButton_Click(object sender, EventArgs e)
         {
-            // TODO: A proper import.
-            // For now, this will just copy my oldest working notes over.
-            if (importButton != null) importButton.Enabled = false;
-            Refresh();
+            if (_importFloat == null) return;
 
-            var importLocation = @"C:\Temp\CanvTest";
-
-            // read all files, work out their tile location.
-            var files = Directory.GetFiles(importLocation);
-            var i = 1;
-            foreach (var path in files)
+            string path;
+            var result = loadImageDialog?.ShowDialog();
+            switch (result)
             {
-                Text = $"Import: {i} of {files.Length}";
-
-                var key = PositionKey.Parse(Path.GetFileNameWithoutExtension(path));
-                if (key == null) throw new Exception("what?");
-                CrossLoadImage(path, key, _target);
-
-                Application.DoEvents(); // prevent freezing in a half-assed way.
-                i++;
+                case DialogResult.OK:
+                case DialogResult.Yes:
+                    path = loadImageDialog.FileName;
+                    break;
+                default: return;
+            }
+            if (path == null) return;
+            try {
+                var bmp = new Bitmap(path);
+                _importFloat.CandidateImage = bmp;
+                _importFloat.CanvasTarget = _target;
+                _importFloat.Visible = true;
+            }
+            catch (Exception ex) {
+                MessageBox.Show("Sorry, that image can't be loaded\r\n" + ex, "Failed to load image", MessageBoxButtons.OK);
             }
 
-            Text = "Import: saving to disk";
-            Application.DoEvents();
-            _target.SaveChanges();
-
-
-            Text = "Import: COMPLETE";
-            if (importButton != null) importButton.Enabled = true;
-            Refresh();
-        }
-
-        public static void CrossLoadImage([NotNull]string path, [NotNull]PositionKey originalPosition, [NotNull]EndlessCanvas target)
-        {
-            using (var bmp = new Bitmap(Image.FromFile(path)))
-            {
-                var width = bmp.Width;
-                var height = bmp.Height;
-
-                var tX = originalPosition.X * width;
-                var tY = originalPosition.Y * height;
-
-                for (int y = 0; y < height; y++)
-                {
-                    for (int x = 0; x < width; x++)
-                    {
-                        var color = bmp.GetPixel(x,y);
-                        if (color.R ==255 && color.G == 255 && color.B == 255) continue; // skip white pixels
-                        target.SetPixel(color, x + tX, y + tY);
-                    }
-                }
-            }
+            Close(); // the "More..." window
         }
 
         private void ExportButton_Click(object sender, EventArgs e)

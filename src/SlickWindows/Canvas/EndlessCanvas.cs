@@ -17,12 +17,16 @@ namespace SlickWindows.Canvas
     {
         // For tile cache
         [NotNull] private static readonly object _storageLock = new object();
+        [NotNull] private static readonly object _dataQueueLock = new object();
         [NotNull] private readonly HashSet<PositionKey> _changedTiles;
         [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
         [NotNull] private readonly Queue<TileSource> _imageQueue = new Queue<TileSource>();
-        [NotNull] private readonly ManualResetEventSlim _updateTileCache;
-        public volatile bool IsRunning;
         [CanBeNull] private volatile IStorageContainer _storage;
+        
+        [NotNull] private readonly ManualResetEventSlim _updateTileCache;
+        [NotNull] private readonly ManualResetEventSlim _updateTileData;
+        private volatile bool _okToDraw;
+        private volatile bool _isRunning;
 
         // For drawing/inking
         [NotNull] private readonly Dictionary<int, InkSettings> _inkSettings;
@@ -61,12 +65,14 @@ namespace SlickWindows.Canvas
         /// <param name="height">Initial display height (can be oversize if not known)</param>
         public EndlessCanvas(int width, int height, int deviceDpi, string pageFilePath, Action invalidateAction)
         {
+            _okToDraw = false;
             if (string.IsNullOrWhiteSpace(pageFilePath)) throw new ArgumentNullException(nameof(pageFilePath));
             Directory.CreateDirectory(Path.GetDirectoryName(pageFilePath) ?? "");
             _storage = new LiteDbStorageContainer(pageFilePath);
 
             _updateTileCache = new ManualResetEventSlim(true);
-            IsRunning = true;
+            _updateTileData = new ManualResetEventSlim(false);
+            _isRunning = true;
 
             Width = width;
             Height = height;
@@ -105,7 +111,7 @@ namespace SlickWindows.Canvas
             // (this allows us to put a fast proxy in place)
             new Thread(() =>
                 {
-                    while (IsRunning)
+                    while (_isRunning)
                     {
                         _updateTileCache.Wait();
                         _updateTileCache.Reset();
@@ -129,24 +135,34 @@ namespace SlickWindows.Canvas
                                 var data = _storage.Read(name, "img", version);
                                 if (!data.IsSuccess) continue; // bad node data
 
-                                var image = new TileImage(Color.DarkGray, _drawScale);
-                                image.Locked = true;
+                                var image = new TileImage(Color.DarkGray, _drawScale) { Locked = true };
                                 _canvasTiles.Add(tile, image);
 
-                                _imageQueue.Enqueue(new TileSource(image, data));
+                                lock (_dataQueueLock)
+                                {
+                                    _imageQueue.Enqueue(new TileSource(image, data));
+                                    _updateTileData.Set();
+                                }
                             }
 
+                            _okToDraw = true;
+
                             // unload any old tiles
-                            PositionKey[] loadedTiles;
-                            lock (_canvasTiles)
+                            PositionKey[] loadedTiles = null;
+                            try 
                             {
                                 loadedTiles = _canvasTiles.Keys.ToArray();
                             }
-                            foreach (var old in loadedTiles)
-                            {
-                                if (visibleTiles.Contains(old)) continue; // still visible
-                                if (_changedTiles.Contains(old)) continue; // awaiting storage
-                                _canvasTiles.Remove(old);
+                            catch {
+                                // ignore
+                            }
+                            if (loadedTiles != null){
+                                foreach (var old in loadedTiles)
+                                {
+                                    if (visibleTiles.Contains(old)) continue; // still visible
+                                    if (_changedTiles.Contains(old)) continue; // awaiting storage
+                                    _canvasTiles.Remove(old);
+                                }
                             }
 
                             _invalidateAction?.Invoke(); // redraw with what we have
@@ -159,22 +175,32 @@ namespace SlickWindows.Canvas
             // Using the thread pool kills app performance :-(
             new Thread(() =>
             {
-                while (IsRunning)
+                while (_isRunning)
                 {
-                    while (_imageQueue.Count > 0)
+                    _updateTileData.Wait();
+                    _updateTileData.Reset();
+
+                    // run through queued images
+                    while (true)
                     {
-                        var info = _imageQueue.Dequeue();
+                        TileSource info;
+                        lock (_dataQueueLock)
+                        {
+                            if (_imageQueue.Count < 1) break;
+                            info = _imageQueue.Dequeue();
+                        }
                         if (info == null) continue;
                         var fileData = InterleavedFile.ReadFromStream(info.Data);
                         if (fileData != null) WaveletCompress.Decompress(fileData, info.Image, _drawScale);
+                        info.Image.Invalidate();
                         info.Image.Locked = false;
                         _invalidateAction?.Invoke(); // redraw with final image
                     }
-                    Thread.Sleep(250);
                 }
             })
             { IsBackground = true, Name = "Image loading worker" }.Start();
         }
+
 
 
         [NotNull]
@@ -214,13 +240,14 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void RenderToGraphics(Graphics g, int width, int height)
         {
+            if (g == null) return;
             Width = width;
             Height = height;
 
             PositionKey[] toDraw;
             try
             {
-                toDraw = _canvasTiles.Keys.ToArray(); // assuming the background loop is keeping everything minimal?
+                toDraw = _canvasTiles.Keys.ToArray(); // assuming the background loop is keeping everything minimal
             }
             catch
             {
@@ -316,6 +343,7 @@ namespace SlickWindows.Canvas
             _xOffset += dx * (1 << (_drawScale - 1));
             _yOffset += dy * (1 << (_drawScale - 1));
             _updateTileCache.Set();
+            _updateTileData.Set();
         }
 
         /// <summary>
@@ -332,8 +360,10 @@ namespace SlickWindows.Canvas
         /// Signal that a drawing curve is starting.
         /// This is used to delimit undo/redo actions
         /// </summary>
-        public void StartStroke() {
+        public bool StartStroke() {
+            if (!_okToDraw) return false;
             _lastChangedTiles.Clear();
+            return true;
         }
 
         private PositionKey ScreenToTile(double x, double y)
@@ -362,6 +392,8 @@ namespace SlickWindows.Canvas
                 Scroll(start.X - end.X, start.Y - end.Y);
                 return;
             }
+
+            if (!_okToDraw) return;
 
             var pt = start;
             var dx = end.X - start.X;
@@ -491,29 +523,6 @@ namespace SlickWindows.Canvas
             else _inkSettings[stylusId] = _lastPen;
         }
 
-        public void ChangeBasePath(string newPath)
-        {
-            lock (_storageLock)
-            {
-                lock (_canvasTiles)
-                {
-                    // wipe state
-                    _changedTiles.Clear();
-                    _canvasTiles.Clear();
-                    _selectedTiles.Clear();
-
-                    // change storage
-                    Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
-                    _storage = new LiteDbStorageContainer(newPath);
-
-                    // re-centre
-                    _xOffset = 0;
-                    _yOffset = 0;
-                }
-            }
-            _updateTileCache.Set();
-        }
-
         /// <summary>
         /// Rotate through scaling options
         /// </summary>
@@ -538,22 +547,43 @@ namespace SlickWindows.Canvas
             return _drawScale;
         }
 
+
+        public void ChangeBasePath(string newPath)
+        {
+            _okToDraw = false;
+            lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
+            {
+                // wipe state
+                _imageQueue.Clear();
+                _changedTiles.Clear();
+                _canvasTiles.Clear();
+                _selectedTiles.Clear();
+
+                // change storage
+                Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
+                _storage = new LiteDbStorageContainer(newPath);
+
+                // re-centre
+                _xOffset = 0;
+                _yOffset = 0;
+            }
+            _updateTileCache.Set();
+            _invalidateAction?.Invoke();
+        }
+
         /// <summary>
         /// Clear all tiles and start reloading. This is mostly used for changing display scale
         /// </summary>
-        public void ResetTileCache() {
-
-            lock (_storageLock)
+        public void ResetTileCache()
+        {
+            _okToDraw = false;
+            lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
             {
-                lock (_canvasTiles)
-                {
-
-                    // clear the caches and start processing
-                    _changedTiles.Clear();
-                    _canvasTiles.Clear();
-                }
+                // clear the caches and start processing
+                _imageQueue.Clear();
+                _changedTiles.Clear();
+                _canvasTiles.Clear();
             }
-
             _updateTileCache.Set();
             _invalidateAction?.Invoke();
         }
@@ -747,6 +777,14 @@ namespace SlickWindows.Canvas
         [NotNull]public List<PositionKey> SelectedTiles()
         {
             return _selectedTiles.ToList();
+        }
+
+        /// <summary>
+        /// Try to trigger a refresh of the canvas.
+        /// </summary>
+        public void Invalidate()
+        {
+            _invalidateAction?.Invoke();
         }
     }
 }

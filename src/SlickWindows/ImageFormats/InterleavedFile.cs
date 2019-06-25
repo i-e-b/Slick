@@ -13,7 +13,12 @@ namespace SlickWindows.ImageFormats
         /// File version. There is limited support for older versions.
         /// This shouldn't ever go above 32.
         /// </summary>
-        public const ushort Version = 2;
+        public const ushort CurrentVersion = 2;
+        
+        /// <summary>
+        /// File version used
+        /// </summary>
+        public ushort Version { get; protected set; }
 
         /// <summary>
         /// Image size in X dimension
@@ -111,7 +116,7 @@ namespace SlickWindows.ImageFormats
 
         private void WriteStreamHeaders(Stream output)
         {
-            WriteU16(Version, output);
+            WriteU16(CurrentVersion, output);
 
             // All planes must have the same base physical size
             WriteU16(Width, output);
@@ -142,6 +147,7 @@ namespace SlickWindows.ImageFormats
                 version = 1;
             }
 
+
             // All planes must have the same base physical size
             ReadU16(input, out var width);
             ReadU16(input, out var height);
@@ -163,6 +169,7 @@ namespace SlickWindows.ImageFormats
             var result = new InterleavedFile(width, height, depth, planesLength);
             if (result.Planes == null) throw new Exception("Interleaved file did not have a planes container");
 
+            result.Version = version;
             result.QuantiserSettings_Y = yquant.ToArray();
             result.QuantiserSettings_C = cquant.ToArray();
 

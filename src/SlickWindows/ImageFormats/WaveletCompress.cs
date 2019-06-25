@@ -15,8 +15,8 @@ namespace SlickWindows.ImageFormats
     public class WaveletCompress
     {
         // This set of coefficients will be used for new and edited tiles
-        [NotNull] public static readonly double[] StandardYQuants = { 10, 3, 1.0 };
-        [NotNull] public static readonly double[] StandardCQuants = { 15, 3, 1.0 };
+        [NotNull] public static readonly double[] StandardYQuants = { 2, 1 };
+        [NotNull] public static readonly double[] StandardCQuants = { 4, 2, 1 };
 
         [NotNull]
         public static InterleavedFile Compress([NotNull]TileImage img)
@@ -31,7 +31,7 @@ namespace SlickWindows.ImageFormats
         public static void Decompress([NotNull]InterleavedFile file, [NotNull]TileImage target, byte scale)
         {
             var pwidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
-            YuvPlanes_To_RgbPlanes(Y, U, V, pwidth, pwidth, pwidth, target.Red, target.Green, target.Blue);
+            YuvPlanes_To_RgbPlanes(file.Version, Y, U, V, pwidth, pwidth, pwidth, target.Red, target.Green, target.Blue);
             target.Invalidate();
         }
 
@@ -390,16 +390,27 @@ namespace SlickWindows.ImageFormats
             return incrPos;
         }
 
-        public static void YUV_To_RGB(float Y, float U, float V, out byte R, out byte G, out byte B)
+        
+        public static void YUV_To_RGB_Old(float Y, float U, float V, out byte R, out byte G, out byte B)
         {
             unchecked
             {
-                if (Y > 220) // threshold to white <-- this could be removed for newer tiles.
+                if (Y > 220) // threshold to white (used by an old version of the image format)
                 {
                     R = 255; G = 255; B = 255;
                     return;
                 }
 
+                R = Clip(1.164f * (Y - 16) + 0.0f * (U - 127.5f) + 1.596f * (V - 127.5f));
+                G = Clip(1.164f * (Y - 16) + -0.392f * (U - 127.5f) + -0.813f * (V - 127.5f));
+                B = Clip(1.164f * (Y - 16) + 2.017f * (U - 127.5f) + 0.0f * (V - 127.5f));
+            }
+        }
+
+        public static void YUV_To_RGB(float Y, float U, float V, out byte R, out byte G, out byte B)
+        {
+            unchecked
+            {
                 R = Clip(1.164f * (Y - 16) + 0.0f * (U - 127.5f) + 1.596f * (V - 127.5f));
                 G = Clip(1.164f * (Y - 16) + -0.392f * (U - 127.5f) + -0.813f * (V - 127.5f));
                 B = Clip(1.164f * (Y - 16) + 2.017f * (U - 127.5f) + 0.0f * (V - 127.5f));
@@ -416,7 +427,7 @@ namespace SlickWindows.ImageFormats
         private static void RGB_To_YUV(byte R, byte G, byte B, out float Y, out float U, out float V)
         {
             if (R >= 254 && G >= 254 && B >= 254) {
-                Y = 280; U = 127.5f; V = 127.5f; // treat white specially
+                Y = 280; U = 127.5f; V = 127.5f; // treat white specially (set Y very high)
                 return;
             }
 
@@ -425,7 +436,7 @@ namespace SlickWindows.ImageFormats
             V = 127.5f + (0.439f * R + -0.368f * G + -0.071f * B);
         }
 
-        public static void YuvPlanes_To_RgbPlanes([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
+        public static void YuvPlanes_To_RgbPlanes(int version, [NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
             int srcWidth, int dstWidth, int dstHeight,
              [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue)
         {
@@ -439,7 +450,12 @@ namespace SlickWindows.ImageFormats
                 {
                     var src_i = src_yo + x;
                     var dst_i = dst_yo + x;
-                    YUV_To_RGB(Y[src_i], U[src_i], V[src_i], out var r, out var g, out var b);
+                    byte r, g, b;
+                    if (version < 2) {
+                        YUV_To_RGB_Old(Y[src_i], U[src_i], V[src_i], out  r, out  g, out  b);
+                    } else {
+                        YUV_To_RGB(Y[src_i], U[src_i], V[src_i], out  r, out  g, out  b);
+                    }
                     Red[dst_i] = r;
                     Green[dst_i] = g;
                     Blue[dst_i] = b;

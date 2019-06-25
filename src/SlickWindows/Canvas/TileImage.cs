@@ -86,7 +86,10 @@ namespace SlickWindows.Canvas
                 cache = CopyDataToBitmap(selected, drawScale);
             }
             g?.DrawImageUnscaled(cache, (int)dx, (int)dy);
-            _renderCache = cache;
+            if (!Locked)
+            {
+                _renderCache = cache;
+            }
             _lastSelectState = selected;
         }
 

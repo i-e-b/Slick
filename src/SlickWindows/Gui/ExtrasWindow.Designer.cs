@@ -33,12 +33,12 @@
             this.exportButton = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
             this.saveJpegDialog = new System.Windows.Forms.SaveFileDialog();
+            this.loadImageDialog = new System.Windows.Forms.OpenFileDialog();
             this.SuspendLayout();
             // 
             // importButton
             // 
             this.importButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.importButton.Enabled = false;
             this.importButton.Location = new System.Drawing.Point(320, 14);
             this.importButton.Name = "importButton";
             this.importButton.Size = new System.Drawing.Size(75, 42);
@@ -90,6 +90,12 @@
             this.saveJpegDialog.RestoreDirectory = true;
             this.saveJpegDialog.Title = "Save selected region";
             // 
+            // loadImageDialog
+            // 
+            this.loadImageDialog.FileName = "import.jpg";
+            this.loadImageDialog.Filter = "All files|*.*";
+            this.loadImageDialog.Title = "Pick an image to import";
+            // 
             // Extras
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -117,5 +123,6 @@
         private System.Windows.Forms.Button exportButton;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.SaveFileDialog saveJpegDialog;
+        private System.Windows.Forms.OpenFileDialog loadImageDialog;
     }
 }

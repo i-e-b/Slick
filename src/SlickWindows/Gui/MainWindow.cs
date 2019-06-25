@@ -24,8 +24,8 @@ namespace SlickWindows.Gui
         public MainWindow(string[] args)
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
-            VerticalScroll.Enabled = true;
-            HorizontalScroll.Enabled = true;
+            VerticalScroll.Enabled = false;
+            HorizontalScroll.Enabled = false;
 
             DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
 
@@ -135,7 +135,7 @@ namespace SlickWindows.Gui
         private void MoreButton_Click(object sender, EventArgs e)
         {
             // show extras interface
-            var dlog = new Extras(_canvas);
+            var dlog = new Extras(_canvas, floatingImage1);
             dlog.Location = moreButton?.PointToScreen(new Point(-dlog.Width, -dlog.Height)) ?? new Point(Right, Bottom);
             dlog.ShowDialog();
         }
