@@ -194,6 +194,7 @@ namespace SlickWindows.Canvas
                         if (fileData != null) WaveletCompress.Decompress(fileData, info.Image, _drawScale);
                         info.Image.Invalidate();
                         info.Image.Locked = false;
+                        info.Image.CommitCache(_drawScale);
                         _invalidateAction?.Invoke(); // redraw with final image
                     }
                 }
@@ -501,8 +502,6 @@ namespace SlickWindows.Canvas
                         changed.Add(pk);
                     }
                 }
-
-                Invalidate();
                 return changed;
             }
         }

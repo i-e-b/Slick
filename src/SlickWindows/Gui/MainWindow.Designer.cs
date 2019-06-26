@@ -42,6 +42,7 @@
             this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             this.floatingImage1 = new SlickWindows.Gui.FloatingImage();
             this.floatingText1 = new SlickWindows.Gui.Components.FloatingText();
+            this.textButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // paletteButton
@@ -206,6 +207,7 @@
             // floatingText1
             // 
             this.floatingText1.BackColor = System.Drawing.SystemColors.ActiveCaption;
+            this.floatingText1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.floatingText1.CanvasTarget = null;
             this.floatingText1.Cursor = System.Windows.Forms.Cursors.Arrow;
             this.floatingText1.Location = new System.Drawing.Point(115, 47);
@@ -213,12 +215,31 @@
             this.floatingText1.Size = new System.Drawing.Size(255, 205);
             this.floatingText1.TabIndex = 8;
             // 
+            // textButton
+            // 
+            this.textButton.AccessibleDescription = "Display typed text input tool";
+            this.textButton.AccessibleRole = System.Windows.Forms.AccessibleRole.PushButton;
+            this.textButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.textButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.Silver;
+            this.textButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.textButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.textButton.Location = new System.Drawing.Point(6, 44);
+            this.textButton.Margin = new System.Windows.Forms.Padding(2);
+            this.textButton.Name = "textButton";
+            this.textButton.Size = new System.Drawing.Size(75, 34);
+            this.textButton.TabIndex = 9;
+            this.textButton.Text = "Text";
+            this.CanvasToolTips.SetToolTip(this.textButton, "Display typed text input tool");
+            this.textButton.UseVisualStyleBackColor = true;
+            this.textButton.Click += new System.EventHandler(this.TextButton_Click);
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(488, 339);
+            this.Controls.Add(this.textButton);
             this.Controls.Add(this.floatingImage1);
             this.Controls.Add(this.selectButton);
             this.Controls.Add(this.pinsButton);
@@ -256,6 +277,7 @@
         private System.Windows.Forms.Button selectButton;
         private FloatingImage floatingImage1;
         private Components.FloatingText floatingText1;
+        private System.Windows.Forms.Button textButton;
     }
 }
 

@@ -22,6 +22,7 @@ namespace SlickWindows.Canvas
         // caching
         [CanBeNull]private Bitmap _renderCache;
         private bool _lastSelectState;
+        private bool _cachable;
 
         /// <summary>
         /// If 'locked' is set, commands to draw will be ignored
@@ -86,11 +87,17 @@ namespace SlickWindows.Canvas
                 cache = CopyDataToBitmap(selected, drawScale);
             }
             g?.DrawImageUnscaled(cache, (int)dx, (int)dy);
-            if (!Locked)
-            {
+            _lastSelectState = selected;
+            if (_cachable && !Locked) {
                 _renderCache = cache;
             }
-            _lastSelectState = selected;
+        }
+        
+
+        public void CommitCache(byte drawScale)
+        {
+            _cachable = true;
+            _renderCache = CopyDataToBitmap(false, drawScale);
         }
 
         /// <summary>
@@ -128,6 +135,8 @@ namespace SlickWindows.Canvas
                     Blue[idx] = b;
                 }
             }
+            Invalidate();
+
             return true;
         }
 

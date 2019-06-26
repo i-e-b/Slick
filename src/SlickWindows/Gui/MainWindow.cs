@@ -209,5 +209,10 @@ namespace SlickWindows.Gui
                 Cursor = Cursors.NoMove2D;
             }
         }
+
+        private void TextButton_Click(object sender, EventArgs e)
+        {
+            if (floatingText1 != null) floatingText1.Visible = true;
+        }
     }
 }
