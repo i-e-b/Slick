@@ -40,8 +40,8 @@ namespace SlickWindows.Gui
             var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(DefaultLocation, "default.slick");
             _canvas = new EndlessCanvas(Width, Height, DeviceDpi, initialFile, CanvasChanged);
             _scale = 1;
+            if (floatingText1 != null) { floatingText1.CanvasTarget = _canvas; floatingText1.Visible = false; }
 
-            DoubleBuffered = true;
             if (saveFileDialog != null) saveFileDialog.InitialDirectory = DefaultLocation;
 
             _stylusInput = new RealTimeStylus(this, true);
@@ -66,7 +66,7 @@ namespace SlickWindows.Gui
         }
 
         [NotNull]private static readonly object _drawLock = new object();
-        private volatile bool _ignoreDraw = false;
+        private volatile bool _ignoreDraw;
         private int _scale;
         private bool _shiftDown;
 
@@ -146,7 +146,7 @@ namespace SlickWindows.Gui
         private void MoreButton_Click(object sender, EventArgs e)
         {
             // show extras interface
-            var dlog = new Extras(_canvas, floatingImage1);
+            var dlog = new Extras(_canvas, floatingImage1, floatingText1);
             dlog.Location = moreButton?.PointToScreen(new Point(-dlog.Width, -dlog.Height)) ?? new Point(Right, Bottom);
             dlog.ShowDialog();
         }

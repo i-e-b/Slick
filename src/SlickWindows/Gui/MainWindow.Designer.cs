@@ -41,6 +41,7 @@
             this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
             this.floatingImage1 = new SlickWindows.Gui.FloatingImage();
+            this.floatingText1 = new SlickWindows.Gui.Components.FloatingText();
             this.SuspendLayout();
             // 
             // paletteButton
@@ -196,11 +197,21 @@
             // 
             this.floatingImage1.CandidateImage = null;
             this.floatingImage1.CanvasTarget = null;
-            this.floatingImage1.Location = new System.Drawing.Point(171, 92);
+            this.floatingImage1.Location = new System.Drawing.Point(163, 73);
             this.floatingImage1.Name = "floatingImage1";
             this.floatingImage1.Size = new System.Drawing.Size(150, 150);
             this.floatingImage1.TabIndex = 7;
             this.floatingImage1.Visible = false;
+            // 
+            // floatingText1
+            // 
+            this.floatingText1.BackColor = System.Drawing.SystemColors.ActiveCaption;
+            this.floatingText1.CanvasTarget = null;
+            this.floatingText1.Cursor = System.Windows.Forms.Cursors.Arrow;
+            this.floatingText1.Location = new System.Drawing.Point(115, 47);
+            this.floatingText1.Name = "floatingText1";
+            this.floatingText1.Size = new System.Drawing.Size(255, 205);
+            this.floatingText1.TabIndex = 8;
             // 
             // MainWindow
             // 
@@ -216,6 +227,7 @@
             this.Controls.Add(this.setPageButton);
             this.Controls.Add(this.mapButton);
             this.Controls.Add(this.paletteButton);
+            this.Controls.Add(this.floatingText1);
             this.DoubleBuffered = true;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.KeyPreview = true;
@@ -243,6 +255,7 @@
         private System.Windows.Forms.Button pinsButton;
         private System.Windows.Forms.Button selectButton;
         private FloatingImage floatingImage1;
+        private Components.FloatingText floatingText1;
     }
 }
 

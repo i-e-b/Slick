@@ -128,7 +128,6 @@ namespace SlickWindows.Canvas
                     Blue[idx] = b;
                 }
             }
-            Invalidate();
             return true;
         }
 
@@ -151,7 +150,7 @@ namespace SlickWindows.Canvas
         {
             var size = Size >> (drawScale - 1);
             var sampleCount = Math.Min(size * size, Red.Length);
-            var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
+            var bmp = new Bitmap(size, size, PixelFormat.Format32bppPArgb);
 
             var bmpData = bmp.LockBits(
                 new Rectangle(0, 0, bmp.Width, bmp.Height),

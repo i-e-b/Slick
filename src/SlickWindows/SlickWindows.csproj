@@ -72,32 +72,36 @@
     <Compile Include="Canvas\InkType.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
-    <Compile Include="Gui\CursorImage.cs" />
+    <Compile Include="Gui\Components\RoundSymbolButton.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Gui\Components\CursorImage.cs" />
+    <Compile Include="Gui\Components\FloatingText.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Gui\Components\FloatingText.Designer.cs">
+      <DependentUpon>FloatingText.cs</DependentUpon>
+    </Compile>
     <Compile Include="Gui\ExtrasWindow.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Gui\ExtrasWindow.Designer.cs">
       <DependentUpon>ExtrasWindow.cs</DependentUpon>
     </Compile>
-    <Compile Include="Gui\FloatingImage.cs">
+    <Compile Include="Gui\Components\FloatingImage.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Gui\FloatingImage.Designer.cs">
+    <Compile Include="Gui\Components\FloatingImage.Designer.cs">
       <DependentUpon>FloatingImage.cs</DependentUpon>
     </Compile>
-    <Compile Include="Gui\FormsHelper.cs" />
+    <Compile Include="Gui\Components\FormsHelper.cs" />
     <Compile Include="Gui\PinsWindow.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Gui\PinsWindow.Designer.cs">
       <DependentUpon>PinsWindow.cs</DependentUpon>
     </Compile>
-    <Compile Include="Gui\RoundSymbolButton.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Gui\RoundSymbolButton.Designer.cs">
-      <DependentUpon>RoundSymbolButton.cs</DependentUpon>
-    </Compile>
+    <Compile Include="Gui\Components\SymbolType.cs" />
     <Compile Include="ImageFormats\CDF.cs" />
     <Compile Include="ImageFormats\DataEncoding.cs" />
     <Compile Include="ImageFormats\InterleavedFile.cs" />
@@ -133,10 +137,13 @@
     <Compile Include="Storage\IStorageContainer.cs" />
     <Compile Include="Storage\LiteDbStorageContainer.cs" />
     <Compile Include="Storage\StorageNode.cs" />
+    <EmbeddedResource Include="Gui\Components\FloatingText.resx">
+      <DependentUpon>FloatingText.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Gui\ExtrasWindow.resx">
       <DependentUpon>ExtrasWindow.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Gui\FloatingImage.resx">
+    <EmbeddedResource Include="Gui\Components\FloatingImage.resx">
       <DependentUpon>FloatingImage.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Gui\PaletteWindow.resx">

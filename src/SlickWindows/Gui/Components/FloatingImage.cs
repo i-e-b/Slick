@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickWindows.Canvas;
@@ -62,14 +63,15 @@ namespace SlickWindows.Gui
 
             if (_scaling)
             {
-                Width = window.X - Left;
-                Height = window.Y - Top;
-                Invalidate();
+                Width = Math.Max(48, window.X - Left);
+                Height = Math.Max(48, window.Y - Top);
             }
             else
             {
                 DoDrag(window);
             }
+
+            ParentForm?.Refresh(); // triggering via parent stops weird drawing issues
         }
 
         private void DoDrag(Point window)
@@ -88,6 +90,14 @@ namespace SlickWindows.Gui
             if (top < 0) top = 0;
 
             Location = new Point(left, top);
+        }
+
+        /// <inheritdoc />
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            Capture = false;
+            _scaling = false;
+            base.OnMouseUp(e);
         }
 
         /// <inheritdoc />
@@ -117,7 +127,7 @@ namespace SlickWindows.Gui
             if (CanvasTarget == null || CandidateImage == null) return;
 
             // Merge into canvas tiles
-            CrossLoadImage(CandidateImage, CanvasTarget, Left, Top, Size);
+            CanvasTarget.CrossLoadImage(CandidateImage, Left, Top, Size);
 
             // close the floater
             if (CandidateImage != null) CandidateImage.Dispose();
@@ -125,37 +135,6 @@ namespace SlickWindows.Gui
             Visible = false;
         }
 
-        
-        public static void CrossLoadImage([NotNull] Image img, [NotNull] EndlessCanvas target, int px, int py, Size size)
-        {
-            using (var bmp = new Bitmap(img, size))
-            {
-                // TODO: scaling when we're in 'map' mode in the canvas.
 
-                var width = bmp.Width;
-                var height = bmp.Height;
-
-                for (int y = 0; y < height; y++)
-                {
-                    for (int x = 0; x < width; x++)
-                    {
-                        var color = bmp.GetPixel(x,y);
-                        if (color.R ==255 && color.G == 255 && color.B == 255) continue; // skip white pixels
-                        target.SetPixel(color, x + px, y + py);
-                    }
-                }
-            }
-            target.SaveChanges();
-            target.Invalidate();
-        }
-
-
-        /// <inheritdoc />
-        protected override void OnMouseUp(MouseEventArgs e)
-        {
-            Capture = false;
-            _scaling = false;
-            base.OnMouseUp(e);
-        }
     }
 }

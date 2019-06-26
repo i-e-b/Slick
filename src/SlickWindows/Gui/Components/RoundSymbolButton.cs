@@ -1,11 +1,11 @@
 ﻿using System.Drawing;
-using System.Windows.Forms;
 using System.Drawing.Drawing2D;
+using System.Windows.Forms;
 using JetBrains.Annotations;
 
-namespace SlickWindows.Gui
+namespace SlickWindows.Gui.Components
 {
-    public partial class RoundSymbolButton : UserControl
+    public class RoundSymbolButton : UserControl
     {
         public SymbolType Symbol { get; set; }
 
@@ -15,7 +15,8 @@ namespace SlickWindows.Gui
         {
             Width = 24;
             Height = 24;
-            InitializeComponent();
+            components = new System.ComponentModel.Container();
+            AutoScaleMode = AutoScaleMode.Font;
             _black2Px = new Pen(Color.Black, 2.0f);
             Width = 24;
             Height = 24;
@@ -58,10 +59,23 @@ namespace SlickWindows.Gui
 
         /// <inheritdoc />
         protected override void OnPaintBackground(PaintEventArgs e) { }
-    }
 
-    public enum SymbolType
-    {
-        Cross, MergeArrow
+        /// <summary> 
+        /// Required designer variable.
+        /// </summary>
+        private readonly System.ComponentModel.IContainer components;
+
+        /// <summary> 
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
     }
 }

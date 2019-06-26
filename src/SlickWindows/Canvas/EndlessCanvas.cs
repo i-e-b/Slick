@@ -502,6 +502,7 @@ namespace SlickWindows.Canvas
                     }
                 }
 
+                Invalidate();
                 return changed;
             }
         }
@@ -783,6 +784,32 @@ namespace SlickWindows.Canvas
         public void Invalidate()
         {
             _invalidateAction?.Invoke();
+        }
+        
+        /// <summary>
+        /// Write an external image into this canvas
+        /// </summary>
+        public void CrossLoadImage([NotNull] Image img, int px, int py, Size size)
+        {
+            using (var bmp = new Bitmap(img, size))
+            {
+                // TODO: scaling when we're in 'map' mode in the canvas.
+
+                var width = bmp.Width;
+                var height = bmp.Height;
+
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        var color = bmp.GetPixel(x,y);
+                        if (color.R ==255 && color.G == 255 && color.B == 255) continue; // skip white pixels
+                        SetPixel(color, x + px, y + py);
+                    }
+                }
+            }
+            SaveChanges();
+            Invalidate();
         }
     }
 }

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.IO;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickWindows.Canvas;
+using SlickWindows.Gui.Components;
 using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Gui
@@ -13,11 +13,13 @@ namespace SlickWindows.Gui
     {
         [NotNull] private readonly EndlessCanvas _target;
         private readonly FloatingImage _importFloat;
+        private readonly FloatingText _textFloat;
 
-        public Extras(EndlessCanvas target, FloatingImage importFloat)
+        public Extras(EndlessCanvas target, FloatingImage importFloat, FloatingText textFloat)
         {
             _target = target ?? throw new ArgumentNullException(nameof(target));
             _importFloat = importFloat;
+            _textFloat = textFloat;
             InitializeComponent();
 
             if (exportButton != null) exportButton.Enabled = target.SelectedTiles().Count > 0;
@@ -108,6 +110,12 @@ namespace SlickWindows.Gui
         private void Extras_Shown(object sender, EventArgs e)
         {
             FormsHelper.NudgeOnScreen(this);
+        }
+
+        private void TextInputButton_Click(object sender, EventArgs e)
+        {
+            if (_textFloat != null) _textFloat.Visible = true;
+            Close();
         }
     }
 }

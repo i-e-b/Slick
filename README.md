@@ -18,7 +18,7 @@ Immediate next steps:
 * [x] Interest pins and quick-list
 * [x] Open through file
 * [x] Select region and export
-* [ ] Typing onto the canvas (floating tool & merge, like image import)
+* [x] Typing onto the canvas (floating tool & merge, like image import)
 * [x] Importing images onto the canvas
   * [ ] Import on scaled canvas
 * [x] Fix the drawing-over-tile-edge issue
