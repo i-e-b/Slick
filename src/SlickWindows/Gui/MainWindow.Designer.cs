@@ -195,6 +195,7 @@
             // floatingImage1
             // 
             this.floatingImage1.CandidateImage = null;
+            this.floatingImage1.CanvasTarget = null;
             this.floatingImage1.Location = new System.Drawing.Point(171, 92);
             this.floatingImage1.Name = "floatingImage1";
             this.floatingImage1.Size = new System.Drawing.Size(150, 150);
@@ -217,10 +218,13 @@
             this.Controls.Add(this.paletteButton);
             this.DoubleBuffered = true;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.KeyPreview = true;
             this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "MainWindow";
             this.Text = "Slick";
             this.ClientSizeChanged += new System.EventHandler(this.MainWindow_ClientSizeChanged);
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.MainWindow_KeyDown);
+            this.KeyUp += new System.Windows.Forms.KeyEventHandler(this.MainWindow_KeyUp);
             this.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.MainWindow_MouseDoubleClick);
             this.ResumeLayout(false);
 

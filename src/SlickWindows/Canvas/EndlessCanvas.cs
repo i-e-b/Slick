@@ -360,10 +360,9 @@ namespace SlickWindows.Canvas
         /// Signal that a drawing curve is starting.
         /// This is used to delimit undo/redo actions
         /// </summary>
-        public bool StartStroke() {
-            if (!_okToDraw) return false;
+        public void StartStroke() {
+            if (!_okToDraw) return;
             _lastChangedTiles.Clear();
-            return true;
         }
 
         private PositionKey ScreenToTile(double x, double y)
@@ -404,7 +403,7 @@ namespace SlickWindows.Canvas
 
             var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
 
-            var tiles = InkPoint(penSet, pt);
+            var tiles = InkPoint(penSet, pt, out _);
             foreach (var tile in tiles)
             {
                 _changedTiles.Add(tile);
@@ -417,7 +416,7 @@ namespace SlickWindows.Canvas
             dp /= dd;
             for (int i = 0; i < dd; i++)
             {
-                tiles = InkPoint(penSet, pt);
+                tiles = InkPoint(penSet, pt, out _);
                 foreach (var tile in tiles)
                 {
                     _changedTiles.Add(tile);
@@ -473,10 +472,11 @@ namespace SlickWindows.Canvas
             }
         }
 
-        [NotNull] private List<PositionKey> InkPoint(InkSettings ink, DPoint pt)
+        [NotNull] private List<PositionKey> InkPoint(InkSettings ink, DPoint pt, out double radius)
         {
             lock (_storageLock)
             {
+                radius = pt.Pressure * ink.PenSize;
                 var changed = new List<PositionKey>(4);
 
                 // primary tile
@@ -496,8 +496,6 @@ namespace SlickWindows.Canvas
 
                     var ax = _xOffset - (pk.X * TileImage.Size) + pt.X;
                     var ay = _yOffset - (pk.Y * TileImage.Size) + pt.Y;
-
-                    var radius = pt.Pressure * ink.PenSize;
 
                     if (img?.DrawOnTile(ax, ay, radius, ink.PenColor, ink.PenType) == true) {
                         changed.Add(pk);

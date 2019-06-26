@@ -72,6 +72,7 @@
     <Compile Include="Canvas\InkType.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
+    <Compile Include="Gui\CursorImage.cs" />
     <Compile Include="Gui\ExtrasWindow.cs">
       <SubType>Form</SubType>
     </Compile>

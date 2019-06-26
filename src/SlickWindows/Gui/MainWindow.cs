@@ -19,10 +19,15 @@ namespace SlickWindows.Gui
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
         [NotNull] private readonly string DefaultLocation;
 
+        // custom cursor
+        [NotNull] private readonly Cursor InkCrosshair;
+
         private double _lastScalePercent = 100.0;
 
         public MainWindow(string[] args)
         {
+            InkCrosshair = CursorImage.MakeCrosshair();
+            Cursor = InkCrosshair;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
             VerticalScroll.Enabled = false;
             HorizontalScroll.Enabled = false;
@@ -34,6 +39,7 @@ namespace SlickWindows.Gui
 
             var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(DefaultLocation, "default.slick");
             _canvas = new EndlessCanvas(Width, Height, DeviceDpi, initialFile, CanvasChanged);
+            _scale = 1;
 
             DoubleBuffered = true;
             if (saveFileDialog != null) saveFileDialog.InitialDirectory = DefaultLocation;
@@ -61,6 +67,8 @@ namespace SlickWindows.Gui
 
         [NotNull]private static readonly object _drawLock = new object();
         private volatile bool _ignoreDraw = false;
+        private int _scale;
+        private bool _shiftDown;
 
         /// <inheritdoc />
         protected override void OnPaint(PaintEventArgs e)
@@ -103,13 +111,16 @@ namespace SlickWindows.Gui
         {
             if (mapButton == null || e == null) return;
 
-            var scale = _canvas.SwitchScale();
+            _scale = _canvas.SwitchScale();
 
-            _lastScalePercent = 100.0 / (1 << (scale - 1));
-            mapButton.Text = (scale == EndlessCanvas.MaxScale) ? "Canvas" : "Map";
+            _lastScalePercent = 100.0 / (1 << (_scale - 1));
+            mapButton.Text = (_scale == EndlessCanvas.MaxScale) ? "Canvas" : "Map";
+
+            SetCursorForState();
 
             UpdateWindowAndStatus();
         }
+
 
         /// <inheritdoc />
         public void Scroll2D(int dx, int dy)
@@ -156,7 +167,9 @@ namespace SlickWindows.Gui
             if (mapButton == null || e == null) return;
             _canvas.CentreAndZoom(e.X, e.Y);
             _lastScalePercent = 100.0;
+            _scale = 1;
             mapButton.Text = "Map";
+            Cursor = InkCrosshair;
         }
 
         private void PinsButton_Click(object sender, EventArgs e)
@@ -171,6 +184,30 @@ namespace SlickWindows.Gui
         {
             var inSelect = _canvas.ToggleSelectMode();
             if (selectButton != null) selectButton.BackColor = inSelect ? Color.DarkGray : Color.White;
+        }
+
+        private void MainWindow_KeyDown(object sender, KeyEventArgs e)
+        {
+            _shiftDown = e?.Shift ?? false;
+            SetCursorForState();
+        }
+
+        private void MainWindow_KeyUp(object sender, KeyEventArgs e)
+        {
+            _shiftDown = false;
+            SetCursorForState();
+        }
+
+        private void SetCursorForState()
+        {
+            if (_scale == 1 && !_shiftDown)
+            {
+                Cursor = InkCrosshair;
+            }
+            else
+            {
+                Cursor = Cursors.NoMove2D;
+            }
         }
     }
 }

@@ -14,16 +14,15 @@ Immediate next steps:
   * [x] Invalidate unknown tile indexes (prevent drawing when we haven't made the proxy)
 * [x] Scaling 'map' mode
   * [x] double-click to zoom to position
-  * [ ] 'pinch' scale&zoom?
   * [x] change draw to scroll in map mode
 * [x] Interest pins and quick-list
 * [x] Open through file
 * [x] Select region and export
-* [ ] 'Purge' to remove old tile versions and deleted tiles, for transport.
-* [ ] Typing onto the canvas
-* [ ] Importing images onto the canvas
+* [ ] Typing onto the canvas (floating tool & merge, like image import)
+* [x] Importing images onto the canvas
+  * [ ] Import on scaled canvas
 * [x] Fix the drawing-over-tile-edge issue
-  * [ ] Maybe do some nicer anti-aliasing
+* [ ] Hilighting ink
 
 ## Possible features
 
