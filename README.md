@@ -11,6 +11,7 @@ Immediate next steps:
   * [x] Packed single file format? (blob database or similar) - Maybe the version control could be linked in with this? (COW-like block store?)
   * [x] Implement Undo
   * [x] Lock tiles while they are loading (prevent drawing on or saving the grey proxies)
+    * [ ] Special lock for tiles that have not completed DB query yet
   * [x] Invalidate unknown tile indexes (prevent drawing when we haven't made the proxy)
 * [x] Scaling 'map' mode
   * [x] double-click to zoom to position
@@ -23,6 +24,7 @@ Immediate next steps:
   * [ ] Import on scaled canvas
 * [x] Fix the drawing-over-tile-edge issue
 * [ ] Hilighting ink
+* [ ] Separate log and DB writer thread (to eliminate pauses)
 
 ## Possible features
 

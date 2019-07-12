@@ -147,7 +147,7 @@ namespace SlickWindows.Input
                 if (ptQ.Count > 0)
                 {
                     var prev = ptQ.Peek();
-                    if (Math.Abs(thisPt.X - prev.X) + Math.Abs(thisPt.Y - prev.Y) < 2) {
+                    if (Math.Abs(thisPt.X - prev.X) + Math.Abs(thisPt.Y - prev.Y) < 1) {
                         continue; // not enough of a difference to bother drawing
                     }
                 }

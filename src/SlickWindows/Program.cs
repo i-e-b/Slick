@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -25,9 +26,27 @@ namespace SlickWindows
             LoadEmbeddedAssemblies();
             AppDomain.CurrentDomain.AssemblyResolve += TryUsingManifest;
 
+            // Trap errors
+            AppDomain.CurrentDomain.FirstChanceException += (sender, eventArgs) => { LogError("First chance", eventArgs?.Exception?.ToString()); };
+            AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => {
+                MessageBox.Show("An unhandled exception occurred. Check  C:\\Temp\\SlickLog.txt  for details", "Slick: Unhandled Error", MessageBoxButtons.OK);
+                LogError("Unhandled", eventArgs?.ExceptionObject?.ToString());
+            };
+
+            // Run the code
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainWindow(args));
+        }
+
+        private static void LogError(string kind, string message)
+        {
+            try {
+                Directory.CreateDirectory(@"C:\Temp");
+                File.AppendAllText(@"C:\Temp\SlickLog.txt", $"\r\n{kind}  {DateTime.Now}:\r\n{message}");
+            } catch {
+                // ignore
+            }
         }
 
         /// <summary>

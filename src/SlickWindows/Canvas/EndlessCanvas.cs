@@ -258,8 +258,8 @@ namespace SlickWindows.Canvas
             foreach (var index in toDraw)
             {
                 if (index == null) continue;
-                if (!_canvasTiles.ContainsKey(index)) continue;
-                var ti = _canvasTiles[index];
+                TileImage ti;
+                try { ti = _canvasTiles[index]; } catch { continue; } // happens in race conditions
 
                 // change render locations based on scale
                 var displaySize = TileImage.Size >> (_drawScale - 1);

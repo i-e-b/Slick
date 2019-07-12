@@ -23,7 +23,8 @@ namespace SlickWindows.Gui
             InitializeComponent();
             if (colorBox == null) throw new Exception("Components not initialised correctly");
             
-            colorBox.Image = PaintPalette();
+            colorBox.Image = PaintPalette(); // Replace this with a loaded image if you want something custom.
+
             _colorInput = new RealTimeStylus(colorBox, true) {AllTouchEnabled = true};
             _colorInput.AsyncPluginCollection?.Add(new TouchPointStylusPlugin(this, DeviceDpi));
             _colorInput.Enabled = true;
