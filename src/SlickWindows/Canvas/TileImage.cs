@@ -110,12 +110,16 @@ namespace SlickWindows.Canvas
 
             if (bottom < 0 || right < 0 || top > Size || left > Size) return false;
 
-            var r = penColor.R;
-            var g = penColor.G;
-            var b = penColor.B;
+            int r = penColor.R;
+            int g = penColor.G;
+            int b = penColor.B;
 
             var rsq = (int)(radius / 2);
             rsq *= rsq;
+
+            var blurEdge = (rsq - 2) * 0.5;
+            var blurFact = 255 / (rsq - blurEdge);
+            if (blurFact > 127) blurFact = 127;
 
             for (int y = top; y < bottom; y++)
             {
@@ -128,16 +132,31 @@ namespace SlickWindows.Canvas
 
                     // circular pen
                     var xsq = (int)((x - px) * (x - px));
-                    if (xsq + ysq > rsq) continue;
+                    var posSum = xsq + ysq;
 
-                    Red[idx] = r;
-                    Green[idx] = g;
-                    Blue[idx] = b;
+                    //if (posSum > rsq) continue;
+
+                    var blend = Pin255(blurFact * (posSum - blurEdge));
+
+                    //int blend = 200; // 0..255  -- Higher is less pen, more original
+                    //int blend = Pin255(255 - (rsq / (xsq + ysq)));
+                    int dnelb = 256 - blend;
+
+                    Red[idx] = (byte)((Red[idx] * blend + r * dnelb) >> 8);
+                    Green[idx] = (byte)((Green[idx] * blend + g * dnelb) >> 8);
+                    Blue[idx] = (byte)((Blue[idx] * blend + b * dnelb) >> 8);
                 }
             }
             Invalidate();
 
             return true;
+        }
+
+        private int Pin255(double rsq)
+        {
+            if (rsq > 255) return 255;
+            if (rsq < 0) return 0;
+            return (int)rsq;
         }
 
         private static void PreparePen(double px, double py, double radius, out int top, out int left, out int right, out int bottom)

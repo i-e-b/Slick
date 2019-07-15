@@ -404,28 +404,25 @@ namespace SlickWindows.Canvas
 
             var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
 
-            var tiles = InkPoint(penSet, pt, out _);
-            foreach (var tile in tiles)
-            {
-                _changedTiles.Add(tile);
-                _lastChangedTiles.Add(tile);
+            if (dd > 0) {
+                dx /= dd;
+                dy /= dd;
+                dp /= dd;
             }
-            if (dd < 1) { return; }
+            var radius = 1.0;
 
-            dx /= dd;
-            dy /= dd;
-            dp /= dd;
-            for (int i = 0; i < dd; i++)
+            for (double i = 0; i <= dd; i += radius)
             {
-                tiles = InkPoint(penSet, pt, out _);
+                var tiles = InkPoint(penSet, pt, out radius);
+                radius /= 4;
                 foreach (var tile in tiles)
                 {
                     _changedTiles.Add(tile);
                     _lastChangedTiles.Add(tile);
                 }
-                pt.X += dx;
-                pt.Y += dy;
-                pt.Pressure += dp;
+                pt.X += dx * radius;
+                pt.Y += dy * radius;
+                pt.Pressure += dp * radius;
             }
         }
 
