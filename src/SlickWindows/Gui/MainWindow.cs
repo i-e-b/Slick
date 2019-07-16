@@ -25,16 +25,18 @@ namespace SlickWindows.Gui
         private double _lastScalePercent = 100.0;
 
         public MainWindow(string[] args)
-        {
+       {
+            InitializeComponent();
+            Closing += MainWindow_Closing;
+
             InkCrosshair = CursorImage.MakeCrosshair();
             Cursor = InkCrosshair;
+
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
             VerticalScroll.Enabled = false;
             HorizontalScroll.Enabled = false;
 
             DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
-
-            InitializeComponent();
             PanScrollReceiver.Initialise(this);
 
             var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(DefaultLocation, "default.slick");
@@ -54,6 +56,11 @@ namespace SlickWindows.Gui
             AddInputPlugin(_stylusInput, new CanvasDrawingPlugin(_canvas, new WinFormsKeyboard()));
 
             _stylusInput.Enabled = true; 
+        }
+
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _canvas.Dispose();
         }
 
         private static void AddInputPlugin([NotNull]RealTimeStylus stylusInput, IStylusSyncPlugin plugin)

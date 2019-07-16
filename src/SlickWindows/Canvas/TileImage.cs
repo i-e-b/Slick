@@ -121,30 +121,38 @@ namespace SlickWindows.Canvas
             var blurFact = 255 / (rsq - blurEdge);
             if (blurFact > 127) blurFact = 127;
 
-            for (int y = top; y < bottom; y++)
+            if (inkPenType == InkType.Import)
             {
-                var ysq = (int)((y - py) * (y - py));
-                var yo = y * Size;
+                var idx = (top * Size) + left;
 
-                for (int x = left; x < right; x++)
+                Red[idx] = (byte)r;
+                Green[idx] = (byte)g;
+                Blue[idx] = (byte)b;
+            }
+            else
+            {
+                for (int y = top; y < bottom; y++)
                 {
-                    var idx = yo + x;
+                    var ysq = (int)((y - py) * (y - py));
+                    var yo = y * Size;
 
-                    // circular pen
-                    var xsq = (int)((x - px) * (x - px));
-                    var posSum = xsq + ysq;
+                    for (int x = left; x < right; x++)
+                    {
+                        var idx = yo + x;
 
-                    //if (posSum > rsq) continue;
+                        // circular pen
+                        var xsq = (int)((x - px) * (x - px));
+                        var posSum = xsq + ysq;
 
-                    var blend = Pin255(blurFact * (posSum - blurEdge));
+                        if (posSum > rsq) continue;
 
-                    //int blend = 200; // 0..255  -- Higher is less pen, more original
-                    //int blend = Pin255(255 - (rsq / (xsq + ysq)));
-                    int dnelb = 256 - blend;
+                        var blend = Pin255(blurFact * (posSum - blurEdge));
+                        int dnelb = 256 - blend;
 
-                    Red[idx] = (byte)((Red[idx] * blend + r * dnelb) >> 8);
-                    Green[idx] = (byte)((Green[idx] * blend + g * dnelb) >> 8);
-                    Blue[idx] = (byte)((Blue[idx] * blend + b * dnelb) >> 8);
+                        Red[idx] = (byte)((Red[idx] * blend + r * dnelb) >> 8);
+                        Green[idx] = (byte)((Green[idx] * blend + g * dnelb) >> 8);
+                        Blue[idx] = (byte)((Blue[idx] * blend + b * dnelb) >> 8);
+                    }
                 }
             }
             Invalidate();

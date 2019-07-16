@@ -1,8 +1,9 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 
 namespace SlickWindows.Canvas
 {
-    public interface IEndlessCanvas
+    public interface IEndlessCanvas : IDisposable
     {
         double X { get; }
         double Y { get; }

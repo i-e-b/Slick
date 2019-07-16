@@ -26,7 +26,7 @@ namespace SlickWindows.Input
         /// <summary>
         /// The highest pressure value we've seen (initial guess, updated as we collect data)
         /// </summary>
-        private static float maxPressure = 2540.0f;
+        private static float maxPressure = 4096.0f;
 
         /// <summary>
         /// The 'pressure' value used when an input method doesn't supply one (0..1)

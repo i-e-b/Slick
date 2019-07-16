@@ -70,6 +70,7 @@
     <Compile Include="Canvas\IEndlessCanvas.cs" />
     <Compile Include="Canvas\InkSettings.cs" />
     <Compile Include="Canvas\InkType.cs" />
+    <Compile Include="Canvas\PenSizes.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
     <Compile Include="Gui\Components\RoundSymbolButton.cs">

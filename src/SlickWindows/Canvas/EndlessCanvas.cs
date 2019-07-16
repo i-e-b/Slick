@@ -22,9 +22,10 @@ namespace SlickWindows.Canvas
         [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
         [NotNull] private readonly Queue<TileSource> _imageQueue = new Queue<TileSource>();
         [CanBeNull] private volatile IStorageContainer _storage;
-        
+
         [NotNull] private readonly ManualResetEventSlim _updateTileCache;
         [NotNull] private readonly ManualResetEventSlim _updateTileData;
+        [NotNull] private readonly ManualResetEventSlim _saveTileData;
         private volatile bool _okToDraw;
         private volatile bool _isRunning;
 
@@ -72,6 +73,7 @@ namespace SlickWindows.Canvas
 
             _updateTileCache = new ManualResetEventSlim(true);
             _updateTileData = new ManualResetEventSlim(false);
+            _saveTileData = new ManualResetEventSlim(false);
             _isRunning = true;
 
             Width = width;
@@ -81,7 +83,7 @@ namespace SlickWindows.Canvas
             _changedTiles = new HashSet<PositionKey>();
             _lastChangedTiles = new HashSet<PositionKey>();
             _selectedTiles = new HashSet<PositionKey>();
-            _inSelectMode=false;
+            _inSelectMode = false;
 
             DpiX = deviceDpi;
             _invalidateAction = invalidateAction;
@@ -90,17 +92,17 @@ namespace SlickWindows.Canvas
             _yOffset = 0.0;
 
             // Load on a different thread so the screen comes up fast
-            LoadImagesAsync();
+            RunAsyncWorkers();
 
             _lastPen = new InkSettings
             {
                 PenColor = Color.BlueViolet,
-                PenSize = 5.0,
+                PenSize = (int)PenSizes.Default,
                 PenType = InkType.Overwrite
             };
         }
 
-        private void LoadImagesAsync()
+        private void RunAsyncWorkers()
         {
             // Try to load images for any visible tiles,
             // and remove any loaded tiles that are far
@@ -149,14 +151,16 @@ namespace SlickWindows.Canvas
 
                             // unload any old tiles
                             PositionKey[] loadedTiles = null;
-                            try 
+                            try
                             {
                                 loadedTiles = _canvasTiles.Keys.ToArray();
                             }
-                            catch {
+                            catch
+                            {
                                 // ignore
                             }
-                            if (loadedTiles != null){
+                            if (loadedTiles != null)
+                            {
                                 foreach (var old in loadedTiles)
                                 {
                                     if (visibleTiles.Contains(old)) continue; // still visible
@@ -200,6 +204,70 @@ namespace SlickWindows.Canvas
                 }
             })
             { IsBackground = true, Name = "Image loading worker" }.Start();
+
+            // Save any changed images
+            new Thread(() =>
+            {
+                while (_isRunning)
+                {
+                    _saveTileData.Wait();
+                    _saveTileData.Reset();
+                    if (_storage == null) continue;
+                    PositionKey[] waiting;
+                    lock (_canvasTiles)
+                    {
+                        try
+                        {
+                            waiting = _changedTiles.ToArray();
+                            _changedTiles.Clear();
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+                    }
+
+                    foreach (var key in waiting)
+                    {
+                        TileImage tile;
+                        try {
+                            tile = _canvasTiles[key];
+                        } catch {
+                            continue;
+                        }
+                        if (tile == null) continue;
+                        if (tile.Locked) continue;
+
+                        if (_storage == null) break;
+                        var name = key.ToString();
+
+                        if (tile.ImageIsBlank())
+                        {
+                            lock (_storageLock)
+                            {
+                                _storage.Delete(name, "img");
+                                _canvasTiles.Remove(key);
+                            }
+                        }
+                        else
+                        {
+                            using (var ms = new MemoryStream())
+                            {
+                                WaveletCompress.Compress(tile).WriteToStream(ms);
+                                ms.Seek(0, SeekOrigin.Begin);
+                                lock (_storageLock)
+                                {
+                                    _storage.Store(name, "img", ms);
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+            { /* Important: must not be a background thread */
+                IsBackground = false,
+                Name = "Image saving worker"
+            }.Start();
         }
 
 
@@ -209,7 +277,7 @@ namespace SlickWindows.Canvas
         {
             Width = width;
             Height = height;
-            
+
             // change render locations based on scale
             var displaySize = TileImage.Size >> (_drawScale - 1);
             var offset_x = (int)_xOffset >> (_drawScale - 1);
@@ -281,7 +349,8 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Load a tile image from storage, pausing the current thread until it is ready
         /// </summary>
-        private TileImage LoadTileSync(PositionKey tile) {
+        private TileImage LoadTileSync(PositionKey tile)
+        {
             if (tile == null || _storage == null) return null;
 
             var name = tile.ToString();
@@ -298,7 +367,7 @@ namespace SlickWindows.Canvas
             if (fileData != null) WaveletCompress.Decompress(fileData, image, 1);
             return image;
         }
-        
+
 
         /// <summary>
         /// Draw the selected tiles, from a given offset, into a bitmap image.
@@ -361,7 +430,8 @@ namespace SlickWindows.Canvas
         /// Signal that a drawing curve is starting.
         /// This is used to delimit undo/redo actions
         /// </summary>
-        public void StartStroke() {
+        public void StartStroke()
+        {
             if (!_okToDraw) return;
             _lastChangedTiles.Clear();
         }
@@ -381,13 +451,15 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
         {
-            if (_inSelectMode) {
+            if (_inSelectMode)
+            {
                 // use pens to toggle selection
                 _selectedTiles.Add(ScreenToTile(start.X, start.Y));
                 return;
             }
-            
-            if (_drawScale != 1) {
+
+            if (_drawScale != 1)
+            {
                 // If we're scaled out, use pens to scroll
                 Scroll(start.X - end.X, start.Y - end.Y);
                 return;
@@ -404,12 +476,13 @@ namespace SlickWindows.Canvas
 
             var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
 
-            if (dd > 0) {
+            if (dd > 0)
+            {
                 dx /= dd;
                 dy /= dd;
                 dp /= dd;
             }
-            var radius = 1.0;
+            double radius;
 
             for (double i = 0; i <= dd; i += radius)
             {
@@ -437,40 +510,12 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void SaveChanges()
         {
-            if (_storage == null) return;
-            lock (_storageLock)
-            {
-                lock (_canvasTiles)
-                {
-                    foreach (var key in _changedTiles)
-                    {
-                        if (!_canvasTiles.ContainsKey(key)) continue;
-                        var tile = _canvasTiles[key];
-                        if (tile == null) continue;
-                        if (tile.Locked) continue;
-
-                        if (_storage == null) return;
-                        var name = key.ToString();
-
-                        if (tile.ImageIsBlank())
-                        {
-                            _storage.Delete(name, "img");
-                            _canvasTiles.Remove(key);
-                        }
-                        else
-                        {
-                            var ms = new MemoryStream();
-                            WaveletCompress.Compress(tile).WriteToStream(ms);
-                            ms.Seek(0, SeekOrigin.Begin);
-                            _storage.Store(name, "img", ms);
-                        }
-                    }
-                }
-                _changedTiles.Clear();
-            }
+            // trigger the async worker
+            _saveTileData.Set();
         }
 
-        [NotNull] private List<PositionKey> InkPoint(InkSettings ink, DPoint pt, out double radius)
+        [NotNull]
+        private List<PositionKey> InkPoint(InkSettings ink, DPoint pt, out double radius)
         {
             lock (_storageLock)
             {
@@ -495,7 +540,8 @@ namespace SlickWindows.Canvas
                     var ax = _xOffset - (pk.X * TileImage.Size) + pt.X;
                     var ay = _yOffset - (pk.Y * TileImage.Size) + pt.Y;
 
-                    if (img?.DrawOnTile(ax, ay, radius, ink.PenColor, ink.PenType) == true) {
+                    if (img?.DrawOnTile(ax, ay, radius, ink.PenColor, ink.PenType) == true)
+                    {
                         changed.Add(pk);
                     }
                 }
@@ -547,21 +593,21 @@ namespace SlickWindows.Canvas
         {
             _okToDraw = false;
             lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
-            {
-                // wipe state
-                _imageQueue.Clear();
-                _changedTiles.Clear();
-                _canvasTiles.Clear();
-                _selectedTiles.Clear();
+                    {
+                        // wipe state
+                        _imageQueue.Clear();
+                        _changedTiles.Clear();
+                        _canvasTiles.Clear();
+                        _selectedTiles.Clear();
 
-                // change storage
-                Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
-                _storage = new LiteDbStorageContainer(newPath);
+                        // change storage
+                        Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
+                        _storage = new LiteDbStorageContainer(newPath);
 
-                // re-centre
-                _xOffset = 0;
-                _yOffset = 0;
-            }
+                        // re-centre
+                        _xOffset = 0;
+                        _yOffset = 0;
+                    }
             _updateTileCache.Set();
             _invalidateAction?.Invoke();
         }
@@ -573,12 +619,12 @@ namespace SlickWindows.Canvas
         {
             _okToDraw = false;
             lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
-            {
-                // clear the caches and start processing
-                _imageQueue.Clear();
-                _changedTiles.Clear();
-                _canvasTiles.Clear();
-            }
+                    {
+                        // clear the caches and start processing
+                        _imageQueue.Clear();
+                        _changedTiles.Clear();
+                        _canvasTiles.Clear();
+                    }
             _updateTileCache.Set();
             _invalidateAction?.Invoke();
         }
@@ -604,14 +650,15 @@ namespace SlickWindows.Canvas
             if (ax < 0) ax += TileImage.Size;
             if (ay < 0) ay += TileImage.Size;
 
-            img?.DrawOnTile(ax, ay, 1, color, InkType.Overwrite);
+            img?.DrawOnTile(ax, ay, 1, color, InkType.Import);
             _changedTiles.Add(pk);
         }
-        
 
-        private class TileSource {
-            [NotNull]public readonly TileImage Image;
-            [NotNull]public readonly Stream Data;
+
+        private class TileSource
+        {
+            [NotNull] public readonly TileImage Image;
+            [NotNull] public readonly Stream Data;
 
             public TileSource([NotNull] TileImage image, [NotNull] Stream data)
             {
@@ -640,7 +687,8 @@ namespace SlickWindows.Canvas
 
                 var prevVersion = node.ResultData.CurrentVersion - 1;
 
-                if (prevVersion < 1) {
+                if (prevVersion < 1)
+                {
                     // undoing the first stroke. Mark it deleted.
                     var deadNode = new StorageNode { CurrentVersion = node.ResultData.CurrentVersion, Id = node.ResultData.Id, IsDeleted = true };
                     _storage.UpdateNode(path, deadNode);
@@ -681,7 +729,7 @@ namespace SlickWindows.Canvas
             // centre on the clicked point
             _xOffset += wX;
             _yOffset += wY;
-            
+
             // restore scale, position and start re-draw.
             _xOffset += (Width << (_drawScale - 1)) / 2.0;
             _yOffset += (Height << (_drawScale - 1)) / 2.0;
@@ -692,11 +740,13 @@ namespace SlickWindows.Canvas
             ResetTileCache();
         }
 
-        [NotNull]public InfoPin[] AllPins()
+        [NotNull]
+        public InfoPin[] AllPins()
         {
-            if (_storage==null) return new InfoPin[0];
+            if (_storage == null) return new InfoPin[0];
 
-            lock (_storageLock) {
+            lock (_storageLock)
+            {
                 var result = _storage.ReadAllPins();
                 if (result.IsFailure || result.ResultData == null) return new InfoPin[0];
 
@@ -706,11 +756,12 @@ namespace SlickWindows.Canvas
 
         public void WritePinAtCurrentOffset(string text)
         {
-            if (_storage==null) return;
+            if (_storage == null) return;
 
-            lock (_storageLock) {
+            lock (_storageLock)
+            {
                 // tile location for middle of screen
-                
+
                 // offset is scale independent position of top-left window corner
                 var x = _xOffset;
                 var y = _yOffset;
@@ -735,7 +786,7 @@ namespace SlickWindows.Canvas
             var pos = PositionKey.Parse(pin.Id);
             if (pos == null) return;
 
-            
+
             // tiles from window corner to window centre
             var wX = Width / 2;
             var wY = Height / 2;
@@ -754,7 +805,8 @@ namespace SlickWindows.Canvas
         {
             if (_storage == null || pin == null) return;
 
-            lock (_storageLock) {
+            lock (_storageLock)
+            {
                 _storage.RemovePin(pin.Id);
             }
         }
@@ -762,14 +814,16 @@ namespace SlickWindows.Canvas
         public bool ToggleSelectMode()
         {
             _inSelectMode = !_inSelectMode;
-            if (_inSelectMode == false) {
+            if (_inSelectMode == false)
+            {
                 _selectedTiles.Clear();
                 _invalidateAction?.Invoke();
             }
             return _inSelectMode;
         }
 
-        [NotNull]public List<PositionKey> SelectedTiles()
+        [NotNull]
+        public List<PositionKey> SelectedTiles()
         {
             return _selectedTiles.ToList();
         }
@@ -781,7 +835,7 @@ namespace SlickWindows.Canvas
         {
             _invalidateAction?.Invoke();
         }
-        
+
         /// <summary>
         /// Write an external image into this canvas
         /// </summary>
@@ -798,14 +852,21 @@ namespace SlickWindows.Canvas
                 {
                     for (int x = 0; x < width; x++)
                     {
-                        var color = bmp.GetPixel(x,y);
-                        if (color.R ==255 && color.G == 255 && color.B == 255) continue; // skip white pixels
+                        var color = bmp.GetPixel(x, y);
+                        if (color.R == 255 && color.G == 255 && color.B == 255) continue; // skip white pixels
                         SetPixel(color, x + px, y + py);
                     }
                 }
             }
             SaveChanges();
             Invalidate();
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            _isRunning = false;
+            _saveTileData.Set();
         }
     }
 }

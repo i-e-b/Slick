@@ -11,10 +11,10 @@ namespace SlickWindows.Gui
 {
     public partial class PaletteWindow : Form, ITouchTriggered
     {
-        private static Image _paletteImage = null;
+        private static Image _paletteImage;
         [NotNull] private readonly RealTimeStylus _colorInput;
         private bool _shouldClose;
-        private int _penSize = 5;
+        private int _penSize = (int)PenSizes.Default;
 
         public PaletteWindow()
         {
@@ -121,27 +121,27 @@ namespace SlickWindows.Gui
 
         private void smallPenButton_Click(object sender, EventArgs e)
         {
-            _penSize = 2;
+            _penSize = (int)PenSizes.Small;
         }
 
         private void medButton_Click(object sender, EventArgs e)
         {
-            _penSize = 5;
+            _penSize = (int)PenSizes.Default;
         }
 
         private void largeButton_Click(object sender, EventArgs e)
         {
-            _penSize = 10;
+            _penSize = (int)PenSizes.Large;
         }
 
         private void hugeButton_Click(object sender, EventArgs e)
         {
-            _penSize = 30;
+            _penSize = (int)PenSizes.Huge;
         }
 
         private void giganticButton_Click(object sender, EventArgs e)
         {
-            _penSize = 200;
+            _penSize = (int)PenSizes.Gigantic;
         }
     }
 }

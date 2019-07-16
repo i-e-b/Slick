@@ -10,6 +10,11 @@
         /// <summary>
         /// Existing ink is re-coloured (highlighter mode)
         /// </summary>
-        Multiply
+        Multiply,
+
+        /// <summary>
+        /// Pixel are being set directly, disable any smoothing or composition
+        /// </summary>
+        Import
     }
 }
