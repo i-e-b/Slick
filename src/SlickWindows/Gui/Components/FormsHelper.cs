@@ -1,5 +1,7 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace SlickWindows.Gui
@@ -35,5 +37,30 @@ namespace SlickWindows.Gui
             if (wind.Left < area.Left) form.Location = new Point(form.Location.X - (wind.Left - area.Left), form.Location.Y);
             if (wind.Top < area.Top) form.Location =  new Point(form.Location.X, form.Location.Y - (wind.Top - area.Top));
         }
+
+        [DllImport("gdi32.dll")]
+        static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetDC(IntPtr hWnd);
+        [DllImport("user32.dll")]
+        private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        public static Point GetSystemDpi(Form target)
+        {
+            Point result = new Point();
+
+            var hwnd = (target == null) ? IntPtr.Zero : target.Handle;
+            IntPtr hDC = GetDC(hwnd);
+
+            result.X = GetDeviceCaps(hDC, LOGPIXELSX);
+            result.Y = GetDeviceCaps(hDC, LOGPIXELSY);
+
+            ReleaseDC(IntPtr.Zero, hDC);
+
+            return result;
+        }        
+        const int LOGPIXELSX = 88;
+        const int LOGPIXELSY = 90;
     }
 }

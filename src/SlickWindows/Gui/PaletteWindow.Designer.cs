@@ -146,6 +146,7 @@
             this.Text = "Slick Palette";
             this.TopMost = true;
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.PaletteWindow_FormClosing);
+            this.DpiChanged += new System.Windows.Forms.DpiChangedEventHandler(this.PaletteWindow_DpiChanged);
             this.SizeChanged += new System.EventHandler(this.PaletteWindow_SizeChanged);
             ((System.ComponentModel.ISupportInitialize)(this.colorBox)).EndInit();
             this.flowLayoutPanel1.ResumeLayout(false);

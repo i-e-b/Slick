@@ -5,11 +5,12 @@ using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
+using SlickWindows.Gui.Components;
 using SlickWindows.Input;
 
 namespace SlickWindows.Gui
 {
-    public partial class MainWindow : Form, IDataTriggered, IScrollTarget
+    public partial class MainWindow : AutoScaleForm, IDataTriggered, IScrollTarget
     {
         // Declare the real time stylus.
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
@@ -19,8 +20,11 @@ namespace SlickWindows.Gui
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
         [NotNull] private readonly string DefaultLocation;
 
-        // custom cursor
-        [NotNull] private readonly Cursor InkCrosshair;
+        // custom cursors
+        [NotNull] private readonly Cursor InkCrosshair_LoDpi;
+        [NotNull] private readonly Cursor MoveCursor_LoDpi;
+        [NotNull] private readonly Cursor InkCrosshair_HiDpi;
+        [NotNull] private readonly Cursor MoveCursor_HiDpi;
 
         private double _lastScalePercent = 100.0;
 
@@ -28,9 +32,6 @@ namespace SlickWindows.Gui
        {
             InitializeComponent();
             Closing += MainWindow_Closing;
-
-            InkCrosshair = CursorImage.MakeCrosshair();
-            Cursor = InkCrosshair;
 
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
             VerticalScroll.Enabled = false;
@@ -45,6 +46,12 @@ namespace SlickWindows.Gui
             if (floatingText1 != null) { floatingText1.CanvasTarget = _canvas; floatingText1.Visible = false; }
 
             if (saveFileDialog != null) saveFileDialog.InitialDirectory = DefaultLocation;
+            
+
+            InkCrosshair_LoDpi = CursorImage.MakeCrosshair(1);
+            InkCrosshair_HiDpi = CursorImage.MakeCrosshair(2);
+            SetCursorForState();
+
 
             UpdateWindowAndStatus();
 
@@ -58,6 +65,7 @@ namespace SlickWindows.Gui
             AddInputPlugin(_stylusInput, new CanvasDrawingPlugin(_canvas, new WinFormsKeyboard()));
 
             _stylusInput.Enabled = true; 
+            RescaleScreen();
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -162,6 +170,7 @@ namespace SlickWindows.Gui
 
         private void MainWindow_ClientSizeChanged(object sender, EventArgs e)
         {
+            if (_canvas == null) return;
             _canvas.SetSizeHint(Width, Height);
         }
 
@@ -178,7 +187,7 @@ namespace SlickWindows.Gui
             _lastScalePercent = 100.0;
             _scale = 1;
             mapButton.Text = "Map";
-            Cursor = InkCrosshair;
+            SetCursorForState();
         }
 
         private void PinsButton_Click(object sender, EventArgs e)
@@ -207,11 +216,17 @@ namespace SlickWindows.Gui
             SetCursorForState();
         }
 
+        private void MainWindow_DpiChanged(object sender, DpiChangedEventArgs e)
+        {
+            SetCursorForState();
+        }
+
         private void SetCursorForState()
         {
             if (_scale == 1 && !_shiftDown)
             {
-                Cursor = InkCrosshair;
+                if (Dpi > 120) Cursor = InkCrosshair_HiDpi;
+                else Cursor = InkCrosshair_LoDpi;
             }
             else
             {

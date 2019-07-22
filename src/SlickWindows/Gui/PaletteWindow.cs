@@ -5,11 +5,12 @@ using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
+using SlickWindows.Gui.Components;
 using SlickWindows.Input;
 
 namespace SlickWindows.Gui
 {
-    public partial class PaletteWindow : Form, ITouchTriggered
+    public partial class PaletteWindow : AutoScaleForm, ITouchTriggered
     {
         private static Image _paletteImage;
         [NotNull] private readonly RealTimeStylus _colorInput;
@@ -24,10 +25,12 @@ namespace SlickWindows.Gui
             if (colorBox == null) throw new Exception("Components not initialised correctly");
             
             colorBox.Image = PaintPalette(); // Replace this with a loaded image if you want something custom.
+            colorBox.SizeMode = PictureBoxSizeMode.StretchImage;
 
             _colorInput = new RealTimeStylus(colorBox, true) {AllTouchEnabled = true};
             _colorInput.AsyncPluginCollection?.Add(new TouchPointStylusPlugin(this, DeviceDpi));
             _colorInput.Enabled = true;
+            RescaleScreen();
         }
 
         public IEndlessCanvas Canvas { get; set; }
@@ -109,14 +112,15 @@ namespace SlickWindows.Gui
 
         private void PaletteWindow_SizeChanged(object sender, EventArgs e)
         {
-            if (colorBox == null) return;
+            /*if (colorBox == null) return;
             if (_paletteImage != null) {
                 _paletteImage.Dispose();
                 _paletteImage = null;
             }
 
             colorBox.Image = PaintPalette();
-
+            */
+            _colorInput.WindowInputRectangle = ClientRectangle;
             Invalidate();
         }
 
@@ -143,6 +147,11 @@ namespace SlickWindows.Gui
         private void giganticButton_Click(object sender, EventArgs e)
         {
             _penSize = (int)PenSizes.Gigantic;
+        }
+
+        private void PaletteWindow_DpiChanged(object sender, DpiChangedEventArgs e)
+        {
+
         }
     }
 }

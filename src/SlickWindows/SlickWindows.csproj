@@ -37,6 +37,9 @@
   <PropertyGroup>
     <ApplicationIcon>mona-lisa.ico</ApplicationIcon>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Containers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll</HintPath>
@@ -73,6 +76,9 @@
     <Compile Include="Canvas\PenSizes.cs" />
     <Compile Include="Canvas\PositionKey.cs" />
     <Compile Include="Canvas\TileImage.cs" />
+    <Compile Include="Gui\Components\AutoscaleForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Gui\Components\RoundSymbolButton.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -83,6 +89,9 @@
     <Compile Include="Gui\Components\FloatingText.Designer.cs">
       <DependentUpon>FloatingText.cs</DependentUpon>
     </Compile>
+    <Compile Include="Gui\Components\ScreenExtensions.cs" />
+    <Compile Include="Gui\Components\Win32.cs" />
+    <Compile Include="Gui\Components\Window.cs" />
     <Compile Include="Gui\ExtrasWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -165,6 +174,7 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <None Include="app.manifest" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
