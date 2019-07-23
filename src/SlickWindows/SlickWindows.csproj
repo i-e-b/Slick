@@ -67,6 +67,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Canvas\CanvasPixelPosition.cs" />
     <Compile Include="Canvas\ColorEncoding.cs" />
     <Compile Include="Canvas\DPoint.cs" />
     <Compile Include="Canvas\DrawResult.cs" />

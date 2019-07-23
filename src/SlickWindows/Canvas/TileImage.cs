@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -126,13 +127,15 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Draw an ink point on this tile. Returns true if the tile contents were changed, false otherwise
         /// </summary>
-        public bool DrawOnTile(double px, double py, double radius, Color penColor, InkType inkPenType)
+        public bool DrawOnTile(double px, double py, double radius, Color penColor, InkType inkPenType, int drawScale)
         {
             if (Locked) return false;
             PreparePen(px, py, radius, out var top, out var left, out var right, out var bottom);
 
             if (bottom < 0 || right < 0 || top > Size || left > Size) return false;
 
+            
+            var size = Size >> (drawScale - 1);
             int r = penColor.R;
             int g = penColor.G;
             int b = penColor.B;
@@ -146,7 +149,7 @@ namespace SlickWindows.Canvas
 
             if (inkPenType == InkType.Import)
             {
-                var idx = (top * Size) + left;
+                var idx = (top * size) + left;
 
                 Red[idx] = (byte)r;
                 Green[idx] = (byte)g;
@@ -157,7 +160,7 @@ namespace SlickWindows.Canvas
                 for (int y = top; y < bottom; y++)
                 {
                     var ysq = (int)((y - py) * (y - py));
-                    var yo = y * Size;
+                    var yo = y * size;
 
                     for (int x = left; x < right; x++)
                     {

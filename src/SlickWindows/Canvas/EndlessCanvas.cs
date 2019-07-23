@@ -106,6 +106,40 @@ namespace SlickWindows.Canvas
             };
         }
 
+        // TODO:
+        // These two functions should be the core of all interactions with the canvas.
+        // The existing functionality has got way too messy.
+
+        /// <summary>
+        /// Convert a screen position to a canvas pixel
+        /// </summary>
+        [NotNull]public CanvasPixelPosition ScreenToCanvas(int x, int y) {
+            // Compensate for canvas offset; find tile and sub-offset.
+
+            var dss = (double)(1 << (_drawScale - 1));
+
+            var sx = x / VisualScale;
+            var sy = y / VisualScale;
+
+            var ox = _xOffset / dss;// / VisualScale;
+            var oy = _yOffset / dss;// / VisualScale;
+
+            var tx = Math.Floor((sx + ox) / TileSize);
+            var ty = Math.Floor((sy + oy) / TileSize);
+
+            var ax = (ox - (tx * TileSize) + sx) / VisualScale;
+            var ay = (oy - (ty * TileSize) + sy) / VisualScale;
+            
+            if (ax < 0) ax += TileImage.Size;
+            if (ay < 0) ay += TileImage.Size;
+
+            return new CanvasPixelPosition{
+                TilePosition = new PositionKey(tx,ty),
+                X = (int)ax,
+                Y = (int)ay
+            };
+        }
+
         private void RunAsyncWorkers()
         {
             // Try to load images for any visible tiles,
@@ -274,7 +308,6 @@ namespace SlickWindows.Canvas
             }.Start();
         }
 
-
         [NotNull]
         private List<PositionKey> VisibleTiles(int width, int height)
         {
@@ -439,25 +472,30 @@ namespace SlickWindows.Canvas
             _lastChangedTiles.Clear();
         }
 
-        private PositionKey ScreenToTile(double x, double y)
-        {
-            var displaySize = TileSize;
-
-            var xIdx = Math.Floor((x / displaySize) + (_xOffset / (TileImage.Size * VisualScale)));
-            var yIdx = Math.Floor((y / displaySize) + (_yOffset / (TileImage.Size * VisualScale)));
-
-            return new PositionKey((int)xIdx, (int)yIdx);
-        }
-
         /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
         public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
         {
+            /*
+            // TEMP:
+            var testPt = ScreenToCanvas((int)start.X, (int)start.Y);
+
+            var needsAdd = !_canvasTiles.ContainsKey(testPt.TilePosition);
+            var img = needsAdd ? new TileImage() : _canvasTiles[testPt.TilePosition];
+            if (needsAdd) _canvasTiles.Add(testPt.TilePosition, img);
+
+            img?.DrawOnTile(testPt.X, testPt.Y, 10, Color.Black, InkType.Overwrite, _drawScale);
+            return;
+            */
+
+            
+            var startPoint = ScreenToCanvas((int)start.X, (int)start.Y);
+
             if (_inSelectMode)
             {
                 // use pens to toggle selection
-                _selectedTiles.Add(ScreenToTile(start.X, start.Y));
+                _selectedTiles.Add(startPoint.TilePosition);
                 return;
             }
 
@@ -526,8 +564,9 @@ namespace SlickWindows.Canvas
                 var changed = new List<PositionKey>(4);
 
                 // primary tile
-                var tx = Math.Floor((pt.X + _xOffset) / (TileImage.Size * VisualScale));
-                var ty = Math.Floor((pt.Y + _yOffset) / (TileImage.Size * VisualScale));
+                var loca = ScreenToCanvas((int)pt.X, (int)pt.Y);
+                var tx = loca.TilePosition?.X ?? 0;
+                var ty = loca.TilePosition?.Y ?? 0;
                 var possibleTiles = new[]{
                     new PositionKey(tx - 1, ty - 1), new PositionKey(tx    , ty - 1), new PositionKey(tx + 1, ty - 1),
                     new PositionKey(tx - 1, ty    ), new PositionKey(tx    , ty    ), new PositionKey(tx + 1, ty    ),
@@ -540,10 +579,10 @@ namespace SlickWindows.Canvas
                     var img = needsAdd ? new TileImage() : _canvasTiles[pk];
                     if (needsAdd) _canvasTiles.Add(pk, img);
 
-                    var ax = _xOffset - (pk.X * TileImage.Size) + pt.X;
-                    var ay = _yOffset - (pk.Y * TileImage.Size) + pt.Y;
+                    var ax = loca.X + (tx - pk.X) * TileImage.Size;
+                    var ay = loca.Y + (ty - pk.Y) * TileImage.Size;
 
-                    if (img?.DrawOnTile(ax, ay, radius, ink.PenColor, ink.PenType) == true)
+                    if (img?.DrawOnTile(ax, ay, radius, ink.PenColor, ink.PenType, _drawScale) == true)
                     {
                         changed.Add(pk);
                     }
@@ -647,21 +686,13 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void SetPixel(Color color, int x, int y)
         {
-            var xIdx = Math.Floor((x + _xOffset) / TileImage.Size);
-            var yIdx = Math.Floor((y + _yOffset) / TileImage.Size);
-
-            var pk = new PositionKey((int)xIdx, (int)yIdx);
+            var loca = ScreenToCanvas(x,y);
+            var pk = loca.TilePosition ?? throw new Exception("Screen index failed");
 
             if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
             var img = _canvasTiles[pk];
 
-            var ax = (x + _xOffset) % TileImage.Size;
-            var ay = (y + _yOffset) % TileImage.Size;
-
-            if (ax < 0) ax += TileImage.Size;
-            if (ay < 0) ay += TileImage.Size;
-
-            img?.DrawOnTile(ax, ay, 1, color, InkType.Import);
+            img?.DrawOnTile(loca.X, loca.Y, 1, color, InkType.Import, _drawScale);
             _changedTiles.Add(pk);
         }
 
@@ -729,23 +760,22 @@ namespace SlickWindows.Canvas
         public void CentreAndZoom(int wX, int wY)
         {
             if (_drawScale <= 1) return; // already zoomed in
-            // wX,Y are in screen scale, window co-ordinates
+                                         // wX,Y are in screen scale, window co-ordinates
 
             // convert window coords to offsets
-            wX -= Width / 2;
-            wY -= Height / 2;
-            wX <<= (_drawScale - 1);
-            wY <<= (_drawScale - 1);
+            var loca = ScreenToCanvas(wX, wY);
 
             // centre on the clicked point
-            _xOffset += wX;
-            _yOffset += wY;
+            loca.GetAbsolute(out _xOffset, out _yOffset);
+            
+            _xOffset = (loca.TilePosition.X * TileImage.Size * VisualScale) + loca.X;
+            _yOffset = (loca.TilePosition.Y * TileImage.Size * VisualScale) + loca.Y;
 
-            // restore scale, position and start re-draw.
-            _xOffset += (Width << (_drawScale - 1)) / 2.0;
-            _yOffset += (Height << (_drawScale - 1)) / 2.0;
-            _xOffset -= Width / 2.0;
-            _yOffset -= Height / 2.0;
+            // centre on screen
+            //_xOffset -= Width / (2.0*VisualScale);
+            //_yOffset -= Height / (2.0*VisualScale);
+
+            // set zoom level
             _drawScale = 1;
 
             ResetTileCache();
@@ -772,22 +802,12 @@ namespace SlickWindows.Canvas
             lock (_storageLock)
             {
                 // tile location for middle of screen
+                var x = (Width / 2);
+                var y = (Height / 2);
 
-                // offset is scale independent position of top-left window corner
-                var x = _xOffset;
-                var y = _yOffset;
+                var loca = ScreenToCanvas(x,y);
 
-                // tiles from window corner to window centre
-                x += (Width / 2) << (_drawScale - 1);
-                y += (Height / 2) << (_drawScale - 1);
-
-                // tile of centre of screen
-                x /= TileImage.Size;
-                y /= TileImage.Size;
-
-                var pos = new PositionKey((int)x, (int)y);
-
-                _storage.SetPin(pos.ToString(), text);
+                _storage.SetPin(loca.TilePosition.ToString(), text);
             }
         }
 
@@ -796,7 +816,6 @@ namespace SlickWindows.Canvas
             if (pin == null) return;
             var pos = PositionKey.Parse(pin.Id);
             if (pos == null) return;
-
 
             // tiles from window corner to window centre
             var wX = Width / 2;
