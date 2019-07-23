@@ -22,14 +22,14 @@ namespace SlickWindows.Gui
 
         // custom cursors
         [NotNull] private readonly Cursor InkCrosshair_LoDpi;
-        [NotNull] private readonly Cursor MoveCursor_LoDpi;
         [NotNull] private readonly Cursor InkCrosshair_HiDpi;
+        [NotNull] private readonly Cursor MoveCursor_LoDpi;
         [NotNull] private readonly Cursor MoveCursor_HiDpi;
 
         private double _lastScalePercent = 100.0;
 
         public MainWindow(string[] args)
-       {
+        {
             InitializeComponent();
             Closing += MainWindow_Closing;
 
@@ -65,7 +65,6 @@ namespace SlickWindows.Gui
             AddInputPlugin(_stylusInput, new CanvasDrawingPlugin(_canvas, new WinFormsKeyboard()));
 
             _stylusInput.Enabled = true; 
-            RescaleScreen();
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -219,6 +218,14 @@ namespace SlickWindows.Gui
         private void MainWindow_DpiChanged(object sender, DpiChangedEventArgs e)
         {
             SetCursorForState();
+        }
+
+        protected override void OnRescale(int dpi)
+        {
+            SetCursorForState();
+            Invalidate();
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            if (_canvas != null) _canvas.Dpi = dpi;
         }
 
         private void SetCursorForState()

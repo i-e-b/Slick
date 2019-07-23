@@ -132,8 +132,8 @@ namespace SlickWindows.Input
                 var point = new Point(data[i], data[i + 1]);
 
                 // Since the packet data is in Ink Space coordinates, we need to convert to Pixels...
-                point.X = (int) Math.Round(point.X * _canvas.DpiX / 2540.0F);
-                point.Y = (int) Math.Round(point.Y * _canvas.DpiY / 2540.0F);
+                point.X = (int) Math.Round(point.X * _canvas.Dpi / 2540.0F);
+                point.Y = (int) Math.Round(point.Y * _canvas.Dpi / 2540.0F);
                 var pressure = DefaultPressure;
 
                 if (data.PacketPropertyCount > 2) // Contains pressure info

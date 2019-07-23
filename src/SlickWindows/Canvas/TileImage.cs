@@ -82,7 +82,7 @@ namespace SlickWindows.Canvas
             _renderCache = null;
         }
 
-        public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale)
+        public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale, float visualScale)
         {
             if (g==null) return;
             var size = Size >> (drawScale - 1);
@@ -101,6 +101,7 @@ namespace SlickWindows.Canvas
             }
 
 
+// TODO: need to do visual (dpi) scaling
             cache.ResetTransform();
             cache.TranslateTransform((int)dx, (int)dy);
             g.FillRectangle(cache, (int)dx, (int)dy, size, size);

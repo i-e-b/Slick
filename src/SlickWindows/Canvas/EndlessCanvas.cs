@@ -50,9 +50,14 @@ namespace SlickWindows.Canvas
         public double X { get { return _xOffset; } }
         public double Y { get { return _yOffset; } }
 
-        public int DpiY;
-        public int DpiX;
+        /// <summary>
+        /// DPI of container (updated through AutoScaleForm triggers)
+        /// </summary>
+        public int Dpi;
         private byte _drawScale = 1;
+
+        public float VisualScale => Dpi / 96.0f;
+        public float TileSize => (TileImage.Size >> (_drawScale - 1)) * VisualScale;
 
         public const int MaxScale = 3;
 
@@ -84,9 +89,8 @@ namespace SlickWindows.Canvas
             _selectedTiles = new HashSet<PositionKey>();
             _inSelectMode = false;
 
-            DpiX = deviceDpi;
+            Dpi = deviceDpi;
             _invalidateAction = invalidateAction;
-            DpiY = deviceDpi;
             _xOffset = 0.0;
             _yOffset = 0.0;
             ChangeBasePath(pageFilePath);
@@ -278,13 +282,13 @@ namespace SlickWindows.Canvas
             Height = height;
 
             // change render locations based on scale
-            var displaySize = TileImage.Size >> (_drawScale - 1);
+            var displaySize = TileSize;
             var offset_x = (int)_xOffset >> (_drawScale - 1);
             var offset_y = (int)_yOffset >> (_drawScale - 1);
 
             // work out the indexes we need, find in dictionary, draw
-            int ox = offset_x / displaySize;
-            int oy = offset_y / displaySize;
+            int ox = (int)(offset_x / displaySize);
+            int oy = (int)(offset_y / displaySize);
             int mx = (int)Math.Round((double)width / displaySize);
             int my = (int)Math.Round((double)height / displaySize);
 
@@ -329,7 +333,7 @@ namespace SlickWindows.Canvas
                 try { ti = _canvasTiles[index]; } catch { continue; } // happens in race conditions
 
                 // change render locations based on scale
-                var displaySize = TileImage.Size >> (_drawScale - 1);
+                var displaySize = TileSize;
                 var offset_x = (int)_xOffset >> (_drawScale - 1);
                 var offset_y = (int)_yOffset >> (_drawScale - 1);
 
@@ -341,7 +345,7 @@ namespace SlickWindows.Canvas
 
                 // draw tile
                 var hilite = _selectedTiles.Contains(index);
-                ti?.Render(g, dx, dy, hilite, _drawScale);
+                ti?.Render(g, dx, dy, hilite, _drawScale, VisualScale);
             }
         }
 
@@ -392,7 +396,7 @@ namespace SlickWindows.Canvas
                     if (dx > bmp.Width || dx < -TileImage.Size || dy > bmp.Height || dy < -TileImage.Size) continue;
 
                     // draw tile
-                    ti.Render(g, dx, dy, false, 1);
+                    ti.Render(g, dx, dy, false, 1, 1.0f);
                 }
             }
         }
@@ -409,8 +413,8 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Scroll(double dx, double dy)
         {
-            _xOffset += dx * (1 << (_drawScale - 1));
-            _yOffset += dy * (1 << (_drawScale - 1));
+            _xOffset += dx * (1 << (_drawScale - 1)) / VisualScale;
+            _yOffset += dy * (1 << (_drawScale - 1)) / VisualScale;
             _updateTileCache.Set();
             _updateTileData.Set();
         }
@@ -437,10 +441,10 @@ namespace SlickWindows.Canvas
 
         private PositionKey ScreenToTile(double x, double y)
         {
-            var displaySize = TileImage.Size >> (_drawScale - 1);
+            var displaySize = TileSize;
 
-            var xIdx = Math.Floor((x / displaySize) + (_xOffset / TileImage.Size));
-            var yIdx = Math.Floor((y / displaySize) + (_yOffset / TileImage.Size));
+            var xIdx = Math.Floor((x / displaySize) + (_xOffset / (TileImage.Size * VisualScale)));
+            var yIdx = Math.Floor((y / displaySize) + (_yOffset / (TileImage.Size * VisualScale)));
 
             return new PositionKey((int)xIdx, (int)yIdx);
         }
@@ -522,8 +526,8 @@ namespace SlickWindows.Canvas
                 var changed = new List<PositionKey>(4);
 
                 // primary tile
-                var tx = Math.Floor((pt.X + _xOffset) / TileImage.Size);
-                var ty = Math.Floor((pt.Y + _yOffset) / TileImage.Size);
+                var tx = Math.Floor((pt.X + _xOffset) / (TileImage.Size * VisualScale));
+                var ty = Math.Floor((pt.Y + _yOffset) / (TileImage.Size * VisualScale));
                 var possibleTiles = new[]{
                     new PositionKey(tx - 1, ty - 1), new PositionKey(tx    , ty - 1), new PositionKey(tx + 1, ty - 1),
                     new PositionKey(tx - 1, ty    ), new PositionKey(tx    , ty    ), new PositionKey(tx + 1, ty    ),

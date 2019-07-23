@@ -9,7 +9,7 @@ using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Gui
 {
-    public partial class Extras : Form
+    public partial class Extras : AutoScaleForm
     {
         [NotNull] private readonly EndlessCanvas _target;
         private readonly FloatingImage _importFloat;

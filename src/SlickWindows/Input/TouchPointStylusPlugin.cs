@@ -19,6 +19,7 @@ namespace SlickWindows.Input
 
         public void StylusDown(RealTimeStylus sender, StylusDownData data)
         {
+            if (data?.Stylus == null || _sink == null) return;
             if (data.Count < 2) return; // no co-ordinates
 
             var x = data[0] * _deviceDpi / 2540.0F;

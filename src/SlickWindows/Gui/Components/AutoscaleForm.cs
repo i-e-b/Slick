@@ -13,12 +13,13 @@ namespace SlickWindows.Gui.Components
     {
         public short Dpi = 0, LastDpi = 0;
         protected short OriginalDpi = 92;
-        protected float OriginalFontSize = 8.25f;
-        private Font _oldFont;
+        protected float OriginalFontSize;
+        [NotNull] private readonly Dictionary<short, Font> _scaleFonts;
 
         public AutoScaleForm()
         {
             OriginalFontSize = Font.Size;
+            _scaleFonts = new Dictionary<short, Font>();
         }
 
         protected override void WndProc(ref Message m)
@@ -26,6 +27,7 @@ namespace SlickWindows.Gui.Components
             if (m.Msg == Win32.WM_NCCREATE)
             {
                 Win32.EnableNonClientDpiScaling(Handle);
+                RescaleScreen();
             }
             if (m.Msg == Win32.WM_DPICHANGED)
             {
@@ -48,13 +50,6 @@ namespace SlickWindows.Gui.Components
                 var screen = win.PrimaryScreen();
                 screen.GetDpi(out var dx, out var dy);
                 Dpi = (short)Math.Min(dx, dy);
-                /*if (OriginalDpi == 0) {
-                    OriginalDpi = Dpi;
-                    OriginalFontSize = Font.Size;
-                    foreach (Control ctrl in Controls) { RescaleControl(ctrl, Dpi); } // capture initial size
-                    _midFlow = false;
-                    return;
-                }*/
                 if (LastDpi == Dpi) {
                     _midFlow = false;
                     return;
@@ -62,16 +57,7 @@ namespace SlickWindows.Gui.Components
                 LastDpi = Dpi;
 
                 var scale = Dpi / (float)OriginalDpi;
-
-                SuspendLayout();
-
-                _oldFont?.Dispose();
-                _oldFont = Font ?? throw new Exception("Win32 error: Form has no current font");
-                if (_oldFont.FontFamily == null) throw new Exception("Win32 error: Current font has no family");
-
-                // Change font size, and WinForms will rescale
-                Font = new Font(_oldFont.FontFamily, OriginalFontSize * scale, _oldFont.Style);
-                ResumeLayout();
+                Font = PickFont(Dpi, scale);
 
                 // If this control has been this size before, set back to original size.
                 // Otherwise, save the size that came from scrolling
@@ -80,6 +66,25 @@ namespace SlickWindows.Gui.Components
                 OnRescale(Dpi);
             }
             _midFlow = false;
+        }
+
+        [NotNull]private Font PickFont(short dpi, float scale)
+        {
+            try
+            {
+                return _scaleFonts[dpi] ?? throw new Exception();
+            }
+            catch
+            {
+                var oldFont = Font ?? throw new Exception("Win32 error: Form has no current font");
+                if (oldFont.FontFamily == null) throw new Exception("Win32 error: Current font has no family");
+
+                // Change font size, and WinForms will rescale
+                var newFont = new Font(oldFont.FontFamily, OriginalFontSize * scale, oldFont.Style);
+
+                _scaleFonts.Add(dpi, newFont);
+                return newFont;
+            }
         }
 
         [NotNull]private readonly Dictionary<Control, Dictionary<short, LayoutRect>> _layoutCache = new Dictionary<Control, Dictionary<short, LayoutRect>> ();
@@ -123,14 +128,16 @@ namespace SlickWindows.Gui.Components
                 if (!map.ContainsKey(dpi)) map.Add(dpi, layout);
             }
         }
-    }
 
-    public struct LayoutRect {
-        public int Left;
-        public int Top;
-        public int RightOffset;
-        public int BottomOffset;
-        public int Width;
-        public int Height;
+        internal struct LayoutRect
+        {
+            public int Left;
+            public int Top;
+            public int RightOffset;
+            public int BottomOffset;
+            public int Width;
+            public int Height;
+        }
+
     }
 }

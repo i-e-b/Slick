@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 
-namespace SlickWindows.Gui
+namespace SlickWindows.Gui.Components
 {
     /// <summary>
     /// Helper to make custom cursor
