@@ -22,12 +22,12 @@ namespace SlickWindows.Canvas
         // caching
         [CanBeNull]private Bitmap _renderCache;
         private bool _lastSelectState;
-        private bool _cachable;
+        private volatile bool _cachable;
 
         /// <summary>
         /// If 'locked' is set, commands to draw will be ignored
         /// </summary>
-        public bool Locked { get; set; }
+        public volatile bool Locked;
 
         /// <summary>
         /// Create a default blank tile
@@ -82,6 +82,13 @@ namespace SlickWindows.Canvas
 
         public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale)
         {
+            if (Locked) {
+                var size = Size >> (drawScale - 1);
+                g?.FillRectangle(Brushes.Gray, (int)dx, (int)dy, size, size);
+                return;
+            }
+
+
             var cache = _renderCache;
             if (cache == null || selected != _lastSelectState) {
                 cache = CopyDataToBitmap(selected, drawScale);

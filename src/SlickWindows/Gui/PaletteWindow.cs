@@ -86,6 +86,7 @@ namespace SlickWindows.Gui
                 }
             }
 
+            _paletteImage = bmp;
             return bmp;
         }
 
