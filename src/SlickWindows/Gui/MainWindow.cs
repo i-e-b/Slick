@@ -40,8 +40,9 @@ namespace SlickWindows.Gui
             DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
             PanScrollReceiver.Initialise(this);
 
+            RescaleScreen(); // get a reliable DPI figure (DeviceDpi is nonsense)
             var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(DefaultLocation, "default.slick");
-            _canvas = new EndlessCanvas(Width, Height, DeviceDpi, initialFile, CanvasChanged);
+            _canvas = new EndlessCanvas(Width, Height, Dpi, initialFile, CanvasChanged);
             _scale = 1;
             if (floatingText1 != null) { floatingText1.CanvasTarget = _canvas; floatingText1.Visible = false; }
 
@@ -62,7 +63,7 @@ namespace SlickWindows.Gui
             // Async calls get triggered on the UI thread, so we use this to trigger updates to WinForms visuals.
             _stylusInput.AsyncPluginCollection?.Add(new DataTriggerStylusPlugin(this));
 
-            AddInputPlugin(_stylusInput, new CanvasDrawingPlugin(_canvas, new WinFormsKeyboard()));
+            AddInputPlugin(_stylusInput, new CanvasDrawingPlugin(this, _canvas, new WinFormsKeyboard()));
 
             _stylusInput.Enabled = true; 
         }
@@ -225,7 +226,10 @@ namespace SlickWindows.Gui
             SetCursorForState();
             Invalidate();
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            if (_canvas != null) _canvas.Dpi = dpi;
+            if (_canvas != null) {
+                _canvas.Dpi = dpi;
+                _canvas.ResetTileCache();
+            }
         }
 
         private void SetCursorForState()

@@ -109,15 +109,20 @@ namespace SlickWindows.Canvas
 
 
             _lastSelectState = selected;
-            if (_cachable && !Locked) {
-                _renderCache = cache;
-            }
         }
-        
 
-        public void CommitCache(byte drawScale)
+        private static Rectangle GetTargetRectangle(double dx, double dy, byte drawScale, float visualScale)
         {
-            lock(_cacheLock){
+            var size = Size >> (drawScale - 1);
+            var rect = new Rectangle((int) Math.Floor(dx), (int) Math.Floor(dy),
+                (int) Math.Floor(size * visualScale + 1), (int) Math.Floor(size * visualScale+1));
+            return rect;
+        }
+
+
+        public void CommitCache(byte drawScale, float visualScale)
+        {
+              lock(_cacheLock){
                 _cachable = true;
                 _renderCache?.Dispose();
                 _renderCache = CopyDataToTexture(false, drawScale);
@@ -208,32 +213,48 @@ namespace SlickWindows.Canvas
 
         private const int Alpha = unchecked((int)0xff000000);
 
-        [NotNull]private TextureBrush CopyDataToTexture(bool selected, byte drawScale)
+        [NotNull]private TextureBrush CopyDataToTexture(bool selected, byte drawScale, Rectangle rect)
         {
-            var size = Size >> (drawScale - 1);
+            var width = rect.Width;
+            var height = rect.Height;
+
+            var size = Size >> (drawScale - 1); // size of source that is usable
             var sampleCount = Math.Min(size * size, Red.Length);
-            var bmp = new Bitmap(size, size, PixelFormat.Format32bppPArgb);
+            var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
 
             var bmpData = bmp.LockBits(
-                new Rectangle(0, 0, bmp.Width, bmp.Height),
+                new Rectangle(0, 0, width, height),
                 ImageLockMode.WriteOnly, bmp.PixelFormat);
+
+            var dx = size / (double)width;
+            var dy = size / (double)height;
 
             try
             {
-                // each plane, we scan through the data and copy bytes over
+                // We scan through the data and copy bytes over
+                // This is a point to do scaling
 
-                for (int i = 0; i < sampleCount; i++)
+                for (int y = 0; y < height; y++)
                 {
-                    var r = Red[i];
-                    var g = Green[i];
-                    var b = Blue[i];
+                    var oy = (int)(y * dy) * size;
 
-                    // TODO: draw hilight pen plane
+                    for (int x = 0; x < width; x++)
+                    {
+                        var j = x + y * width;
+                        var i = (int)(x * dx) + oy; // NN scaling. Should do better 
 
-                    if (selected) { r >>= 1; g >>= 1; b >>= 1; }
+                        if (i >= sampleCount) continue;
 
-                    Marshal.WriteInt32(bmpData.Scan0, i * sizeof(Int32), Alpha | (r << 16) | (g << 8) | (b));
+                        var r = Red[i];
+                        var g = Green[i];
+                        var b = Blue[i];
+                        
+                        if (selected) { r >>= 1; g >>= 1; b >>= 1; } // TODO: move this from cache to draw
+
+                        Marshal.WriteInt32(bmpData.Scan0, j * sizeof(Int32), Alpha | (r << 16) | (g << 8) | (b));
+                    }
                 }
+
             }
             catch
             {

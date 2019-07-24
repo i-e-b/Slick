@@ -6,13 +6,7 @@
     /// </summary>
     public class CanvasPixelPosition {
         public PositionKey TilePosition { get; set; }
-        public int X { get; set; }
-        public int Y { get; set; }
-
-        public void GetAbsolute(out double xOffset, out double yOffset)
-        {
-            xOffset = (TilePosition.X * TileImage.Size) + X;
-            yOffset = (TilePosition.Y * TileImage.Size) + Y;
-        }
+        public double X { get; set; }
+        public double Y { get; set; }
     }
 }
