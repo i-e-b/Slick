@@ -353,6 +353,7 @@ namespace SlickWindows.Canvas
         public void RenderToGraphics(Graphics g, int width, int height)
         {
             if (g == null) return;
+
             Width = width;
             Height = height;
 
@@ -500,6 +501,7 @@ namespace SlickWindows.Canvas
             }
 
             if (!_okToDraw) return;
+            _okToDraw = false;
 
             var pt = start;
             var dx = end.X - start.X;
@@ -518,22 +520,38 @@ namespace SlickWindows.Canvas
             }
             double radius;
 
+            int t = 0;
             // TODO: improve this.
             // Instead of drawing dots, get every covered tile, and draw the whole line to each
             for (double i = 0; i <= dd; i += radius)
             {
+                // Draw
                 var tiles = InkPoint(penSet, pt, out radius);
-                radius *= VisualScale / 4;
+
+                // occasionally update
+                if (t++ > 10)
+                {
+                    _invalidateAction?.Invoke();
+                    t = 0;
+                }
+
+                // add changed tiles to update lists
                 foreach (var tile in tiles)
                 {
                     _changedTiles.Add(tile);
                     _lastChangedTiles.Add(tile);
                 }
 
+                // move dot forward
+                radius *= VisualScale / 4;
                 pt.X += dx * radius;
                 pt.Y += dy * radius;
                 pt.Pressure += dp * radius;
             }
+            // Ensure we draw the final result
+            _invalidateAction?.Invoke();
+
+            _okToDraw = true;
         }
 
         private InkSettings GuessPen(bool isErase)

@@ -80,8 +80,11 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Invalidate()
         {
-            _renderCache?.Dispose();
-            _renderCache = null;
+            lock (_cacheLock)
+            {
+                _renderCache?.Dispose();
+                _renderCache = null;
+            }
         }
 
         public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale, float visualScale)
@@ -94,6 +97,7 @@ namespace SlickWindows.Canvas
             }
 
             var cache = _renderCache;
+
             if (cache == null)
             {
                 lock (_cacheLock)
@@ -102,8 +106,13 @@ namespace SlickWindows.Canvas
                 }
             }
 
-            cache.ResetTransform();
-            cache.TranslateTransform((int)dx, (int)dy);
+            try
+            {
+                cache.ResetTransform();
+                cache.TranslateTransform((int)dx, (int)dy);
+            }
+            catch { return; }
+
             g.FillRectangle(cache, rect);
 
             // overdraw if selected
@@ -113,10 +122,7 @@ namespace SlickWindows.Canvas
                 g.FillRectangle(hatch, rect);
             }
 
-            if (_canCache)
-            {
-                _renderCache = cache;
-            }
+            if (_canCache) { _renderCache = cache; }
         }
 
         private static Rectangle GetTargetRectangle(double dx, double dy, byte drawScale, float visualScale)
@@ -239,7 +245,7 @@ namespace SlickWindows.Canvas
             }
             else if (scale == 2)
             {
-                EPXT_2x(size, width, height, 64);
+                EPXT_2x(size, width, height, 5);
             }
             else
             {
@@ -278,7 +284,7 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Pixel art scaler for exactly 2x
         /// </summary>
-        public void EPXT_2x(int size, int width, int height, int maxDifference)
+        public void EPXT_2x(int size, int width, int height, int sigBits)
         {
             var srcWidth = size;
             var srcHeight = size;
@@ -312,10 +318,10 @@ namespace SlickWindows.Canvas
                         var _4 = dyo + dy + dx + 1;
 
                         var P = (int)small[syo + x];
-                        var A = (int)(small[syo + x - row] / maxDifference);
-                        var C = (int)(small[syo + x - col] / maxDifference);
-                        var B = (int)(small[syo + x + col] / maxDifference);
-                        var D = (int)(small[syo + x + row] / maxDifference);
+                        var A = (int)(small[syo + x - row] >> sigBits);
+                        var C = (int)(small[syo + x - col] >> sigBits);
+                        var B = (int)(small[syo + x + col] >> sigBits);
+                        var D = (int)(small[syo + x + row] >> sigBits);
                         
                         var v1 = P;
                         var v2 = P;
@@ -327,7 +333,6 @@ namespace SlickWindows.Canvas
                         if (D == C && D != B && C != A) { v3 = small[syo + x - col]; }
                         if (B == D && B != A && D != C) { v4 = small[syo + x + row]; }
 
-                        
                         raw[_1] |= v1 << shift;
                         raw[_2] |= v2 << shift;
                         raw[_3] |= v3 << shift;

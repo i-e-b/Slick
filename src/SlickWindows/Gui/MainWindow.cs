@@ -104,10 +104,7 @@ namespace SlickWindows.Gui
         }
 
         /// <inheritdoc />
-        public void DataCollected(RealTimeStylus sender)
-        {
-            UpdateWindowAndStatus();
-        }
+        public void DataCollected(RealTimeStylus sender) { }
 
         private void UpdateWindowAndStatus()
         {
