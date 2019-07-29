@@ -852,12 +852,15 @@ namespace SlickWindows.Canvas
         public void CrossLoadImage([NotNull] Image img, int px, int py, Size size)
         {
             // TODO: reverse the way this works. Sample tile points and find an image point to match?
-            using (var bmp = new Bitmap(img, size))
+            var visualSize = new Size((int) (size.Width * VisualScale), (int) (size.Height * VisualScale));
+            using (var bmp = new Bitmap(img, visualSize))
             {
                 // TODO: scaling when we're in 'map' mode in the canvas.
 
                 var width = bmp.Width;
                 var height = bmp.Height;
+                var offsetX = (int)(px * VisualScale);
+                var offsetY = (int)(py * VisualScale);
 
                 for (int y = 0; y < height; y++)
                 {
@@ -865,7 +868,8 @@ namespace SlickWindows.Canvas
                     {
                         var color = bmp.GetPixel(x, y);
                         if (color.R == 255 && color.G == 255 && color.B == 255) continue; // skip white pixels
-                        SetPixel(color, x + px, y + py);
+                        //SetPixel(color, (int)((x + px) * VisualScale), (int)((y + py) * VisualScale));
+                        SetPixel(color, x + offsetX, y + offsetY);
                     }
                 }
             }
@@ -887,7 +891,7 @@ namespace SlickWindows.Canvas
             if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
             var img = _canvasTiles[pk];
 
-            img?.DrawOnTile(loca.X, loca.Y, 2, color, InkType.Import, _drawScale);
+            img?.DrawOnTile(loca.X, loca.Y, 1, color, InkType.Import, _drawScale);
             _changedTiles.Add(pk);
         }
 
