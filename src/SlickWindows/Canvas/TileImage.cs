@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using JetBrains.Annotations;
 // ReSharper disable BuiltInTypeReferenceStyle
 
@@ -20,7 +21,8 @@ namespace SlickWindows.Canvas
         [NotNull] public readonly byte[] Red, Green, Blue, Hilight;
 
         // caching
-        [CanBeNull]private Bitmap _renderCache;
+        [CanBeNull]private TextureBrush _renderCache;
+        [NotNull] private readonly object _cacheLock = new object();
         private bool _lastSelectState;
         private volatile bool _cachable;
 
@@ -82,18 +84,28 @@ namespace SlickWindows.Canvas
 
         public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale)
         {
+            if (g==null) return;
+            var size = Size >> (drawScale - 1);
             if (Locked) {
-                var size = Size >> (drawScale - 1);
-                g?.FillRectangle(Brushes.Gray, (int)dx, (int)dy, size, size);
+                g.FillRectangle(Brushes.Gray, (int)dx, (int)dy, size, size);
                 return;
             }
 
-
             var cache = _renderCache;
             if (cache == null || selected != _lastSelectState) {
-                cache = CopyDataToBitmap(selected, drawScale);
+                lock (_cacheLock)
+                {
+                    cache?.Dispose();
+                    cache = CopyDataToTexture(selected, drawScale);
+                }
             }
-            g?.DrawImageUnscaled(cache, (int)dx, (int)dy);
+
+
+            cache.ResetTransform();
+            cache.TranslateTransform((int)dx, (int)dy);
+            g.FillRectangle(cache, (int)dx, (int)dy, size, size);
+
+
             _lastSelectState = selected;
             if (_cachable && !Locked) {
                 _renderCache = cache;
@@ -103,8 +115,11 @@ namespace SlickWindows.Canvas
 
         public void CommitCache(byte drawScale)
         {
-            _cachable = true;
-            _renderCache = CopyDataToBitmap(false, drawScale);
+            lock(_cacheLock){
+                _cachable = true;
+                _renderCache?.Dispose();
+                _renderCache = CopyDataToTexture(false, drawScale);
+            }
         }
 
         /// <summary>
@@ -189,7 +204,7 @@ namespace SlickWindows.Canvas
 
         private const int Alpha = unchecked((int)0xff000000);
 
-        [NotNull]private Bitmap CopyDataToBitmap(bool selected, byte drawScale)
+        [NotNull]private TextureBrush CopyDataToTexture(bool selected, byte drawScale)
         {
             var size = Size >> (drawScale - 1);
             var sampleCount = Math.Min(size * size, Red.Length);
@@ -225,7 +240,9 @@ namespace SlickWindows.Canvas
                 bmp.UnlockBits(bmpData);
             }
 
-            return bmp;
+            var texture = new TextureBrush(bmp);
+            bmp.Dispose();
+            return texture;
         }
     }
 }

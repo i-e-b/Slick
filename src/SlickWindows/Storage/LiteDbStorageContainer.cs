@@ -26,13 +26,14 @@ namespace SlickWindows.Storage
 
             var nodes = _db.GetCollection<StorageNode>("map");
             nodes?.EnsureIndex("_id", unique: true);
+            nodes?.EnsureIndex("Id");
         }
 
         /// <inheritdoc />
         public Result<StorageNode> Exists(string path)
         {
             var nodes = _db.GetCollection<StorageNode>("map");
-            var node = nodes?.Find(Query.In("_id", path), skip: 0, limit: 1)?.SingleOrDefault();
+            var node = nodes?.FindById(path);
 
             return (node == null || node.IsDeleted)
                 ? Result<StorageNode>.Failure(NotFound)
