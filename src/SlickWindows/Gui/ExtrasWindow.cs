@@ -29,6 +29,7 @@ namespace SlickWindows.Gui
         {
             if (_importFloat == null) return;
 
+            _importFloat.NormaliseControlScale();
             string path;
             var result = loadImageDialog?.ShowDialog();
             switch (result)

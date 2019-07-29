@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickWindows.Canvas;
+using SlickWindows.Gui.Components;
 
 namespace SlickWindows.Gui
 {
@@ -22,11 +23,21 @@ namespace SlickWindows.Gui
         private bool _scaling;
         private int _dx,_dy;
         private Image _candidateImage;
+        private int _scale;
 
         public FloatingImage()
         {
+            // Read scale
+            var asf = ParentForm as AutoScaleForm;
+            var dpi = asf?.Dpi ?? DeviceDpi;
+            _scale = (dpi > 120) ? 2 : 1;
+
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             InitializeComponent();
+        }
+
+        public void NormaliseControlScale() {
+            mergeButton.Left = Width - mergeButton.Width;
         }
 
         /// <inheritdoc />
@@ -108,7 +119,7 @@ namespace SlickWindows.Gui
 
             var corner = (Width - _dx) + (Height - _dy);
 
-            _scaling = (corner < 24);
+            _scaling = (corner < 24 * _scale);
             Capture = true;
 
             base.OnMouseDown(e);
