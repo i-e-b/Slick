@@ -22,6 +22,7 @@ namespace SlickWindows.Canvas
         [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
         [NotNull] private readonly Queue<TileSource> _imageQueue = new Queue<TileSource>();
         [CanBeNull] private volatile IStorageContainer _storage;
+        private string _storagePath;
 
         [NotNull] private readonly ManualResetEventSlim _updateTileCache;
         [NotNull] private readonly ManualResetEventSlim _updateTileData;
@@ -68,8 +69,6 @@ namespace SlickWindows.Canvas
         {
             _okToDraw = false;
             if (string.IsNullOrWhiteSpace(pageFilePath)) throw new ArgumentNullException(nameof(pageFilePath));
-            Directory.CreateDirectory(Path.GetDirectoryName(pageFilePath) ?? "");
-            _storage = new LiteDbStorageContainer(pageFilePath);
 
             _updateTileCache = new ManualResetEventSlim(true);
             _updateTileData = new ManualResetEventSlim(false);
@@ -90,6 +89,7 @@ namespace SlickWindows.Canvas
             DpiY = deviceDpi;
             _xOffset = 0.0;
             _yOffset = 0.0;
+            ChangeBasePath(pageFilePath);
 
             // Load on a different thread so the screen comes up fast
             RunAsyncWorkers();
@@ -269,7 +269,6 @@ namespace SlickWindows.Canvas
                 Name = "Image saving worker"
             }.Start();
         }
-
 
 
         [NotNull]
@@ -593,23 +592,31 @@ namespace SlickWindows.Canvas
         {
             _okToDraw = false;
             lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
-                    {
-                        // wipe state
-                        _imageQueue.Clear();
-                        _changedTiles.Clear();
-                        _canvasTiles.Clear();
-                        _selectedTiles.Clear();
+            {
+                // wipe state
+                _imageQueue.Clear();
+                _changedTiles.Clear();
+                _canvasTiles.Clear();
+                _selectedTiles.Clear();
 
-                        // change storage
-                        Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
-                        _storage = new LiteDbStorageContainer(newPath);
+                // change storage
+                _storage?.Dispose();
+                Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
+                _storage = new LiteDbStorageContainer(newPath);
+                _storagePath = newPath;
 
-                        // re-centre
-                        _xOffset = 0;
-                        _yOffset = 0;
-                    }
+                // re-centre
+                _xOffset = 0;
+                _yOffset = 0;
+            }
             _updateTileCache.Set();
             _invalidateAction?.Invoke();
+        }
+        
+
+        public string FileName()
+        {
+            return Path.GetFileNameWithoutExtension(_storagePath);
         }
 
         /// <summary>

@@ -192,7 +192,10 @@ namespace SlickWindows.ImageFormats
 
                 using (var gs = new DeflateStream(storedData, CompressionMode.Decompress))
                 {
-                    DataEncoding.FibonacciDecode(gs, buffer);
+                    var ms = new MemoryStream(sampleCount);
+                    gs.CopyTo(ms);
+                    ms.Seek(0, SeekOrigin.Begin);
+                    DataEncoding.FibonacciDecode(ms, buffer);
                 }
 
                 // Re-expand co-efficients

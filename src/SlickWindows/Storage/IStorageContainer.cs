@@ -1,10 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Containers;
 using Containers.Types;
 
 namespace SlickWindows.Storage
 {
-    public interface IStorageContainer
+    public interface IStorageContainer: IDisposable
     {
         /// <summary>
         /// Check if there is a storage node at the given path

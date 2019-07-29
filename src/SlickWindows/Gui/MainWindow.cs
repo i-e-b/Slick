@@ -46,6 +46,8 @@ namespace SlickWindows.Gui
 
             if (saveFileDialog != null) saveFileDialog.InitialDirectory = DefaultLocation;
 
+            UpdateWindowAndStatus();
+
             _stylusInput = new RealTimeStylus(this, true);
             _stylusInput.MultiTouchEnabled = true;
             _stylusInput.AllTouchEnabled = true;
@@ -101,7 +103,7 @@ namespace SlickWindows.Gui
 
         private void UpdateWindowAndStatus()
         {
-            Text = $"Slick ({_canvas.X}, {_canvas.Y}); ({Width} x {Height}) {_lastScalePercent:#}%";
+            Text = $"{_canvas.FileName()} - Slick {_lastScalePercent:#}%";
             Invalidate();
         }
 
@@ -124,7 +126,6 @@ namespace SlickWindows.Gui
             mapButton.Text = (_scale == EndlessCanvas.MaxScale) ? "Canvas" : "Map";
 
             SetCursorForState();
-
             UpdateWindowAndStatus();
         }
 
@@ -142,6 +143,7 @@ namespace SlickWindows.Gui
                 case DialogResult.OK:
                 case DialogResult.Yes:
                     _canvas.ChangeBasePath(saveFileDialog.FileName);
+                    UpdateWindowAndStatus();
                     Invalidate();
                     return;
 
