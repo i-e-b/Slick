@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using JetBrains.Annotations;
 // ReSharper disable BuiltInTypeReferenceStyle
 
@@ -19,12 +20,12 @@ namespace SlickWindows.Canvas
         // Image planes:
         // The RGB planes are as you'd expect. Hilight is a special indexed plane: 0 is transparent.
         [NotNull] public readonly byte[] Red, Green, Blue, Hilight;
-        [NotNull]private readonly int[] raw;
 
         // caching
         [CanBeNull]private TextureBrush _renderCache;
         [NotNull] private readonly object _cacheLock = new object();
-        private volatile bool _canCache;
+        private bool _lastSelectState;
+        private volatile bool _cachable;
 
         /// <summary>
         /// If 'locked' is set, commands to draw will be ignored
@@ -46,7 +47,6 @@ namespace SlickWindows.Canvas
             Green = new byte[Pixels];
             Blue = new byte[Pixels];
             Hilight = new byte[Pixels];
-            raw = new int[Pixels* 8];
             var r = background.R;
             var g = background.G;
             var b = background.B;
@@ -80,61 +80,52 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Invalidate()
         {
-            _renderCache?.Dispose();
             _renderCache = null;
         }
 
         public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale, float visualScale)
         {
             if (g==null) return;
-            var rect = GetTargetRectangle(dx,dy, drawScale, visualScale);
+            var size = Size >> (drawScale - 1);
             if (Locked) {
-                g.FillRectangle(Brushes.Gray, rect);
+                g.FillRectangle(Brushes.Gray, (int)dx, (int)dy, size, size);
                 return;
             }
 
             var cache = _renderCache;
-            if (cache == null)
-            {
+            if (cache == null || selected != _lastSelectState) {
                 lock (_cacheLock)
                 {
-                    cache = CopyDataToTexture(drawScale, rect);
+                    cache?.Dispose();
+                    cache = CopyDataToTexture(selected, drawScale);
                 }
             }
 
+
+// TODO: need to do visual (dpi) scaling
             cache.ResetTransform();
             cache.TranslateTransform((int)dx, (int)dy);
-            g.FillRectangle(cache, rect);
+            g.FillRectangle(cache, (int)dx, (int)dy, size, size);
 
-            // overdraw if selected
-            if (selected)
-            {
-                var hatch = new HatchBrush(HatchStyle.SmallCheckerBoard, Color.Transparent);
-                g.FillRectangle(hatch, rect);
-            }
 
-            if (_canCache)
-            {
-                _renderCache = cache;
-            }
+            _lastSelectState = selected;
         }
 
         private static Rectangle GetTargetRectangle(double dx, double dy, byte drawScale, float visualScale)
         {
             var size = Size >> (drawScale - 1);
             var rect = new Rectangle((int) Math.Floor(dx), (int) Math.Floor(dy),
-                (int)Math.Floor(size * visualScale + 0.5), (int)Math.Floor(size * visualScale + 0.5));
+                (int) Math.Floor(size * visualScale + 1), (int) Math.Floor(size * visualScale+1));
             return rect;
         }
 
 
         public void CommitCache(byte drawScale, float visualScale)
         {
-            _canCache = true;
-            var rect = GetTargetRectangle(0, 0, drawScale, visualScale);
-            lock (_cacheLock){
+              lock(_cacheLock){
+                _cachable = true;
                 _renderCache?.Dispose();
-                _renderCache = CopyDataToTexture(drawScale, rect);
+                _renderCache = CopyDataToTexture(false, drawScale);
             }
         }
 
@@ -222,180 +213,65 @@ namespace SlickWindows.Canvas
 
         private const int Alpha = unchecked((int)0xff000000);
 
-        [NotNull]private TextureBrush CopyDataToTexture(byte drawScale, Rectangle rect)
+<<<<<<< HEAD
+        [NotNull]private TextureBrush CopyDataToTexture(bool selected, byte drawScale)
+=======
+        [NotNull]private Bitmap CopyDataToBitmap(bool selected, byte drawScale, Rectangle rect)
+>>>>>>> more canvas dpi work
         {
             var width = rect.Width;
             var height = rect.Height;
 
             var size = Size >> (drawScale - 1); // size of source that is usable
             var sampleCount = Math.Min(size * size, Red.Length);
+            var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
 
-            var scale = width / size;
+            var bmpData = bmp.LockBits(
+                new Rectangle(0, 0, width, height),
+                ImageLockMode.WriteOnly, bmp.PixelFormat);
 
-            // scale / copy into the managed 'raw' array
-            if (scale == 1)
+            var dx = size / (double)width;
+            var dy = size / (double)height;
+
+            try
             {
-                Scale_1to1(size, sampleCount);
-            }
-            else if (scale == 2)
-            {
-                EPXT_2x(size, width, height, 64);
-            }
-            else
-            {
-                // weird scale. Handle with a dumb nearest-neighbor for now.
-                ScaleNearestNeighbour(size, width, height, sampleCount);
-            }
+                // We scan through the data and copy bytes over
+                // This is a point to do scaling
 
-
-            // Copy managed memory over to texture brush
-            return RawToTextureBrush(width, height);
-        }
-
-        
-        private void Scale_1to1(int size, int sampleCount)
-        {
-            // We scan through the data and copy bytes over
-            // This is a point to do scaling
-
-            for (int y = 0; y < size; y++)
-            {
-                var oy = y * size;
-
-                for (int x = 0; x < size; x++)
+                for (int y = 0; y < height; y++)
                 {
-                    var i = x + oy;
+                    var oy = (int)(y * dy) * size;
 
-                    var r = Red[i];
-                    var g = Green[i];
-                    var b = Blue[i];
-
-                    raw[i] = Alpha | (r << 16) | (g << 8) | (b);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Pixel art scaler for exactly 2x
-        /// </summary>
-        public void EPXT_2x(int size, int width, int height, int maxDifference)
-        {
-            var srcWidth = size;
-            var srcHeight = size;
-            var dstWidth = width;
-
-            for (int i = 0; i < width*height; i++)
-            {
-                raw[i] = Alpha;
-            }
-
-            var dy = dstWidth;
-            for (int plane = 0; plane < 3; plane++)
-            {
-                var small = Pick(plane, Blue, Green, Red);
-                int shift = plane * 8;
-
-                for (int y = 0; y < srcHeight; y++)
-                {
-                    var dyo = 2 * y * dstWidth;
-                    var syo = y * srcWidth;
-                    var row = (y == 0 || y == srcHeight - 1) ? 0 : srcWidth;
-
-                    for (int x = 0; x < srcWidth; x++)
+                    for (int x = 0; x < width; x++)
                     {
-                        var dx = 2 * x;
-                        var col = (x == 0 || x == srcWidth - 1) ? 0 : 1;
+                        var j = x + y * width;
+                        var i = (int)(x * dx) + oy; // NN scaling. Should do better 
 
-                        var _1 = dyo + dx;
-                        var _2 = dyo + dx + 1;
-                        var _3 = dyo + dy + dx;
-                        var _4 = dyo + dy + dx + 1;
+                        if (i >= sampleCount) continue;
 
-                        var P = (int)small[syo + x];
-                        var A = (int)(small[syo + x - row] / maxDifference);
-                        var C = (int)(small[syo + x - col] / maxDifference);
-                        var B = (int)(small[syo + x + col] / maxDifference);
-                        var D = (int)(small[syo + x + row] / maxDifference);
+                        var r = Red[i];
+                        var g = Green[i];
+                        var b = Blue[i];
                         
-                        var v1 = P;
-                        var v2 = P;
-                        var v3 = P;
-                        var v4 = P;
+                        if (selected) { r >>= 1; g >>= 1; b >>= 1; } // TODO: move this from cache to draw
 
-                        if (C == A && C != D && A != B) { v1 = small[syo + x - row]; }
-                        if (A == B && A != C && B != D) { v2 = small[syo + x + col]; }
-                        if (D == C && D != B && C != A) { v3 = small[syo + x - col]; }
-                        if (B == D && B != A && D != C) { v4 = small[syo + x + row]; }
-
-                        
-                        raw[_1] |= v1 << shift;
-                        raw[_2] |= v2 << shift;
-                        raw[_3] |= v3 << shift;
-                        raw[_4] |= v4 << shift;
+                        Marshal.WriteInt32(bmpData.Scan0, j * sizeof(Int32), Alpha | (r << 16) | (g << 8) | (b));
                     }
                 }
+
             }
-        }
-
-        private void ScaleNearestNeighbour(int size, int width, int height, int sampleCount)
-        {
-            var dx = size / (double) width;
-            var dy = size / (double) height;
-
-            // We scan through the data and copy bytes over
-            // This is a point to do scaling
-
-            for (int y = 0; y < height; y++)
+            catch
             {
-                var oy = (int) (y * dy) * size;
-
-                for (int x = 0; x < width; x++)
-                {
-                    var j = x + y * width;
-                    var i = (int) (x * dx) + oy; // NN scaling. Should do better 
-
-                    if (i >= sampleCount) continue;
-
-                    var r = Red[i];
-                    var g = Green[i];
-                    var b = Blue[i];
-
-                    raw[j] = Alpha | (r << 16) | (g << 8) | (b);
-                }
+                // ignore draw races
             }
-        }
-
-        [NotNull]private TextureBrush RawToTextureBrush(int width, int height)
-        {
-            using (var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb))
+            finally
             {
-                BitmapData bmpData = null;
-                try
-                {
-                    bmpData = bmp.LockBits(
-                        new Rectangle(0, 0, width, height),
-                        ImageLockMode.WriteOnly, bmp.PixelFormat);
-
-                    Marshal.Copy(raw, 0, bmpData.Scan0, width * height);
-                }
-                catch
-                {
-                    /* ignore draw races */
-                }
-                finally
-                {
-                    bmp.UnlockBits(bmpData);
-                }
-
-                var texture = new TextureBrush(bmp);
-                return texture;
+                bmp.UnlockBits(bmpData);
             }
-        }
 
-        
-        private static T Pick<T>(int i, params T[] stuff)
-        {
-            return stuff[i];
+            var texture = new TextureBrush(bmp);
+            bmp.Dispose();
+            return texture;
         }
     }
 }

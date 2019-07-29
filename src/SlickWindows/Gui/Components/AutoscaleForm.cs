@@ -12,14 +12,20 @@ namespace SlickWindows.Gui.Components
     public class AutoScaleForm:Form
     {
         public short Dpi = 0, LastDpi = 0;
-        protected short OriginalDpi = 92;
+        protected short OriginalDpi = 0;
         protected float OriginalFontSize;
-        [NotNull] private readonly Dictionary<short, Font> _scaleFonts;
+        [NotNull] private readonly Dictionary<short, Font> _scaleFonts = new Dictionary<short, Font>();
 
         public AutoScaleForm()
         {
             OriginalFontSize = Font.Size;
-            _scaleFonts = new Dictionary<short, Font>();
+            
+            using (var win = new Window(this))
+            {
+                var screen = win.PrimaryScreen();
+                screen.GetDpi(out var dx, out var dy);
+                Dpi = LastDpi = OriginalDpi = (short)Math.Min(dx, dy);
+            }
         }
 
         protected override void WndProc(ref Message m)
@@ -50,13 +56,16 @@ namespace SlickWindows.Gui.Components
                 var screen = win.PrimaryScreen();
                 screen.GetDpi(out var dx, out var dy);
                 Dpi = (short)Math.Min(dx, dy);
-                if (LastDpi == Dpi) {
+                if (OriginalDpi < 90 || LastDpi == Dpi) {
                     _midFlow = false;
                     return;
                 }
                 LastDpi = Dpi;
 
                 var scale = Dpi / (float)OriginalDpi;
+
+                // TODO: gate the DPI to round numbers here?
+
                 Font = PickFont(Dpi, scale);
 
                 // If this control has been this size before, set back to original size.

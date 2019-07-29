@@ -59,14 +59,23 @@ namespace SlickWindows.Canvas
             get { return _dpi; }
             set
             {
-                if (value > 90 && value < 99) _dpi = 96; // allow some tolerance to use Windows 1:1
-                else _dpi = value;
+                if (value < 100) _dpi = 96; // allow some tolerance to use Windows 1:1
+                else _dpi = 192; // 2:1
             }
         }
 
         private byte _drawScale = 1;
 
-        public float VisualScale => Dpi / 96.0f;
+        public float VisualScale
+        {
+            get {
+                // we can do some sice stuff if we gate to round numbers
+                var exact = Dpi / 96.0f;
+                if (exact < 1.5) return 1.0f;
+                return 2.0f;
+            }
+        }
+
         public float TileSize => (TileImage.Size >> (_drawScale - 1)) * VisualScale;
 
         public const int MaxScale = 3;
@@ -99,7 +108,7 @@ namespace SlickWindows.Canvas
             _selectedTiles = new HashSet<PositionKey>();
             _inSelectMode = false;
 
-            Dpi = deviceDpi;
+            Dpi = deviceDpi; // 96 is 1:1
             _invalidateAction = invalidateAction;
             _xOffset = 0.0;
             _yOffset = 0.0;
@@ -325,9 +334,11 @@ namespace SlickWindows.Canvas
             var brLoc = ScreenToCanvas(width * scale, Height * scale);
 
             var result = new List<PositionKey>();
-            for (int y = tlLoc.TilePosition.Y; y <= brLoc.TilePosition.Y + 2; y++)
+            var tlPos = tlLoc.TilePosition ?? throw new Exception("TL tile position lookup failed");
+            var brPos = brLoc.TilePosition ?? throw new Exception("BR tile position lookup failed");
+            for (int y = tlPos.Y; y <= brPos.Y + 2; y++)
             {
-                for (int x = tlLoc.TilePosition.X; x <= brLoc.TilePosition.X + 3; x++)
+                for (int x = tlPos.X; x <= brPos.X + 3; x++)
                 {
                     result.Add(new PositionKey(x, y));
                 }
