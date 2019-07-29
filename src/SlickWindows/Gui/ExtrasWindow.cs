@@ -114,7 +114,10 @@ namespace SlickWindows.Gui
 
         private void TextInputButton_Click(object sender, EventArgs e)
         {
-            if (_textFloat != null) _textFloat.Visible = true;
+            if (_textFloat != null) {
+                _textFloat.NormaliseControlScale();
+                _textFloat.Visible = true;
+            }
             Close();
         }
     }

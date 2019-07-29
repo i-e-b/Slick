@@ -94,13 +94,13 @@ namespace SlickWindows.Gui
             _ignoreDraw = true;
             lock (_drawLock)
             {
-                _canvas.RenderToGraphics(e.Graphics, Width, Height);
+                _canvas.RenderToGraphics(e.Graphics, Width, Height, e.ClipRectangle);
             }
             _ignoreDraw = false;
         }
 
-        public void CanvasChanged() {
-            Invalidate();
+        public void CanvasChanged(Rectangle dirtyRect) {
+            Invalidate(dirtyRect);
         }
 
         /// <inheritdoc />
@@ -244,7 +244,10 @@ namespace SlickWindows.Gui
 
         private void TextButton_Click(object sender, EventArgs e)
         {
-            if (floatingText1 != null) floatingText1.Visible = true;
+            if (floatingText1 != null) {
+                floatingText1.NormaliseControlScale();
+                floatingText1.Visible = true;
+            }
         }
     }
 }

@@ -32,7 +32,7 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Display from the current offset into a graphics output
         /// </summary>
-        void RenderToGraphics(Graphics g, int width, int height);
+        void RenderToGraphics(Graphics g, int width, int height, Rectangle clipRect);
 
         /// <summary>
         /// Draw the selected tiles, from a given offset, into a bitmap image.

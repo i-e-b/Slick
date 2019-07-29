@@ -33,7 +33,7 @@ namespace SlickWindows.Canvas
         // For drawing/inking
         [NotNull] private readonly Dictionary<int, InkSettings> _inkSettings;
         private InkSettings _lastPen;
-        private readonly Action _invalidateAction;
+        private readonly Action<Rectangle> _invalidateAction;
 
         // History
         [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
@@ -89,7 +89,7 @@ namespace SlickWindows.Canvas
         /// <param name="invalidateAction">Optional action to call when drawing area becomes invalid</param>
         /// <param name="width">Initial display width (can be oversize if not known)</param>
         /// <param name="height">Initial display height (can be oversize if not known)</param>
-        public EndlessCanvas(int width, int height, int deviceDpi, string pageFilePath, Action invalidateAction)
+        public EndlessCanvas(int width, int height, int deviceDpi, string pageFilePath, Action<Rectangle> invalidateAction)
         {
             _okToDraw = false;
             if (string.IsNullOrWhiteSpace(pageFilePath)) throw new ArgumentNullException(nameof(pageFilePath));
@@ -125,9 +125,6 @@ namespace SlickWindows.Canvas
             };
         }
 
-        // TODO:
-        // These two functions should be the core of all interactions with the canvas.
-        // The existing functionality has got way too messy.
 
         /// <summary>
         /// Convert a screen position to a canvas pixel
@@ -155,6 +152,21 @@ namespace SlickWindows.Canvas
                 TilePosition = new PositionKey(tx,ty),
                 X = ax, Y = ay
             };
+        }
+
+        public void CanvasToScreen(PositionKey tilePos, out float x, out float y)
+        {
+            if (tilePos == null) {
+                x = 0; y = 0;
+                return;
+            }
+
+            var displaySize = TileSize;
+            var offset_x = (int)_xOffset >> (_drawScale - 1);
+            var offset_y = (int)_yOffset >> (_drawScale - 1);
+
+            x = (tilePos.X * displaySize) - offset_x;
+            y = (tilePos.Y * displaySize) - offset_y;
         }
 
         private void RunAsyncWorkers()
@@ -192,7 +204,7 @@ namespace SlickWindows.Canvas
                                 var data = _storage.Read(name, "img", version);
                                 if (!data.IsSuccess) continue; // bad node data
 
-                                var image = new TileImage(Color.DarkGray, _drawScale) { Locked = true };
+                                var image = new TileImage(tile, Color.DarkGray, _drawScale) { Locked = true };
                                 _canvasTiles.Add(tile, image);
 
                                 lock (_dataQueueLock)
@@ -203,6 +215,7 @@ namespace SlickWindows.Canvas
                             }
 
                             _okToDraw = true;
+                            _invalidateAction?.Invoke(new Rectangle(0,0,0,0)); // redraw with what we have
 
                             // unload any old tiles
                             PositionKey[] loadedTiles = null;
@@ -223,8 +236,6 @@ namespace SlickWindows.Canvas
                                     _canvasTiles.Remove(old);
                                 }
                             }
-
-                            _invalidateAction?.Invoke(); // redraw with what we have
                         }
                     }
                 })
@@ -254,7 +265,7 @@ namespace SlickWindows.Canvas
                         info.Image.Invalidate();
                         info.Image.Locked = false;
                         info.Image.CommitCache(_drawScale, VisualScale);
-                        _invalidateAction?.Invoke(); // redraw with final image
+                        _invalidateAction?.Invoke(VisualRectangle(info.Image.Position)); // redraw with final image
                     }
                 }
             })
@@ -325,6 +336,12 @@ namespace SlickWindows.Canvas
             }.Start();
         }
 
+        private Rectangle VisualRectangle(PositionKey tile)
+        {
+            CanvasToScreen(tile, out var x, out var y);
+            return new Rectangle((int)x, (int)y, (int)TileSize, (int)TileSize);
+        }
+
         [NotNull]
         public List<PositionKey> VisibleTiles(int width, int height)
         {
@@ -350,12 +367,16 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Display from the current offset into a graphics output
         /// </summary>
-        public void RenderToGraphics(Graphics g, int width, int height)
+        public void RenderToGraphics(Graphics g, int width, int height, Rectangle clipRect)
         {
             if (g == null) return;
 
             Width = width;
             Height = height;
+
+            if (clipRect.Width < 1 || clipRect.Height < 1) {
+                clipRect = new Rectangle(0, 0, width, height);
+            }
 
             PositionKey[] toDraw;
             try
@@ -373,20 +394,15 @@ namespace SlickWindows.Canvas
                 TileImage ti;
                 try { ti = _canvasTiles[index]; } catch { continue; } // happens in race conditions
 
-                // change render locations based on scale
-                var displaySize = TileSize;
-                var offset_x = (int)_xOffset >> (_drawScale - 1);
-                var offset_y = (int)_yOffset >> (_drawScale - 1);
-
-                var dx = (index.X * displaySize) - offset_x;
-                var dy = (index.Y * displaySize) - offset_y;
-
                 // if offscreen, don't bother
-                if (dx > width || dx < -displaySize || dy > height || dy < -displaySize) continue;
+                var rect = VisualRectangle(index);
+
+                if (rect.Left > clipRect.Right || rect.Right < clipRect.Left
+                 || rect.Top > clipRect.Bottom || rect.Bottom < clipRect.Top) continue;
 
                 // draw tile
                 var hilite = _selectedTiles.Contains(index);
-                ti?.Render(g, dx, dy, hilite, _drawScale, VisualScale);
+                ti?.Render(g, rect.Left, rect.Top, hilite, _drawScale, VisualScale);
             }
         }
 
@@ -406,7 +422,7 @@ namespace SlickWindows.Canvas
             var data = _storage.Read(name, "img", version);
             if (!data.IsSuccess) return null; // bad node data
 
-            var image = new TileImage();
+            var image = new TileImage(tile);
             var fileData = InterleavedFile.ReadFromStream(data);
             if (fileData != null) WaveletCompress.Decompress(fileData, image, 1);
             return image;
@@ -520,7 +536,6 @@ namespace SlickWindows.Canvas
             }
             double radius;
 
-            int t = 0;
             // TODO: improve this.
             // Instead of drawing dots, get every covered tile, and draw the whole line to each
             for (double i = 0; i <= dd; i += radius)
@@ -528,16 +543,10 @@ namespace SlickWindows.Canvas
                 // Draw
                 var tiles = InkPoint(penSet, pt, out radius);
 
-                // occasionally update
-                if (t++ > 10)
-                {
-                    _invalidateAction?.Invoke();
-                    t = 0;
-                }
-
                 // add changed tiles to update lists
                 foreach (var tile in tiles)
                 {
+                    _invalidateAction?.Invoke(VisualRectangle(tile));
                     _changedTiles.Add(tile);
                     _lastChangedTiles.Add(tile);
                 }
@@ -548,8 +557,6 @@ namespace SlickWindows.Canvas
                 pt.Y += dy * radius;
                 pt.Pressure += dp * radius;
             }
-            // Ensure we draw the final result
-            _invalidateAction?.Invoke();
 
             _okToDraw = true;
         }
@@ -590,7 +597,7 @@ namespace SlickWindows.Canvas
                 foreach (var pk in possibleTiles)
                 {
                     var needsAdd = !_canvasTiles.ContainsKey(pk);
-                    var img = needsAdd ? new TileImage() : _canvasTiles[pk];
+                    var img = needsAdd ? new TileImage(pk) : _canvasTiles[pk];
                     if (needsAdd) _canvasTiles.Add(pk, img);
 
                     var ax = loca.X + (tx - pk.X) * TileImage.Size;
@@ -667,7 +674,7 @@ namespace SlickWindows.Canvas
                 _yOffset = 0;
             }
             _updateTileCache.Set();
-            _invalidateAction?.Invoke();
+            _invalidateAction?.Invoke(new Rectangle(0,0,0,0));
         }
         
 
@@ -690,7 +697,7 @@ namespace SlickWindows.Canvas
                         _canvasTiles.Clear();
                     }
             _updateTileCache.Set();
-            _invalidateAction?.Invoke();
+            _invalidateAction?.Invoke(new Rectangle(0,0,0,0));
         }
 
 
@@ -759,20 +766,15 @@ namespace SlickWindows.Canvas
             if (_drawScale <= 1) return; // already zoomed in
                                          // wX,Y are in screen scale, window co-ordinates
 
-            // TODO: this is not working nicely
+            // Centre on clicked area
+            _xOffset += (wX - (Width / 2)) << (_drawScale - 1);
+            _yOffset += (wY - (Height / 2)) << (_drawScale - 1);
 
-            // convert window coords to offsets
-            var loca = ScreenToCanvas(wX, wY);
-
-            // centre on the clicked point
-            _xOffset = (loca.TilePosition.X * TileImage.Size) + loca.X;
-            _yOffset = (loca.TilePosition.Y * TileImage.Size) + loca.Y;
-
-            // centre on screen
-            _xOffset -= Width / (2.0 * VisualScale);
-            _yOffset -= Height / (2.0 * VisualScale);
-
-            // set zoom level
+            // zoom in on centre
+            _xOffset += (Width << (_drawScale - 1)) / 2.0;
+            _yOffset += (Height << (_drawScale - 1)) / 2.0;
+            _xOffset -= Width / 2.0;
+            _yOffset -= Height / 2.0;
             _drawScale = 1;
 
             ResetTileCache();
@@ -794,8 +796,6 @@ namespace SlickWindows.Canvas
 
         public void WritePinAtCurrentOffset(string text)
         {
-            if (_storage == null) return;
-
             lock (_storageLock)
             {
                 // tile location for middle of screen
@@ -804,6 +804,7 @@ namespace SlickWindows.Canvas
 
                 var loca = ScreenToCanvas(x,y);
 
+                if (_storage == null || loca.TilePosition == null) return;
                 _storage.SetPin(loca.TilePosition.ToString(), text);
             }
         }
@@ -814,18 +815,11 @@ namespace SlickWindows.Canvas
             var pos = PositionKey.Parse(pin.Id);
             if (pos == null) return;
 
-            // tiles from window corner to window centre
-            var wX = Width / 2;
-            var wY = Height / 2;
-            wX <<= (_drawScale - 1);
-            wY <<= (_drawScale - 1);
-
-            // we have a tile index. Set the offset based on this
-            _xOffset = pos.X * TileImage.Size - wX;
-            _yOffset = pos.Y * TileImage.Size - wY;
+            _xOffset = (pos.X * TileSize);
+            _yOffset = (pos.Y * TileSize);
 
             _updateTileCache.Set();
-            _invalidateAction?.Invoke();
+            _invalidateAction?.Invoke(new Rectangle(0,0,0,0));
         }
 
         public void DeletePin(InfoPin pin)
@@ -844,7 +838,7 @@ namespace SlickWindows.Canvas
             if (_inSelectMode == false)
             {
                 _selectedTiles.Clear();
-                _invalidateAction?.Invoke();
+                _invalidateAction?.Invoke(new Rectangle(0,0,0,0));
             }
             return _inSelectMode;
         }
@@ -860,7 +854,7 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Invalidate()
         {
-            _invalidateAction?.Invoke();
+            _invalidateAction?.Invoke(new Rectangle(0,0,0,0));
         }
 
         /// <summary>
@@ -906,7 +900,7 @@ namespace SlickWindows.Canvas
             var loca = ScreenToCanvas(x,y);
             var pk = loca.TilePosition ?? throw new Exception("Screen index failed");
 
-            if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage());
+            if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage(pk));
             var img = _canvasTiles[pk];
 
             img?.DrawOnTile(loca.X, loca.Y, 1, color, InkType.Import, _drawScale);

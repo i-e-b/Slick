@@ -31,16 +31,23 @@ namespace SlickWindows.Canvas
         /// </summary>
         public volatile bool Locked;
 
+        public int Width { get { return Size; } }
+        public int Height { get { return Size; } }
+        public PositionKey Position { get; set; }
+
+
+
         /// <summary>
         /// Create a default blank tile
         /// </summary>
-        public TileImage() : this(Color.White, 1) { }
+        public TileImage(PositionKey pos) : this(pos, Color.White, 1) { }
 
         /// <summary>
         /// Tile image where we expect data to be loaded later
         /// </summary>
-        public TileImage(Color background, byte scale)
+        public TileImage(PositionKey pos, Color background, byte scale)
         {
+            Position = pos;
             var samples = Pixels >> (scale - 1);
             Red = new byte[Pixels];
             Green = new byte[Pixels];
@@ -60,8 +67,6 @@ namespace SlickWindows.Canvas
             }
         }
 
-        public int Width { get { return Size; } }
-        public int Height { get { return Size; } }
 
         public bool ImageIsBlank()
         {
