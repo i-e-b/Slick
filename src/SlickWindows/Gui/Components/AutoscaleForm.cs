@@ -14,18 +14,35 @@ namespace SlickWindows.Gui.Components
         public short Dpi = 0, LastDpi = 0;
         protected short OriginalDpi = 0;
         protected float OriginalFontSize;
+
+
         [NotNull] private readonly Dictionary<short, Font> _scaleFonts = new Dictionary<short, Font>();
+        [NotNull] private readonly Dictionary<Control, Dictionary<short, LayoutRect>> _layoutCache = new Dictionary<Control, Dictionary<short, LayoutRect>>();
 
         public AutoScaleForm()
         {
             OriginalFontSize = Font.Size;
-            
+
+            SetInitialDPI();
+        }
+
+        private void SetInitialDPI()
+        {
             using (var win = new Window(this))
             {
                 var screen = win.PrimaryScreen();
                 screen.GetDpi(out var dx, out var dy);
-                Dpi = LastDpi = OriginalDpi = (short)Math.Min(dx, dy);
+                Dpi = LastDpi = OriginalDpi = (short) Math.Max(90, Math.Min(dx, dy));
+                if (OriginalDpi > 100) OriginalDpi = 96; // Windows DPI is such a mess!
             }
+        }
+
+        protected override void OnLayout(LayoutEventArgs levent)
+        {
+            base.OnLayout(levent);
+
+            // Update stored layout.
+            if (!_midFlow) StoreLayoutInCache();
         }
 
         protected override void WndProc(ref Message m)
@@ -33,6 +50,7 @@ namespace SlickWindows.Gui.Components
             if (m.Msg == Win32.WM_NCCREATE)
             {
                 Win32.EnableNonClientDpiScaling(Handle);
+                SetInitialDPI();
                 RescaleScreen();
             }
             if (m.Msg == Win32.WM_DPICHANGED)
@@ -56,25 +74,42 @@ namespace SlickWindows.Gui.Components
                 var screen = win.PrimaryScreen();
                 screen.GetDpi(out var dx, out var dy);
                 Dpi = (short)Math.Min(dx, dy);
-                if (OriginalDpi < 90 || LastDpi == Dpi) {
+                if (OriginalDpi < 90) {
                     _midFlow = false;
                     return;
                 }
-                LastDpi = Dpi;
 
                 var scale = Dpi / (float)OriginalDpi;
+                scale = (int)(scale * 4) / 4f; // round to 25% increments
 
-                // TODO: gate the DPI to round numbers here?
+                Dpi = (short) (OriginalDpi * scale); // force DPI into the 25% increments.
+                LastDpi = Dpi;
 
                 Font = PickFont(Dpi, scale);
 
                 // If this control has been this size before, set back to original size.
                 // Otherwise, save the size that came from scrolling
-                foreach (Control ctrl in Controls) { RescaleControl(ctrl, Dpi); }
+                RescaleLayoutWithCache();
 
                 OnRescale(Dpi);
             }
             _midFlow = false;
+        }
+
+        private void RescaleLayoutWithCache()
+        {
+            foreach (Control ctrl in Controls)
+            {
+                RescaleControl(ctrl, Dpi, false);
+            }
+        }
+
+        private void StoreLayoutInCache()
+        {
+            foreach (Control ctrl in Controls)
+            {
+                RescaleControl(ctrl, Dpi, true);
+            }
         }
 
         [NotNull]private Font PickFont(short dpi, float scale)
@@ -96,27 +131,38 @@ namespace SlickWindows.Gui.Components
             }
         }
 
-        [NotNull]private readonly Dictionary<Control, Dictionary<short, LayoutRect>> _layoutCache = new Dictionary<Control, Dictionary<short, LayoutRect>> ();
-        private void RescaleControl(Control ctrl, short dpi)
+        private void RescaleControl(Control ctrl, short dpi, bool updateOnly)
         {
             if (ctrl == null) return;
             // the WinForms auto-scaling *almost* works, but it drifts.
             // so we store the layout when we first rescale, then we restore it each time after that.
 
-            if (_layoutCache.ContainsKey(ctrl) && _layoutCache[ctrl]?.ContainsKey(dpi) == true) {
-                // read
+            var prevMidFlow = _midFlow;
+            _midFlow = true;
+            if (!updateOnly && _layoutCache.ContainsKey(ctrl) && _layoutCache[ctrl]?.ContainsKey(dpi) == true) {
+                // read cached scaling
 
                 var rect = _layoutCache[ctrl][dpi];
                 var parent = ctrl.Parent?.ClientRectangle ?? ctrl.Bounds;
 
+                var a = ctrl.Anchor;
+                var aTop = a.HasFlag(AnchorStyles.Top);
+                var aBottom = a.HasFlag(AnchorStyles.Bottom);
+                var aLeft = a.HasFlag(AnchorStyles.Left);
+                var aRight = a.HasFlag(AnchorStyles.Right);
+
                 // NOTE: for each anchor flag: if it' set, the rect side is offset. Otherwise it's absolute position
-                if (ctrl.Anchor.HasFlag(AnchorStyles.Right)) {
+                if (aRight) {
                     ctrl.Left = parent.Right - rect.RightOffset;
                 } else {
                     ctrl.Left = rect.Left;
                 }
                 
-                if (ctrl.Anchor.HasFlag(AnchorStyles.Bottom)) {
+                if (aTop && aBottom) {
+                    ctrl.Top = rect.Top;
+                    ctrl.Height = rect.Height;
+                }
+                else if (aBottom) {
                     ctrl.Top = parent.Bottom - rect.BottomOffset;
                 } else {
                     ctrl.Top = rect.Top;
@@ -124,6 +170,7 @@ namespace SlickWindows.Gui.Components
 
             }
             else {
+                // write current scaling
                 // ensure data structures
                 if (!_layoutCache.ContainsKey(ctrl)) _layoutCache.Add(ctrl, new Dictionary<short, LayoutRect>());
                 var map = _layoutCache[ctrl] ?? throw new Exception();
@@ -134,8 +181,11 @@ namespace SlickWindows.Gui.Components
                     RightOffset = parent.Right - rect.Left,
                     BottomOffset = parent.Bottom - rect.Top
                 };
+
                 if (!map.ContainsKey(dpi)) map.Add(dpi, layout);
+                else map[dpi] = layout;
             }
+            _midFlow = prevMidFlow;
         }
 
         internal struct LayoutRect
