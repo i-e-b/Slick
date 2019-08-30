@@ -3,11 +3,12 @@ using System.Linq;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickWindows.Canvas;
+using SlickWindows.Gui.Components;
 using SlickWindows.Storage;
 
 namespace SlickWindows.Gui
 {
-    public partial class PinsWindow : Form
+    public partial class PinsWindow : AutoScaleForm
     {
         [NotNull]private readonly EndlessCanvas _canvas;
 

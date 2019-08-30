@@ -5,11 +5,12 @@ using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
+using SlickWindows.Gui.Components;
 using SlickWindows.Input;
 
 namespace SlickWindows.Gui
 {
-    public partial class PaletteWindow : Form, ITouchTriggered
+    public partial class PaletteWindow : AutoScaleForm, ITouchTriggered
     {
         private static Image _paletteImage;
         [NotNull] private readonly RealTimeStylus _colorInput;
@@ -24,11 +25,14 @@ namespace SlickWindows.Gui
             if (colorBox == null) throw new Exception("Components not initialised correctly");
             
             colorBox.Image = PaintPalette(); // Replace this with a loaded image if you want something custom.
+            // ReSharper disable once PossibleNullReferenceException
+            colorBox.SizeMode = PictureBoxSizeMode.StretchImage;
 
             _colorInput = new RealTimeStylus(colorBox, true) {AllTouchEnabled = true};
             _colorInput.AsyncPluginCollection?.Add(new TouchPointStylusPlugin(this, DeviceDpi));
             _colorInput.Enabled = true;
         }
+
 
         public IEndlessCanvas Canvas { get; set; }
 
@@ -90,15 +94,21 @@ namespace SlickWindows.Gui
             return bmp;
         }
 
-        /// <inheritdoc />
         public void Touched(int stylusId, int x, int y)
         {
             if (Canvas == null || colorBox?.Image == null) return;
 
+
+
             // Work out what colour or size was clicked, send it back to canvas
             using (Bitmap bmp = new Bitmap(colorBox.Image))
             {
-                var color = bmp.GetPixel(x, y);
+                var mx = (x / (float)colorBox.Width) * bmp.Width;
+                var my = (y / (float)colorBox.Height) * bmp.Height;
+                if (mx >= bmp.Width) mx = bmp.Width - 1;
+                if (my >= bmp.Height) my = bmp.Height - 1;
+
+                var color = bmp.GetPixel((int)mx, (int)my);
                 Canvas.SetPen(stylusId, color, _penSize, InkType.Overwrite);
             }
 
@@ -109,14 +119,6 @@ namespace SlickWindows.Gui
 
         private void PaletteWindow_SizeChanged(object sender, EventArgs e)
         {
-            if (colorBox == null) return;
-            if (_paletteImage != null) {
-                _paletteImage.Dispose();
-                _paletteImage = null;
-            }
-
-            colorBox.Image = PaintPalette();
-
             Invalidate();
         }
 
@@ -143,6 +145,11 @@ namespace SlickWindows.Gui
         private void giganticButton_Click(object sender, EventArgs e)
         {
             _penSize = (int)PenSizes.Gigantic;
+        }
+
+        private void PaletteWindow_DpiChanged(object sender, DpiChangedEventArgs e)
+        {
+
         }
     }
 }

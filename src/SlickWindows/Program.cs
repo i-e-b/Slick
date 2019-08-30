@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using SlickWindows.Gui;
+using SlickWindows.Gui.Components;
 
 namespace SlickWindows
 {
@@ -34,6 +35,7 @@ namespace SlickWindows
             };
 
             // Run the code
+            Win32.SetProcessDPIAware();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainWindow(args));

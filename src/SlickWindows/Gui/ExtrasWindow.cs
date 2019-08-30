@@ -9,7 +9,7 @@ using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Gui
 {
-    public partial class Extras : Form
+    public partial class Extras : AutoScaleForm
     {
         [NotNull] private readonly EndlessCanvas _target;
         private readonly FloatingImage _importFloat;
@@ -29,6 +29,7 @@ namespace SlickWindows.Gui
         {
             if (_importFloat == null) return;
 
+            _importFloat.NormaliseControlScale();
             string path;
             var result = loadImageDialog?.ShowDialog();
             switch (result)
@@ -114,7 +115,10 @@ namespace SlickWindows.Gui
 
         private void TextInputButton_Click(object sender, EventArgs e)
         {
-            if (_textFloat != null) _textFloat.Visible = true;
+            if (_textFloat != null) {
+                _textFloat.NormaliseControlScale();
+                _textFloat.Visible = true;
+            }
             Close();
         }
     }

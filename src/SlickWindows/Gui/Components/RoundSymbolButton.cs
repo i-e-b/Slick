@@ -10,16 +10,22 @@ namespace SlickWindows.Gui.Components
         public SymbolType Symbol { get; set; }
 
         [NotNull] private readonly Pen _black2Px;
+        private readonly int _scale;
 
         public RoundSymbolButton()
         {
-            Width = 24;
-            Height = 24;
+            // Read scale
+            var asf = ParentForm as AutoScaleForm;
+            var dpi = asf?.Dpi ?? DeviceDpi;
+            _scale = (dpi > 120) ? 2 : 1;
+
+            Width = 24 * _scale;
+            Height = 24 * _scale;
             components = new System.ComponentModel.Container();
             AutoScaleMode = AutoScaleMode.Font;
-            _black2Px = new Pen(Color.Black, 2.0f);
-            Width = 24;
-            Height = 24;
+            _black2Px = new Pen(Color.Black, 2.0f * _scale);
+            Width = 24 * _scale;
+            Height = 24 * _scale;
         }
 
         /// <inheritdoc />
@@ -27,13 +33,13 @@ namespace SlickWindows.Gui.Components
         {
             // draw outer button
             var outline = new GraphicsPath();
-            outline.AddEllipse(0,0,24,24);
+            outline.AddEllipse(0, 0, 24 * _scale, 24 * _scale);
 
             var g = e.Graphics;
             g.CompositingMode = CompositingMode.SourceOver;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.FillEllipse(Brushes.White, 1, 1, 22, 22);
-            g.DrawEllipse(_black2Px, 1, 1, 22, 22);
+            g.FillEllipse(Brushes.White, 1 * _scale, 1 * _scale, 22 * _scale, 22 * _scale);
+            g.DrawEllipse(_black2Px, 1 * _scale, 1 * _scale, 22 * _scale, 22 * _scale);
             
             Region = new Region(outline);
 
@@ -46,15 +52,15 @@ namespace SlickWindows.Gui.Components
 
         private void DrawMergeArrow([NotNull]Graphics g)
         {
-            g.DrawLine(_black2Px, 12, 5, 12, 18);
-            g.DrawLine(_black2Px, 12, 18, 6, 12);
-            g.DrawLine(_black2Px, 12, 18, 18, 12);
+            g.DrawLine(_black2Px, 12 * _scale, 5 * _scale, 12 * _scale, 18 * _scale);
+            g.DrawLine(_black2Px, 12 * _scale, 18 * _scale, 6 * _scale, 12 * _scale);
+            g.DrawLine(_black2Px, 12 * _scale, 18 * _scale, 18 * _scale, 12 * _scale);
         }
 
         private void DrawCross([NotNull]Graphics g)
         {
-            g.DrawLine(_black2Px, 7, 7, 17, 17);
-            g.DrawLine(_black2Px, 7, 17, 17, 7);
+            g.DrawLine(_black2Px, 7 * _scale, 7 * _scale, 17 * _scale, 17 * _scale);
+            g.DrawLine(_black2Px, 7 * _scale, 17 * _scale, 17 * _scale, 7 * _scale);
         }
 
         /// <inheritdoc />

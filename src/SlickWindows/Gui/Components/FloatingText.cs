@@ -15,9 +15,15 @@ namespace SlickWindows.Gui.Components
 
         private int _dx, _dy;
         private bool _scaling;
+        private readonly int _scale;
 
         public FloatingText()
         {
+            // Read scale
+            var asf = ParentForm as AutoScaleForm;
+            var dpi = asf?.Dpi ?? DeviceDpi;
+            _scale = (dpi > 120) ? 2 : 1;
+
             if (LargeFont == null) {
                 LargeFont = new Font("Arial Black", 16);
             }
@@ -29,10 +35,19 @@ namespace SlickWindows.Gui.Components
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             InitializeComponent();
 
-            if (textBox != null) textBox.Font = SmallFont;
+            if (textBox != null) {
+                textBox.Font = SmallFont;
+            }
             Cursor = Cursors.Arrow;
         }
 
+        public void NormaliseControlScale() {
+            textBiggerButton.Top = Height - textBiggerButton.Height; 
+            textSmallerButton.Top = Height - textSmallerButton.Height; 
+            mergeButton.Left = Width - mergeButton.Width;
+            textBox.Width = Width;
+            textBox.Height = textBiggerButton.Top - textBox.Top;
+        }
         
         protected override CreateParams CreateParams {
             get {
@@ -55,8 +70,9 @@ namespace SlickWindows.Gui.Components
 
             if (_scaling)
             {
-                Width = Math.Max(180, window.X - Left);
-                Height = Math.Max(62, window.Y - Top);
+                Width = Math.Max(180 * _scale, window.X - Left);
+                Height = Math.Max(62 * _scale, window.Y - Top);
+                NormaliseControlScale();
             }
             else
             {
@@ -100,7 +116,7 @@ namespace SlickWindows.Gui.Components
 
             var corner = (Width - _dx) + (Height - _dy);
 
-            _scaling = (corner < 24);
+            _scaling = (corner < 24 * _scale);
             Capture = true;
 
             base.OnMouseDown(e);

@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 
-namespace SlickWindows.Gui
+namespace SlickWindows.Gui.Components
 {
     /// <summary>
     /// Helper to make custom cursor
@@ -42,15 +42,16 @@ namespace SlickWindows.Gui
             return new Cursor(ptr);
         }
 
-        [NotNull] public static Cursor MakeCrosshair()
+        [NotNull] public static Cursor MakeCrosshair(int scale)
         {
-            using (var bmp = new Bitmap(16,16, PixelFormat.Format32bppArgb)) {
-                using (var g = Graphics.FromImage(bmp)) {
-                    g.Clear(Color.Transparent);
-                    g.DrawLine(Pens.Black, 0,0,16,16);
-                    g.DrawLine(Pens.Black, 0,16,16,0);
-                    return CreateCursorNoResize(bmp, 8, 8);
-                }
+            using (var bmp = new Bitmap(16 * scale, 16 * scale, PixelFormat.Format32bppArgb))
+            using (var pen = new Pen(Color.Black, 1.0f * scale))
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.Transparent);
+                g.DrawLine(pen, 0, 0, 16 * scale, 16 * scale);
+                g.DrawLine(pen, 0, 16 * scale, 16 * scale, 0);
+                return CreateCursorNoResize(bmp, 8 * scale, 8 * scale);
             }
         }
     }

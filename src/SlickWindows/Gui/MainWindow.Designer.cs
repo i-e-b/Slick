@@ -259,6 +259,7 @@
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.MainWindow_KeyDown);
             this.KeyUp += new System.Windows.Forms.KeyEventHandler(this.MainWindow_KeyUp);
             this.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.MainWindow_MouseDoubleClick);
+            this.DpiChanged += new System.Windows.Forms.DpiChangedEventHandler(this.MainWindow_DpiChanged);
             this.ResumeLayout(false);
 
         }

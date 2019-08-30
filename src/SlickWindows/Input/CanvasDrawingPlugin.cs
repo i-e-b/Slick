@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
+using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.Ink;
 using Microsoft.StylusInput;
@@ -16,6 +16,7 @@ namespace SlickWindows.Input
     public class CanvasDrawingPlugin:IStylusSyncPlugin
     {
         [NotNull]private static readonly object _tlock = new object();
+        private readonly Form _container;
         [NotNull]private readonly EndlessCanvas _canvas;
         [NotNull]private readonly IKeyboard _keyboard;
 
@@ -38,10 +39,11 @@ namespace SlickWindows.Input
         /// </summary>
         /// <param name="g">The graphics object used for dynamic rendering.</param>
         /// <param name="keyboard">Key state helper</param>
-        public CanvasDrawingPlugin(EndlessCanvas g, IKeyboard keyboard)
+        public CanvasDrawingPlugin(Form container, EndlessCanvas g, IKeyboard keyboard)
         {
             StylusId_to_Points = new Dictionary<int, Queue<DPoint>>();
             StylusId_to_DeviceKind = new Dictionary<int, TabletDeviceKind>();
+            _container = container;
             _canvas = g ?? throw new ArgumentNullException(nameof(g));
             _keyboard = keyboard ?? throw new ArgumentNullException(nameof(keyboard));
         }
@@ -124,16 +126,23 @@ namespace SlickWindows.Input
         {
             if (data?.Stylus == null || ptQ == null) return;
 
+            // Win32 scaling and DPI is a hot mess
+            // There's no logic to this, just painful trial and error
+            var dpiDiff = (_container?.DeviceDpi ?? 96) / 96.0;
+            var effectiveDpi = _canvas.Dpi * dpiDiff;
+            effectiveDpi /= 2540.0; // map from inkspace to pixel space
+            var minDiff = effectiveDpi * 100;
+
             // For each new packet received, extract the x,y data
             // and draw a small circle around the result.
             for (int i = 0; i < data.Count; i += data.PacketPropertyCount)
             {
                 // Packet data always has x followed by y followed by the rest
-                var point = new Point(data[i], data[i + 1]);
+                var point = new DPoint { X = data[i], Y = data[i + 1] };
 
                 // Since the packet data is in Ink Space coordinates, we need to convert to Pixels...
-                point.X = (int) Math.Round(point.X * _canvas.DpiX / 2540.0F);
-                point.Y = (int) Math.Round(point.Y * _canvas.DpiY / 2540.0F);
+                point.X = point.X * effectiveDpi;
+                point.Y = point.Y * effectiveDpi;
                 var pressure = DefaultPressure;
 
                 if (data.PacketPropertyCount > 2) // Contains pressure info
@@ -147,7 +156,7 @@ namespace SlickWindows.Input
                 if (ptQ.Count > 0)
                 {
                     var prev = ptQ.Peek();
-                    if (Math.Abs(thisPt.X - prev.X) + Math.Abs(thisPt.Y - prev.Y) < 1) {
+                    if (Math.Abs(thisPt.X - prev.X) + Math.Abs(thisPt.Y - prev.Y) < minDiff) {
                         continue; // not enough of a difference to bother drawing
                     }
                 }
