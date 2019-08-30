@@ -146,23 +146,21 @@ namespace SlickWindows.Gui.Components
                 var parent = ctrl.Parent?.ClientRectangle ?? ctrl.Bounds;
 
                 var a = ctrl.Anchor;
-                var aTop = a.HasFlag(AnchorStyles.Top);
-                var aBottom = a.HasFlag(AnchorStyles.Bottom);
-                var aLeft = a.HasFlag(AnchorStyles.Left);
-                var aRight = a.HasFlag(AnchorStyles.Right);
+                var anchorTop = a.HasFlag(AnchorStyles.Top);
+                var anchorBottom = a.HasFlag(AnchorStyles.Bottom);
+                var anchorRight = a.HasFlag(AnchorStyles.Right);
 
                 // NOTE: for each anchor flag: if it' set, the rect side is offset. Otherwise it's absolute position
-                if (aRight) {
+                if (anchorRight) {
                     ctrl.Left = parent.Right - rect.RightOffset;
                 } else {
                     ctrl.Left = rect.Left;
                 }
                 
-                if (aTop && aBottom) {
+                if (anchorTop && anchorBottom) {
                     ctrl.Top = rect.Top;
                     ctrl.Height = rect.Height;
-                }
-                else if (aBottom) {
+                } else if (anchorBottom) {
                     ctrl.Top = parent.Bottom - rect.BottomOffset;
                 } else {
                     ctrl.Top = rect.Top;
