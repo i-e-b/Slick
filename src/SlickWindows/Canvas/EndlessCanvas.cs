@@ -501,6 +501,8 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
         {
+            // TODO: Remove this!
+            // i      Replace with a wet/dry ink model
             if (_inSelectMode)
             {
                 // use pens to toggle selection

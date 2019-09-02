@@ -25,12 +25,30 @@ namespace SlickUWP
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private InkSynchronizer _is;
+        private readonly byte[] values;
 
         public MainPage()
         {
             this.InitializeComponent();
             
+            
+            
+            values = new byte[128*128*4];
+
+            for (int y = 0; y < 128; y++)
+            {
+                for (int x = 0; x < 128; x++)
+                {
+                    var i = (y * 128 * 4) + (x * 4);
+                    byte v = (byte) ((x == y) ? 0 : 255);
+
+                    values[i+0] = v;
+                    values[i+1] = v;
+                    values[i+2] = v;
+                    values[i+3] = 255;
+                }
+            }
+
             var ip = baseInkCanvas.InkPresenter;
             
             
@@ -59,6 +77,8 @@ namespace SlickUWP
         {
             var name = args.CurrentPoint.Properties.IsEraser ? "eraser" : args.CurrentPoint.PointerDevice.PointerDeviceType.ToString(); // never correct
             text.Text += $" {name} up";
+
+            // TODO: commit the wet ink to the canvas
         }
 
         private void UnprocessedInput_PointerPressed(InkUnprocessedInput sender, PointerEventArgs args)
@@ -67,35 +87,44 @@ namespace SlickUWP
             
             text.Text += $" {name} down @ {args.CurrentPoint.Position}";
 
+            // TODO: start some "wet" ink
         }
 
         private void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
         {
             text.Text += ".";
 
+            // TODO: update the wet ink object
+
+            // endless canvas: should have a set of tile images that are offset and filled based on the underlying
+            // infinite image
             var transform = new TranslateTransform {
                 X = args.CurrentPoint.Position.X,
                 Y = args.CurrentPoint.Position.Y
             };
             testCanv.RenderTransform = transform;
+
+
+            // play with update:
+            var y = (int)(args.CurrentPoint.Position.Y % 128) * 128*4;
+            var x = (int)(args.CurrentPoint.Position.X % 128) * 4;
+            values[y+x+0] = 0;
+            values[y+x+1] = 0;
+            values[y+x+2] = 0;
+
+            // Any time we update a tile in the backing.
+            testCanv.Invalidate();
         }
 
         private void TestCanv_Draw(Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl sender, Microsoft.Graphics.Canvas.UI.Xaml.CanvasDrawEventArgs args)
         {
-            
-            byte[] values = new byte[128*128*4];
-            for (int i = 0; i < values.Length; i+=4)
+            using (var bmp = CanvasBitmap.CreateFromBytes(sender, values, 128, 128,
+                DirectXPixelFormat.B8G8R8A8UIntNormalized, 96 /*dpi*/, CanvasAlphaMode.Ignore)) // pixel format must be on the supported list, or the app will bomb
+                // DPI doesn't seem to do anything
             {
-                values[i+0] = (byte)i;
-                values[i + 1] = (byte)(i >> 7);
-                values[i+2] = 0;
-                values[i+3] = 255;
+                bmp.SetPixelBytes(values, 0, 0, 128, 128);
+                args.DrawingSession.DrawImage(bmp, new Rect(0, 0, 128, 128));
             }
-
-
-            CanvasBitmap bmp = CanvasBitmap.CreateFromBytes(sender, values, 128, 128, DirectXPixelFormat.B8G8R8A8UIntNormalized); //new CanvasBitmap();
-            bmp.SetPixelBytes(values, 0,0,128,128);
-            args.DrawingSession.DrawImage(bmp, new Rect(0,0,128,128));
         }
     }
 }
