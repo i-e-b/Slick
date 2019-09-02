@@ -1,0 +1,25 @@
+﻿<Window x:Class="SlickWindowsWpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SlickWindowsWpf"
+        mc:Ignorable="d"
+        Title="MainWindow" DpiChanged="Window_DpiChanged">
+
+    <Canvas Background="#FFB46363">
+        <InkCanvas x:Name="bgInkCanvas" Margin="0" Background="White" EditingModeInverted="Ink" StylusDown="BgInkCanvas_StylusDown" StylusUp="BgInkCanvas_StylusUp" StrokeCollected="BgInkCanvas_StrokeCollected" TouchDown="BgInkCanvas_TouchDown" TouchUp="BgInkCanvas_TouchUp" TouchMove="BgInkCanvas_TouchMove" ResizeEnabled="False" Canvas.Left="0" Canvas.Top="0" MouseDown="BgInkCanvas_MouseDown" MouseUp="BgInkCanvas_MouseUp" AllowDrop="True" MoveEnabled="False">
+            <InkCanvas.DefaultDrawingAttributes>
+                <DrawingAttributes Color="Black" FitToCurve="True" Height="2.0031496062992127" IgnorePressure="False" IsHighlighter="False" StylusTip="Ellipse" StylusTipTransform="Identity" Width="2.0031496062992127"/>
+            </InkCanvas.DefaultDrawingAttributes>
+        </InkCanvas>
+        <Button x:Name="PaletteButton" Content="Palette" HorizontalAlignment="Left" Height="31.059" VerticalAlignment="Top" Width="75.945" Margin="10,10,-46.322,-21.099"/>
+        <ListView x:Name="diagList" Height="504" Canvas.Left="471.67" Width="288.33" VerticalContentAlignment="Stretch">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </Canvas>
+</Window>

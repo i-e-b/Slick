@@ -506,6 +506,7 @@ namespace SlickWindows.Canvas
                 // use pens to toggle selection
                 var startPoint = ScreenToCanvas((int)start.X, (int)start.Y);
                 _selectedTiles.Add(startPoint.TilePosition);
+                Invalidate();
                 return;
             }
 

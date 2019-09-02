@@ -167,6 +167,7 @@ namespace SlickWindows.Gui
 
         private void MainWindow_ClientSizeChanged(object sender, EventArgs e)
         {
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             if (_canvas == null) return;
             _canvas.SetSizeHint(Width, Height);
         }
