@@ -34,6 +34,7 @@ namespace SlickWindows.Canvas
         [NotNull] private readonly Dictionary<int, InkSettings> _inkSettings;
         private InkSettings _lastPen;
         private readonly Action<Rectangle> _invalidateAction;
+        [NotNull] private readonly List<DPoint> _wetInkCurve;
 
         // History
         [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
@@ -106,6 +107,7 @@ namespace SlickWindows.Canvas
             _changedTiles = new HashSet<PositionKey>();
             _lastChangedTiles = new HashSet<PositionKey>();
             _selectedTiles = new HashSet<PositionKey>();
+            _wetInkCurve = new List<DPoint>();
             _inSelectMode = false;
 
             Dpi = deviceDpi; // 96 is 1:1
@@ -369,63 +371,84 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void RenderToGraphics(Graphics g, int width, int height, Rectangle clipRect)
         {
+            // TODO: remove this. Should only render to image
+
             if (g == null) return;
 
+           RenderTiles(g, width, height, clipRect);
+            RenderWetInk(g);
+        }
+
+        private void RenderWetInk(Graphics g)
+        {
+            if (_wetInkCurve.Count < 2) return;
+            var prev = _wetInkCurve[0];
+            var scale = 1.0f / VisualScale;
+            for (int i = 1; i < _wetInkCurve.Count; i++)
+            {
+                var next = _wetInkCurve[i];
+                var pen = GuessPen(next.IsErase);
+                var size = next.Pressure * pen.PenSize * VisualScale * 0.6;
+
+                using (var gpen = new Pen(pen.PenColor, (float)size))
+                {
+                    g.DrawLine(gpen,
+                        (float)prev.X * scale,
+                        (float)prev.Y * scale,
+                        (float)next.X * scale,
+                        (float)next.Y * scale
+                    );
+                }
+                prev = next;
+            }
+        }
+
+        private void RenderTiles(Graphics g, int width, int height, Rectangle clipRect)
+        {
             Width = width;
             Height = height;
 
-            if (clipRect.Width < 1 || clipRect.Height < 1) {
+            if (clipRect.Width < 1 || clipRect.Height < 1)
+            {
                 clipRect = new Rectangle(0, 0, width, height);
             }
 
-            PositionKey[] toDraw;
-            try
+            PositionKey[] toDraw = null;
+            for (int i = 0; i < 3; i++)
             {
-                toDraw = _canvasTiles.Keys.ToArray(); // assuming the background loop is keeping everything minimal
+                try
+                {
+                    toDraw = _canvasTiles.Keys.ToArray(); // assuming the background loop is keeping everything minimal
+                    break;
+                }
+                catch { /* race condition can trigger this */ }
             }
-            catch
-            {
-                return; // race condition can trigger this
-            }
+
+            if (toDraw == null) return;
 
             foreach (var index in toDraw)
             {
                 if (index == null) continue;
                 TileImage ti;
-                try { ti = _canvasTiles[index]; } catch { continue; } // happens in race conditions
+                try
+                {
+                    ti = _canvasTiles[index];
+                }
+                catch
+                {
+                    continue;
+                } // happens in race conditions
 
                 // if offscreen, don't bother
                 var rect = VisualRectangle(index);
 
                 if (rect.Left > clipRect.Right || rect.Right < clipRect.Left
-                 || rect.Top > clipRect.Bottom || rect.Bottom < clipRect.Top) continue;
+                                               || rect.Top > clipRect.Bottom || rect.Bottom < clipRect.Top) continue;
 
                 // draw tile
                 var hilite = _selectedTiles.Contains(index);
                 ti?.Render(g, rect.Left, rect.Top, hilite, _drawScale, VisualScale);
             }
-        }
-
-        /// <summary>
-        /// Load a tile image from storage, pausing the current thread until it is ready
-        /// </summary>
-        private TileImage LoadTileSync(PositionKey tile)
-        {
-            if (tile == null || _storage == null) return null;
-
-            var name = tile.ToString();
-
-            var thing = _storage.Exists(name);
-            if (thing.IsFailure) return null;
-            var version = thing.ResultData?.CurrentVersion ?? 1;
-
-            var data = _storage.Read(name, "img", version);
-            if (!data.IsSuccess) return null; // bad node data
-
-            var image = new TileImage(tile);
-            var fileData = InterleavedFile.ReadFromStream(data);
-            if (fileData != null) WaveletCompress.Decompress(fileData, image, 1);
-            return image;
         }
 
 
@@ -456,6 +479,28 @@ namespace SlickWindows.Canvas
                     ti.Render(g, dx, dy, false, 1, 1.0f);
                 }
             }
+        }
+        
+        /// <summary>
+        /// Load a tile image from storage, pausing the current thread until it is ready
+        /// </summary>
+        private TileImage LoadTileSync(PositionKey tile)
+        {
+            if (tile == null || _storage == null) return null;
+
+            var name = tile.ToString();
+
+            var thing = _storage.Exists(name);
+            if (thing.IsFailure) return null;
+            var version = thing.ResultData?.CurrentVersion ?? 1;
+
+            var data = _storage.Read(name, "img", version);
+            if (!data.IsSuccess) return null; // bad node data
+
+            var image = new TileImage(tile);
+            var fileData = InterleavedFile.ReadFromStream(data);
+            if (fileData != null) WaveletCompress.Decompress(fileData, image, 1);
+            return image;
         }
 
         public void SetSizeHint(int width, int height)
@@ -494,15 +539,71 @@ namespace SlickWindows.Canvas
         {
             if (!_okToDraw) return;
             _lastChangedTiles.Clear();
+            _wetInkCurve.Clear();
+        }
+
+        public void EndStroke()
+        {
+            // TODO: Render the wet ink curve (as done by `Ink` at the moment)
+
+            if (!_okToDraw) return;
+            _okToDraw = false;
+
+            for (int p = 1; p < _wetInkCurve.Count; p++)
+            {
+                var start = _wetInkCurve[p-1];
+                var end = _wetInkCurve[p];
+
+                var pt = start;
+                var dx = end.X - start.X;
+                var dy = end.Y - start.Y;
+                var dp = end.Pressure - start.Pressure;
+
+                var penSet = _inkSettings.ContainsKey(start.StylusId) ? _inkSettings[start.StylusId] : GuessPen(start.IsErase);
+
+                var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
+
+                if (dd > 0)
+                {
+                    dx /= dd;
+                    dy /= dd;
+                    dp /= dd;
+                }
+                double radius;
+
+                // TODO: improve this.
+                // Instead of drawing dots, get every covered tile, and draw the whole line to each
+                for (double i = 0; i <= dd; i += radius)
+                {
+                    // Draw
+                    var tiles = InkPoint(penSet, pt, out radius);
+
+                    // add changed tiles to update lists
+                    foreach (var tile in tiles)
+                    {
+                        _changedTiles.Add(tile);
+                        _lastChangedTiles.Add(tile);
+                    }
+
+                    // move dot forward
+                    radius *= VisualScale / 4;
+                    pt.X += dx * radius;
+                    pt.Y += dy * radius;
+                    pt.Pressure += dp * radius;
+                }
+            }
+            _okToDraw = true;
+
+            _wetInkCurve.Clear();
+            SaveChanges();
+            Invalidate();
         }
 
         /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
-        public void Ink(int stylusId, bool isErase, DPoint start, DPoint end)
+        public void Ink(DPoint start, DPoint end)
         {
-            // TODO: Remove this!
-            // i      Replace with a wet/dry ink model
             if (_inSelectMode)
             {
                 // use pens to toggle selection
@@ -519,49 +620,19 @@ namespace SlickWindows.Canvas
                 return;
             }
 
-            if (!_okToDraw) return;
-            _okToDraw = false;
 
-            var pt = start;
-            var dx = end.X - start.X;
-            var dy = end.Y - start.Y;
-            var dp = end.Pressure - start.Pressure;
+            // add points to wet ink
+            if (_wetInkCurve.Count < 1) _wetInkCurve.Add(start);
+            _wetInkCurve.Add(end);
 
-            var penSet = _inkSettings.ContainsKey(stylusId) ? _inkSettings[stylusId] : GuessPen(isErase);
-
-            var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
-
-            if (dd > 0)
-            {
-                dx /= dd;
-                dy /= dd;
-                dp /= dd;
-            }
-            double radius;
-
-            // TODO: improve this.
-            // Instead of drawing dots, get every covered tile, and draw the whole line to each
-            for (double i = 0; i <= dd; i += radius)
-            {
-                // Draw
-                var tiles = InkPoint(penSet, pt, out radius);
-
-                // add changed tiles to update lists
-                foreach (var tile in tiles)
-                {
-                    _invalidateAction?.Invoke(VisualRectangle(tile));
-                    _changedTiles.Add(tile);
-                    _lastChangedTiles.Add(tile);
-                }
-
-                // move dot forward
-                radius *= VisualScale / 4;
-                pt.X += dx * radius;
-                pt.Y += dy * radius;
-                pt.Pressure += dp * radius;
-            }
-
-            _okToDraw = true;
+            // invalidate rectangle covering the new ink
+            
+            var scale = 1.0f / VisualScale;
+            var left = (int)(Math.Min(start.X, end.X) * scale);
+            var top = (int)(Math.Min(start.Y, end.Y) * scale);
+            var width = (int)(Math.Max(start.X, end.X) * scale) - left;
+            var height = (int)(Math.Max(start.Y, end.Y) * scale) - top;
+            _invalidateAction?.Invoke(new Rectangle(left - 10, top - 10, width + 20, height + 20));
         }
 
         private InkSettings GuessPen(bool isErase)
@@ -916,5 +987,6 @@ namespace SlickWindows.Canvas
             _isRunning = false;
             _saveTileData.Set();
         }
+
     }
 }

@@ -8,5 +8,7 @@
         public double X;
         public double Y;
         public double Pressure;
+        public bool IsErase;
+        public int StylusId;
     }
 }

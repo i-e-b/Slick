@@ -37,6 +37,7 @@ namespace SlickWindows.Input
         /// <summary>
         /// Constructor for this plugin
         /// </summary>
+        /// <param name="container">Window that receives pen input</param>
         /// <param name="g">The graphics object used for dynamic rendering.</param>
         /// <param name="keyboard">Key state helper</param>
         public CanvasDrawingPlugin(Form container, EndlessCanvas g, IKeyboard keyboard)
@@ -82,7 +83,6 @@ namespace SlickWindows.Input
                 tabletKind = StylusId_to_DeviceKind[stylus.Id];
             }
 
-            var guessErase = stylus.Name == "Eraser";
             switch (tabletKind)
             {
                 case TabletDeviceKind.Pen:
@@ -93,7 +93,7 @@ namespace SlickWindows.Input
                     }
                     else
                     {
-                        Draw(stylus.Id, guessErase, ptQ, exhaust);
+                        Draw(ptQ, exhaust);
                     }
 
                     break;
@@ -131,7 +131,6 @@ namespace SlickWindows.Input
             var dpiDiff = (_container?.DeviceDpi ?? 96) / 96.0;
             var effectiveDpi = _canvas.Dpi * dpiDiff;
             effectiveDpi /= 2540.0; // map from inkspace to pixel space
-            var minDiff = effectiveDpi * 100;
 
             // For each new packet received, extract the x,y data
             // and draw a small circle around the result.
@@ -151,31 +150,30 @@ namespace SlickWindows.Input
                     pressure = data[i + 2] / maxPressure;
                 }
 
-                var thisPt = new DPoint {X = point.X, Y = point.Y, Pressure = pressure};
-
-                if (ptQ.Count > 0)
+                var thisPt = new DPoint
                 {
-                    var prev = ptQ.Peek();
-                    if (Math.Abs(thisPt.X - prev.X) + Math.Abs(thisPt.Y - prev.Y) < minDiff) {
-                        continue; // not enough of a difference to bother drawing
-                    }
-                }
+                    X = point.X,
+                    Y = point.Y,
+                    Pressure = pressure,
+                    IsErase = data.Stylus.Name == "Eraser",
+                    StylusId = data.Stylus.Id
+                };
 
                 ptQ.Enqueue(thisPt);
             }
         }
 
-        private void Draw(int stylusId, bool isErase, [NotNull] Queue<DPoint> ptQ, bool exhaust)
+        private void Draw([NotNull] Queue<DPoint> ptQ, bool exhaust)
         {
             while (ptQ.Count > 1)
             {
                 var a = ptQ.Dequeue();
                 var b = ptQ.Peek();
-                _canvas.Ink(stylusId, isErase, a, b);
+                _canvas.Ink(a, b);
             }
             if (exhaust && ptQ.Count == 1) {
                 var a = ptQ.Dequeue();
-                _canvas.Ink(stylusId, isErase, a, a);
+                _canvas.Ink(a, a);
             }
         }
 
@@ -238,6 +236,7 @@ namespace SlickWindows.Input
                 DrawPointQueue(data.Stylus, StylusId_to_Points[data.Stylus.Id], exhaust: true);
 
                 if (StylusId_to_DeviceKind[data.Stylus.Id] != TabletDeviceKind.Touch) {
+                    _canvas.EndStroke();
                     _canvas.SaveChanges();
                 }
 

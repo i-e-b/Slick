@@ -43,7 +43,7 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
-        void Ink(int stylusId, bool isErase, DPoint start, DPoint end);
+        void Ink(DPoint start, DPoint end);
 
         /// <summary>
         /// Set a single pixel on the canvas.
