@@ -2,9 +2,12 @@
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.Imaging;
+using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Composition;
@@ -14,12 +17,19 @@ using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Hosting;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
+using LiteDB;
 using Microsoft.Graphics.Canvas;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
 namespace SlickUWP
 {
+    public class StorageNode {
+        public string Id { get; set; }
+        public int CurrentVersion { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
@@ -71,6 +81,25 @@ namespace SlickUWP
             ip.InputProcessingConfiguration.RightDragAction = InkInputRightDragAction.AllowProcessing;
             ip.InputConfiguration.IsEraserInputEnabled = true;
 
+
+            // Quick test of loading LiteDB file
+
+            var path = @"C:\Users\IainBallard\Documents\Slick\test.slick";
+
+            var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
+            if (file.IsAvailable)
+            {
+                using (IRandomAccessStream readStream = Sync.Run(()=>file.OpenAsync(FileAccessMode.Read)))
+                {
+                    var db = new LiteDatabase(readStream.AsStream());
+                    var nodes = db.GetCollection<StorageNode>("map");
+                    text.Text += $"; connected to test DB. {nodes.Count()} nodes";
+                }
+            }
+            else
+            {
+                text.Text += $"; can't access DB file";
+            }
         }
 
         private void UnprocessedInput_PointerReleased(InkUnprocessedInput sender, PointerEventArgs args)
@@ -126,5 +155,36 @@ namespace SlickUWP
                 args.DrawingSession.DrawImage(bmp, new Rect(0, 0, 128, 128));
             }
         }
+    }
+    /// <summary>
+    /// Helper class to properly wait for async tasks
+    /// </summary>
+    public static class Sync  
+    {
+        private static readonly TaskFactory _taskFactory = new
+            TaskFactory(CancellationToken.None,
+                TaskCreationOptions.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
+
+
+
+        /// <summary>
+        /// Run an async function synchronously and return the result
+        /// </summary>
+        public static TResult Run<TResult>(Func<IAsyncOperation<TResult>> func)
+        {
+            return _taskFactory.StartNew(() => func().AsTask()).Unwrap().GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Run an async function synchronously and return the result
+        /// </summary>
+        public static TResult Run<TResult>(Func<Task<TResult>> func) => _taskFactory.StartNew(func).Unwrap().GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Run an async function synchronously
+        /// </summary>
+        public static void Run(Func<Task> func) => _taskFactory.StartNew(func).Unwrap().GetAwaiter().GetResult();
     }
 }
