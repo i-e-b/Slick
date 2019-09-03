@@ -85,11 +85,15 @@ namespace SlickUWP
             // Quick test of loading LiteDB file
 
             var path = @"C:\Users\IainBallard\Documents\Slick\test.slick";
-
             var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
-            if (file.IsAvailable)
+            TestDbLoad(file);
+        }
+
+        private void TestDbLoad(StorageFile file)
+        {
+            if (file != null && file.IsAvailable)
             {
-                using (IRandomAccessStream readStream = Sync.Run(()=>file.OpenAsync(FileAccessMode.Read)))
+                using (IRandomAccessStream readStream = Sync.Run(() => file.OpenAsync(FileAccessMode.Read)))
                 {
                     var db = new LiteDatabase(readStream.AsStream());
                     var nodes = db.GetCollection<StorageNode>("map");
@@ -153,6 +157,34 @@ namespace SlickUWP
             {
                 bmp.SetPixelBytes(values, 0, 0, 128, 128);
                 args.DrawingSession.DrawImage(bmp, new Rect(0, 0, 128, 128));
+            }
+        }
+
+        private async void PickPageButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new Windows.Storage.Pickers.FileOpenPicker();
+                picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
+                //picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+                picker.FileTypeFilter.Add(".slick");
+
+                //var file = Sync.Run(() => picker.PickSingleFileAsync()); // doing anything synchronous here causes a deadlock.
+                var file = await picker.PickSingleFileAsync();
+                if (file != null)
+                {
+                    // Application now has read/write access to the picked file
+                    text.Text += " File OK";
+                    TestDbLoad(file);
+                }
+                else
+                {
+                    text.Text += " File FAILED";
+                }
+            }
+            catch (Exception ex)
+            {
+                text.Text += "\r\nException: " + ex;
             }
         }
     }

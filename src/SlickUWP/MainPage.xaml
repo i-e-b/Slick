@@ -7,15 +7,16 @@
     xmlns:Custom="using:Microsoft.Graphics.Canvas.UI.Xaml"
     x:Class="SlickUWP.MainPage"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392">
 
     <Grid>
 
-<Custom:CanvasControl x:Name="testCanv" HorizontalAlignment="Left" Height="128" Margin="0,0,0,0" VerticalAlignment="Top" Width="128" Background="#FF407281" Draw="TestCanv_Draw" BorderBrush="Black"/>
-    
+        <Custom:CanvasControl x:Name="testCanv" HorizontalAlignment="Left" Height="128" Margin="0,0,0,0" VerticalAlignment="Top" Width="128" Background="#FF407281" Draw="TestCanv_Draw" BorderBrush="Black"/>
+
         <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0"/>
         <TextBlock x:Name="text" HorizontalAlignment="Left" Margin="34,10,0,0" Text="TextBlock" TextWrapping="Wrap" VerticalAlignment="Top" Height="419" Width="459"/>
-    
+        <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#33FFFFFF" Click="PickPageButton_Click"/>
+
 
 
 
