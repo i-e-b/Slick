@@ -246,7 +246,7 @@ namespace SlickWindows.Canvas
             // scale / copy into the managed 'raw' array
             if (scale == 1)
             {
-                Scale_1to1(size, sampleCount);
+                Scale_1to1(size);
             }
             else if (scale == 2)
             {
@@ -264,7 +264,7 @@ namespace SlickWindows.Canvas
         }
 
         
-        private void Scale_1to1(int size, int sampleCount)
+        private void Scale_1to1(int size)
         {
             // We scan through the data and copy bytes over
             // This is a point to do scaling

@@ -10,7 +10,6 @@ namespace SlickWindows.Canvas
         /// </summary>
         Empty = 0,
 
-
         /// <summary>
         /// Image is not empty
         /// </summary>

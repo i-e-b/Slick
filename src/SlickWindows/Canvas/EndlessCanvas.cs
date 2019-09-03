@@ -371,15 +371,13 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void RenderToGraphics(Graphics g, int width, int height, Rectangle clipRect)
         {
-            // TODO: remove this. Should only render to image
-
             if (g == null) return;
 
-           RenderTiles(g, width, height, clipRect);
+            RenderTiles(g, width, height, clipRect);
             RenderWetInk(g);
         }
 
-        private void RenderWetInk(Graphics g)
+        private void RenderWetInk([NotNull]Graphics g)
         {
             if (_wetInkCurve.Count < 2) return;
             var prev = _wetInkCurve[0];
@@ -544,7 +542,7 @@ namespace SlickWindows.Canvas
 
         public void EndStroke()
         {
-            // TODO: Render the wet ink curve (as done by `Ink` at the moment)
+            // Render the wet ink curve into the canvas image
 
             if (!_okToDraw) return;
             _okToDraw = false;
@@ -571,7 +569,6 @@ namespace SlickWindows.Canvas
                 }
                 double radius;
 
-                // TODO: improve this.
                 // Instead of drawing dots, get every covered tile, and draw the whole line to each
                 for (double i = 0; i <= dd; i += radius)
                 {
@@ -937,12 +934,9 @@ namespace SlickWindows.Canvas
         /// </summary>
         public void CrossLoadImage([NotNull] Image img, int px, int py, Size size)
         {
-            // TODO: reverse the way this works. Sample tile points and find an image point to match?
             var visualSize = new Size((int) (size.Width * VisualScale), (int) (size.Height * VisualScale));
             using (var bmp = new Bitmap(img, visualSize))
             {
-                // TODO: scaling when we're in 'map' mode in the canvas.
-
                 var width = bmp.Width;
                 var height = bmp.Height;
                 var offsetX = (int)(px * VisualScale);
