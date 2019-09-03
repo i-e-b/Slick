@@ -9,7 +9,7 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392">
 
-    <Grid>
+    <Grid x:Name="windowGrid">
 
         <Custom:CanvasControl x:Name="testCanv" HorizontalAlignment="Left" Height="128" Margin="0,0,0,0" VerticalAlignment="Top" Width="128" Background="#FF407281" Draw="TestCanv_Draw" BorderBrush="Black"/>
 

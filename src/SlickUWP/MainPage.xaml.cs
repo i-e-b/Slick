@@ -1,41 +1,46 @@
 ﻿using System;
 using System.IO;
 using System.Numerics;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
-using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI;
-using Windows.UI.Composition;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Hosting;
 using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Media.Imaging;
 using LiteDB;
 using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.UI.Xaml;
 
-// The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
+// GENERAL PLAN:
+/*
+
+    The page will have these layers (bottom to top):
+
+    BackgroundCanvas (a container for dynamic tiles)
+        [DynamicTiles] (renderer for Endless canvas tiles, handles offsets)
+    InkCanvas (captures user input)
+    WetCanvas (draws any currently-active wet ink)
+    Buttons (for palette, load, map etc)
+
+
+    Each *visible* image tile in the endless canvas gets its own `CanvasControl`
+*/
 
 namespace SlickUWP
 {
-    public class StorageNode {
-        public string Id { get; set; }
-        public int CurrentVersion { get; set; }
-        public bool IsDeleted { get; set; }
-    }
-
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
     public sealed partial class MainPage : Page
     {
         private readonly byte[] values;
+        private CanvasControl dynamicTile;
 
         public MainPage()
         {
@@ -59,14 +64,19 @@ namespace SlickUWP
                 }
             }
 
-            var ip = baseInkCanvas.InkPresenter;
+            // Test loading a tile into the page at runtime
+            dynamicTile = new CanvasControl();
+            dynamicTile.Draw += DynamicTile_Draw;
+            dynamicTile.Margin = new Thickness(0.0);
+            dynamicTile.Height = 128;
+            dynamicTile.Width = 128;
+            dynamicTile.HorizontalAlignment = HorizontalAlignment.Left;
+            dynamicTile.VerticalAlignment = VerticalAlignment.Top;
+            windowGrid.Children.Add(dynamicTile);
             
-            
-            // These to have Windows handle drawing and input
-            //ip.StrokesCollected += InkPresenter_StrokesCollected;
-            //ip.StrokesErased += Ip_StrokesErased ;
-            //ip.InputProcessingConfiguration.Mode = InkInputProcessingMode.Inking;
 
+            // Set up pen/mouse/touch input
+            var ip = baseInkCanvas.InkPresenter;
             // These to get all the drawing and input directly
             ip.ActivateCustomDrying();
             ip.UnprocessedInput.PointerMoved += UnprocessedInput_PointerMoved;
@@ -87,6 +97,11 @@ namespace SlickUWP
             var path = @"C:\Users\IainBallard\Documents\Slick\test.slick";
             var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
             TestDbLoad(file);
+        }
+
+        private void DynamicTile_Draw(CanvasControl sender, CanvasDrawEventArgs args)
+        {
+            args.DrawingSession.DrawCircle(new Vector2(64,64),64, Color.FromArgb(255, 255, 127, 0));
         }
 
         private void TestDbLoad(StorageFile file)
@@ -137,6 +152,8 @@ namespace SlickUWP
             };
             testCanv.RenderTransform = transform;
 
+
+            if (args.CurrentPoint.Position.X < 1 || args.CurrentPoint.Position.Y < 1) return;
 
             // play with update:
             var y = (int)(args.CurrentPoint.Position.Y % 128) * 128*4;

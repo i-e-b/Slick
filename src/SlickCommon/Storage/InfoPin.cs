@@ -1,6 +1,4 @@
-﻿using SlickWindows.Canvas;
-
-namespace SlickWindows.Storage
+﻿namespace SlickCommon.Storage
 {
     /// <summary>
     /// A pin that can be placed on a tile.

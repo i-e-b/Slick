@@ -6,11 +6,11 @@ using Containers.Types;
 using JetBrains.Annotations;
 using LiteDB;
 
-namespace SlickWindows.Storage
+namespace SlickCommon.Storage
 {
     public class LiteDbStorageContainer : IStorageContainer
     {
-        private readonly string _pageFilePath;
+        [NotNull] private readonly IStreamProvider _pageFile;
         [NotNull] private readonly object _storageLock = new object();
 
         private static readonly Exception NotFound = new Exception("The node does not exist");
@@ -19,10 +19,10 @@ namespace SlickWindows.Storage
         [NotNull]private readonly LiteDatabase _db;
 
 
-        public LiteDbStorageContainer(string pageFilePath)
+        public LiteDbStorageContainer([NotNull]IStreamProvider pageFile)
         {
-            _pageFilePath = pageFilePath;
-            _db = new LiteDatabase(_pageFilePath);
+            _pageFile = pageFile;
+            _db = new LiteDatabase(_pageFile.Open());
 
             var nodes = _db.GetCollection<StorageNode>("map");
             nodes?.EnsureIndex("_id", unique: true);
@@ -73,7 +73,7 @@ namespace SlickWindows.Storage
         public Result<StorageNode> Store(string path, string type, Stream data)
         {
             lock (_storageLock)
-                using (var db = new LiteDatabase(_pageFilePath))
+                using (var db = new LiteDatabase(_pageFile.Open()))
                 {
                     var nodes = db.GetCollection<StorageNode>("map");
                     if (nodes == null) return Result<StorageNode>.Failure(NoDb);
@@ -205,7 +205,12 @@ namespace SlickWindows.Storage
                 }
 
                 // compact the db
-                _db.Shrink();
+                try {
+                    _db.Shrink();
+                }
+                catch {
+                    // ignore
+                }
 
                 return Result.Success(Nothing.Instance);
             }
@@ -215,6 +220,7 @@ namespace SlickWindows.Storage
         public void Dispose()
         {
             _db.Dispose();
+            _pageFile.Dispose();
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace SlickWindows.Storage
+﻿namespace SlickCommon.Storage
 {
     /// <summary>
     /// Storage meta-data for the IStorageContainer

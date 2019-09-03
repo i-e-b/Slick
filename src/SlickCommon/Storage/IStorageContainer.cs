@@ -3,7 +3,7 @@ using System.IO;
 using Containers;
 using Containers.Types;
 
-namespace SlickWindows.Storage
+namespace SlickCommon.Storage
 {
     public interface IStorageContainer: IDisposable
     {

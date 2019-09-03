@@ -2,9 +2,9 @@
 using System.Linq;
 using System.Windows.Forms;
 using JetBrains.Annotations;
+using SlickCommon.Storage;
 using SlickWindows.Canvas;
 using SlickWindows.Gui.Components;
-using SlickWindows.Storage;
 
 namespace SlickWindows.Gui
 {

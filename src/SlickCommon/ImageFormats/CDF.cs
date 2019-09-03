@@ -1,4 +1,6 @@
-﻿namespace SlickWindows.ImageFormats
+﻿using JetBrains.Annotations;
+
+namespace SlickCommon.ImageFormats
 {
     /// <summary>
     /// https://en.wikipedia.org/wiki/Cohen%E2%80%93Daubechies%E2%80%93Feauveau_wavelet
@@ -19,8 +21,9 @@
         ///<para></para>
         ///  See also iwt97.
         /// </summary>
-        public static void Fwt97(float[] buf, float[] x, int n, int offset, int stride)
+        public static void Fwt97([NotNull]float[] buf, [NotNull]float[] x, int n, int offset, int stride)
         {
+            // ReSharper disable once JoinDeclarationAndInitializer
             float a;
             int i;
 
@@ -85,8 +88,9 @@
         /// <para></para>
         /// See also fwt97.
         /// </summary>
-        public static void Iwt97(float[] buf, float[] x, int n, int offset, int stride)
+        public static void Iwt97([NotNull]float[] buf, [NotNull]float[] x, int n, int offset, int stride)
         {
+            // ReSharper disable once JoinDeclarationAndInitializer
             float a;
             int i;
                         

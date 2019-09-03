@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using JetBrains.Annotations;
 
-namespace SlickWindows.ImageFormats
+namespace SlickCommon.ImageFormats
 {
     /// <summary>
     /// Tools to convert arrays to different encodings

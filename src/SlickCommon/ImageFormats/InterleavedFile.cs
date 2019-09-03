@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using JetBrains.Annotations;
 
-namespace SlickWindows.ImageFormats
+namespace SlickCommon.ImageFormats
 {
     /// <summary>
     /// A stream container for progressive image files.
@@ -96,7 +96,6 @@ namespace SlickWindows.ImageFormats
             WriteStreamHeaders(output);
 
             // now, spin through each plane IN ORDER, removing it when empty
-            // this is a slow byte-wise method. TODO: optimise.
             long i = 0;
             while (true) {
                 var anything = false;
@@ -177,8 +176,8 @@ namespace SlickWindows.ImageFormats
             long i;
             for (i = 0; i < planesLength; i++)
             {
-                ReadU64(input, out var psize);
-                if (psize > 10_000_000) throw new Exception("Plane data was outside of expected bounds (this is a safety check)");
+                var ok = ReadU64(input, out var psize);
+                if (!ok || psize > 10_000_000) throw new Exception("Plane data was outside of expected bounds (this is a safety check)");
                 result.Planes[i] = new byte[psize];
             }
 
@@ -232,27 +231,31 @@ namespace SlickWindows.ImageFormats
             }
         }
 
-        private static void ReadQuantiserSettings(Stream input, List<double> yquant, List<double> cquant)
+        private static void ReadQuantiserSettings([NotNull]Stream input, List<double> yquant, List<double> cquant)
         {
-            ReadU8(input, out var yqCount);
-            ReadU8(input, out var cqCount);
+            var ok = ReadU8(input, out var yqCount);
+            ok &= ReadU8(input, out var cqCount);
 
-            if (yquant == null || cquant == null) return;
+            if (!ok || yquant == null || cquant == null) return;
 
             for (int q = 0; q < yqCount; q++)
             {
-                ReadU16(input, out var qs);
-                yquant.Add(qs / 100.0);
+                if (ReadU16(input, out var qs))
+                {
+                    yquant.Add(qs / 100.0);
+                }
             }
 
             for (int q = 0; q < cqCount; q++)
             {
-                ReadU16(input, out var qs);
-                cquant.Add(qs / 100.0);
+                if (ReadU16(input, out var qs))
+                {
+                    cquant.Add(qs / 100.0);
+                }
             }
         }
 
-        private static bool ReadU8(Stream rs, out int value) {
+        private static bool ReadU8([NotNull]Stream rs, out int value) {
             value = rs.ReadByte();
             return value >= 0;
         }
@@ -261,7 +264,7 @@ namespace SlickWindows.ImageFormats
             ws?.WriteByte((byte)value);
         }
         
-        private static bool ReadU16(Stream rs, out ushort value) {
+        private static bool ReadU16([NotNull]Stream rs, out ushort value) {
             value = 0;
             var hi = rs.ReadByte();
             var lo = rs.ReadByte();
@@ -278,7 +281,7 @@ namespace SlickWindows.ImageFormats
             ws?.WriteByte(lo);
         }
 
-        private static bool ReadU64(Stream rs, out ulong value)
+        private static bool ReadU64([NotNull]Stream rs, out ulong value)
         {
             value = 0;
             for (int i = 56; i >= 0; i -= 8)

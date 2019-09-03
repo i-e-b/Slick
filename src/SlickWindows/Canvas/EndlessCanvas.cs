@@ -5,8 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using JetBrains.Annotations;
-using SlickWindows.ImageFormats;
-using SlickWindows.Storage;
+using SlickCommon.ImageFormats;
+using SlickCommon.Storage;
 
 namespace SlickWindows.Canvas
 {
@@ -263,7 +263,7 @@ namespace SlickWindows.Canvas
                         }
                         if (info == null) continue;
                         var fileData = InterleavedFile.ReadFromStream(info.Data);
-                        if (fileData != null) WaveletCompress.Decompress(fileData, info.Image, _drawScale);
+                        if (fileData != null) WaveletCompress.Decompress(fileData, info.Image.Red, info.Image.Green, info.Image.Blue, _drawScale);
                         info.Image.Invalidate();
                         info.Image.Locked = false;
                         info.Image.CommitCache(_drawScale, VisualScale);
@@ -321,7 +321,7 @@ namespace SlickWindows.Canvas
                         {
                             using (var ms = new MemoryStream())
                             {
-                                WaveletCompress.Compress(tile).WriteToStream(ms);
+                                WaveletCompress.Compress(tile.Red, tile.Green, tile.Blue, tile.Width, tile.Height).WriteToStream(ms);
                                 ms.Seek(0, SeekOrigin.Begin);
                                 lock (_storageLock)
                                 {
@@ -497,7 +497,7 @@ namespace SlickWindows.Canvas
 
             var image = new TileImage(tile);
             var fileData = InterleavedFile.ReadFromStream(data);
-            if (fileData != null) WaveletCompress.Decompress(fileData, image, 1);
+            if (fileData != null) WaveletCompress.Decompress(fileData, image.Red, image.Green, image.Blue, 1);
             return image;
         }
 
@@ -725,6 +725,7 @@ namespace SlickWindows.Canvas
 
         public void ChangeBasePath(string newPath)
         {
+            if (string.IsNullOrWhiteSpace(newPath)) return;
             _okToDraw = false;
             lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
             {
@@ -737,7 +738,7 @@ namespace SlickWindows.Canvas
                 // change storage
                 _storage?.Dispose();
                 Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
-                _storage = new LiteDbStorageContainer(newPath);
+                _storage = new LiteDbStorageContainer(new SystemIoFile(newPath));
                 _storagePath = newPath;
 
                 // re-centre

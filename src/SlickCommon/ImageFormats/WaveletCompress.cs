@@ -2,11 +2,9 @@
 using System.IO;
 using System.IO.Compression;
 using JetBrains.Annotations;
-using SlickWindows.Canvas;
 
-namespace SlickWindows.ImageFormats
+namespace SlickCommon.ImageFormats
 {
-
     /// <summary>
     /// A low-loss image compression format.
     /// It gives nearly the same quality as PNG at lower sizes.
@@ -19,20 +17,19 @@ namespace SlickWindows.ImageFormats
         [NotNull] public static readonly double[] StandardCQuants = { 4, 2, 1 };
 
         [NotNull]
-        public static InterleavedFile Compress([NotNull]TileImage img)
+        public static InterleavedFile Compress([NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue, int imgWidth, int imgHeight)
         {
-            RGBPlanes_To_YuvPlanes_ForcePower2(img.Red, img.Green, img.Blue, img.Width, img.Height,
+            RGBPlanes_To_YuvPlanes_ForcePower2(Red, Green, Blue, imgWidth, imgHeight,
                 out var Y, out var U, out var V,
                 out var width, out var height);
 
-            return WaveletDecomposePlanar2(Y, U, V, width, height, img.Width, img.Height);
+            return WaveletDecomposePlanar2(Y, U, V, width, height, imgWidth, imgHeight);
         }
 
-        public static void Decompress([NotNull]InterleavedFile file, [NotNull]TileImage target, byte scale)
+        public static void Decompress([NotNull]InterleavedFile file, [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue, byte scale)
         {
             var pwidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
-            YuvPlanes_To_RgbPlanes(file.Version, Y, U, V, pwidth, pwidth, pwidth, target.Red, target.Green, target.Blue);
-            target.Invalidate();
+            YuvPlanes_To_RgbPlanes(file.Version, Y, U, V, pwidth, pwidth, pwidth, Red, Green, Blue);
         }
 
         // This controls the overall size and quality of the output
@@ -441,7 +438,7 @@ namespace SlickWindows.ImageFormats
 
         public static void YuvPlanes_To_RgbPlanes(int version, [NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
             int srcWidth, int dstWidth, int dstHeight,
-             [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue)
+            [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue)
         {
             int stride = srcWidth;
 
