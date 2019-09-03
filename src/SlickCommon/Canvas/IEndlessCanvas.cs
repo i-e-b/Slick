@@ -1,13 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using JetBrains.Annotations;
+using SlickCommon.ImageFormats;
+using SlickCommon.Storage;
 
-namespace SlickWindows.Canvas
+namespace SlickCommon.Canvas
 {
     public interface IEndlessCanvas : IDisposable
     {
         double X { get; }
         double Y { get; }
+        
+        /// <summary>
+        /// DPI of container (updated through AutoScaleForm triggers)
+        /// </summary>
+        int Dpi { get; set; }
 
         /// <summary>
         /// move the offset
@@ -30,15 +38,10 @@ namespace SlickWindows.Canvas
         CanvasPixelPosition ScreenToCanvas(double x, double y);
 
         /// <summary>
-        /// Display from the current offset into a graphics output
-        /// </summary>
-        void RenderToGraphics(Graphics g, int width, int height, Rectangle clipRect);
-
-        /// <summary>
         /// Draw the selected tiles, from a given offset, into a bitmap image.
         /// This does NOT change the canvas position or size hint.
         /// </summary>
-        void RenderToImage(Bitmap bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles);
+        void RenderToImage(RawImage bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles);
 
         /// <summary>
         /// Draw curve in the current inking colour
@@ -51,5 +54,35 @@ namespace SlickWindows.Canvas
         /// This is used for importing.
         /// </summary>
         void SetPixel(Color color, int x, int y);
+
+        /// <summary>
+        /// Write an image into the canvas, with position and scaling
+        /// </summary>
+        void CrossLoadImage(RawImage image, int left, int top, Size size);
+
+        /// <summary>
+        /// Return a list of tile indexes that have been selected for export
+        /// </summary>
+        /// <returns></returns>
+        List<PositionKey> SelectedTiles();
+
+        /// <summary>
+        /// Start a pen stroke.
+        /// </summary>
+        void StartStroke();
+
+        /// <summary>
+        /// End a pen stroke, committing it to the canvas
+        /// </summary>
+        void EndStroke();
+
+        /// <summary>
+        /// List all pinned locations on the canvas
+        /// </summary>
+        [NotNull] InfoPin[] AllPins();
+
+        void WritePinAtCurrentOffset(string text);
+        void CentreOnPin(InfoPin pin);
+        void DeletePin(InfoPin pin);
     }
 }

@@ -2,17 +2,17 @@
 using System.Linq;
 using System.Windows.Forms;
 using JetBrains.Annotations;
+using SlickCommon.Canvas;
 using SlickCommon.Storage;
-using SlickWindows.Canvas;
 using SlickWindows.Gui.Components;
 
 namespace SlickWindows.Gui
 {
     public partial class PinsWindow : AutoScaleForm
     {
-        [NotNull]private readonly EndlessCanvas _canvas;
+        [NotNull]private readonly IEndlessCanvas _canvas;
 
-        public PinsWindow(EndlessCanvas canvas)
+        public PinsWindow(IEndlessCanvas canvas)
         {
             _canvas = canvas ?? throw new ArgumentNullException(nameof(canvas));
             InitializeComponent();

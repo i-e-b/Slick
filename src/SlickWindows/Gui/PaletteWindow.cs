@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.Windows.Forms;
 using JetBrains.Annotations;
 using Microsoft.StylusInput;
+using SlickCommon.Canvas;
 using SlickWindows.Canvas;
 using SlickWindows.Gui.Components;
 using SlickWindows.Input;

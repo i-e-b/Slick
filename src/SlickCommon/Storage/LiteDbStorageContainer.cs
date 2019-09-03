@@ -50,11 +50,18 @@ namespace SlickCommon.Storage
             var file = _db.FileStorage.Find(id)?.FirstOrDefault();
             if (file == null) return Result<Stream>.Failure(NoVersion);
 
-            var ms = new MemoryStream();
-            file.CopyTo(ms);
-            ms.Seek(0, SeekOrigin.Begin);
+            try
+            {
+                var ms = new MemoryStream();
+                file.CopyTo(ms);
+                ms.Seek(0, SeekOrigin.Begin);
 
-            return Result<Stream>.Success(ms);
+                return Result<Stream>.Success(ms);
+            }
+            catch (Exception ex)
+            {
+                return Result.Failure<Stream>(ex);
+            }
         }
 
         /// <inheritdoc />

@@ -1,4 +1,6 @@
-﻿namespace SlickWindows.Canvas
+﻿using SlickCommon.Storage;
+
+namespace SlickCommon.Canvas
 {
     /// <summary>
     /// Stores a tile position, and a pixel offset inside it.

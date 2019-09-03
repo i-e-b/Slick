@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
 using JetBrains.Annotations;
+using SlickCommon.Canvas;
 using SlickWindows.Canvas;
 using SlickWindows.Gui.Components;
 using SlickWindows.ImageFormats;
@@ -11,11 +12,11 @@ namespace SlickWindows.Gui
 {
     public partial class Extras : AutoScaleForm
     {
-        [NotNull] private readonly EndlessCanvas _target;
+        [NotNull] private readonly IEndlessCanvas _target;
         private readonly FloatingImage _importFloat;
         private readonly FloatingText _textFloat;
 
-        public Extras(EndlessCanvas target, FloatingImage importFloat, FloatingText textFloat)
+        public Extras(IEndlessCanvas target, FloatingImage importFloat, FloatingText textFloat)
         {
             _target = target ?? throw new ArgumentNullException(nameof(target));
             _importFloat = importFloat;
@@ -97,7 +98,8 @@ namespace SlickWindows.Gui
             // render and save bitmap
             using (var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb))
             {
-                _target.RenderToImage(bmp, top, left, selected);
+                // TODO: fix this
+                ((EndlessCanvas)_target).RenderToImage(bmp, top, left, selected);
                 Application.DoEvents();
                 bmp.SaveJpeg(path);
             }

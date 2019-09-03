@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using SlickCommon.Canvas;
 
 namespace SlickWindows.Canvas
 {

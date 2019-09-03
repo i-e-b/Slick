@@ -4,6 +4,9 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
+using SlickCommon.Canvas;
+using SlickCommon.Storage;
+
 // ReSharper disable BuiltInTypeReferenceStyle
 
 namespace SlickWindows.Canvas
@@ -304,6 +307,7 @@ namespace SlickWindows.Canvas
             for (int plane = 0; plane < 3; plane++)
             {
                 var small = Pick(plane, Blue, Green, Red);
+                if (small == null) continue;
                 int shift = plane * 8;
 
                 for (int y = 0; y < srcHeight; y++)
@@ -323,10 +327,10 @@ namespace SlickWindows.Canvas
                         var _4 = dyo + dy + dx + 1;
 
                         var P = (int)small[syo + x];
-                        var A = (int)(small[syo + x - row] >> sigBits);
-                        var C = (int)(small[syo + x - col] >> sigBits);
-                        var B = (int)(small[syo + x + col] >> sigBits);
-                        var D = (int)(small[syo + x + row] >> sigBits);
+                        var A = (small[syo + x - row] >> sigBits);
+                        var C = (small[syo + x - col] >> sigBits);
+                        var B = (small[syo + x + col] >> sigBits);
+                        var D = (small[syo + x + row] >> sigBits);
                         
                         var v1 = P;
                         var v2 = P;
@@ -405,6 +409,7 @@ namespace SlickWindows.Canvas
         
         private static T Pick<T>(int i, params T[] stuff)
         {
+            if (stuff == null) return default;
             return stuff[i];
         }
     }

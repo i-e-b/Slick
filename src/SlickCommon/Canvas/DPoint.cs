@@ -1,4 +1,4 @@
-﻿namespace SlickWindows.Canvas
+﻿namespace SlickCommon.Canvas
 {
     /// <summary>
     /// Double precision point with pressure

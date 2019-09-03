@@ -2,13 +2,14 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
-using SlickWindows.Canvas;
+using SlickCommon.Canvas;
+using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Gui.Components
 {
     public partial class FloatingText : UserControl
     {
-        public EndlessCanvas CanvasTarget { get; set; }
+        public IEndlessCanvas CanvasTarget { get; set; }
 
         private static Font LargeFont;
         private static Font SmallFont;
@@ -141,7 +142,7 @@ namespace SlickWindows.Gui.Components
             using (var bmp = new Bitmap(textBox.Width, textBox.Height, PixelFormat.Format32bppPArgb))
             {
                 textBox.DrawToBitmap(bmp, new Rectangle(0, 0, textBox.Width, textBox.Height));
-                CanvasTarget.CrossLoadImage(bmp, Left + textBox.Left, Top + textBox.Top, textBox.Size);
+                CanvasTarget.CrossLoadImage(SystemImage.ToRaw(bmp), Left + textBox.Left, Top + textBox.Top, textBox.Size);
             }
             Visible = false;
         }

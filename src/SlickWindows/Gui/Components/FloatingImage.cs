@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using JetBrains.Annotations;
-using SlickWindows.Canvas;
+using SlickCommon.Canvas;
 using SlickWindows.Gui.Components;
+using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Gui
 {
@@ -18,7 +18,7 @@ namespace SlickWindows.Gui
             set { _candidateImage = value; Invalidate(); }
         }
 
-        public EndlessCanvas CanvasTarget { get; set; }
+        public IEndlessCanvas CanvasTarget { get; set; }
 
         private bool _scaling;
         private int _dx,_dy;
@@ -138,7 +138,10 @@ namespace SlickWindows.Gui
             if (CanvasTarget == null || CandidateImage == null) return;
 
             // Merge into canvas tiles
-            CanvasTarget.CrossLoadImage(CandidateImage, Left, Top, Size);
+            using (var bmp = new Bitmap(CandidateImage))
+            {
+                CanvasTarget.CrossLoadImage(SystemImage.ToRaw(bmp), Left, Top, Size);
+            }
 
             // close the floater
             if (CandidateImage != null) CandidateImage.Dispose();

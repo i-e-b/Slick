@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 using Microsoft.Ink;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
-using SlickWindows.Canvas;
+using SlickCommon.Canvas;
 
 namespace SlickWindows.Input
 {
@@ -17,7 +17,7 @@ namespace SlickWindows.Input
     {
         [NotNull]private static readonly object _tlock = new object();
         private readonly Form _container;
-        [NotNull]private readonly EndlessCanvas _canvas;
+        [NotNull]private readonly IEndlessCanvas _canvas;
         [NotNull]private readonly IKeyboard _keyboard;
 
         [NotNull] private readonly Dictionary<int,TabletDeviceKind> StylusId_to_DeviceKind;
@@ -40,7 +40,7 @@ namespace SlickWindows.Input
         /// <param name="container">Window that receives pen input</param>
         /// <param name="g">The graphics object used for dynamic rendering.</param>
         /// <param name="keyboard">Key state helper</param>
-        public CanvasDrawingPlugin(Form container, EndlessCanvas g, IKeyboard keyboard)
+        public CanvasDrawingPlugin(Form container, IEndlessCanvas g, IKeyboard keyboard)
         {
             StylusId_to_Points = new Dictionary<int, Queue<DPoint>>();
             StylusId_to_DeviceKind = new Dictionary<int, TabletDeviceKind>();

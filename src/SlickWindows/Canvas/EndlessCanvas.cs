@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using JetBrains.Annotations;
+using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
 
@@ -155,6 +156,7 @@ namespace SlickWindows.Canvas
                 X = ax, Y = ay
             };
         }
+
 
         public void CanvasToScreen(PositionKey tilePos, out float x, out float y)
         {
@@ -377,6 +379,42 @@ namespace SlickWindows.Canvas
             RenderWetInk(g);
         }
 
+        
+        /// <inheritdoc />
+        public void RenderToImage(RawImage bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
+        {
+            //TODO: IMPLEMENT_ME();
+        }
+
+        /// <summary>
+        /// Draw the selected tiles, from a given offset, into a bitmap image.
+        /// This does NOT change the canvas position or size hint.
+        /// </summary>
+        public void RenderToImage(Bitmap bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
+        {
+            if (bmp == null || selectedTiles == null) return;
+
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.White);
+                foreach (var tile in selectedTiles)
+                {
+                    if (tile == null) continue;
+                    var ti = LoadTileSync(tile);
+                    if (ti == null) continue;
+
+                    var dx = (tile.X - leftIdx) * TileImage.Size;
+                    var dy = (tile.Y - topIdx) * TileImage.Size;
+
+                    // if offscreen, don't bother
+                    if (dx > bmp.Width || dx < -TileImage.Size || dy > bmp.Height || dy < -TileImage.Size) continue;
+
+                    // draw tile
+                    ti.Render(g, dx, dy, false, 1, 1.0f);
+                }
+            }
+        }
+
         private void RenderWetInk([NotNull]Graphics g)
         {
             if (_wetInkCurve.Count < 2) return;
@@ -449,35 +487,6 @@ namespace SlickWindows.Canvas
             }
         }
 
-
-        /// <summary>
-        /// Draw the selected tiles, from a given offset, into a bitmap image.
-        /// This does NOT change the canvas position or size hint.
-        /// </summary>
-        public void RenderToImage(Bitmap bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
-        {
-            if (bmp == null || selectedTiles == null) return;
-
-            using (var g = Graphics.FromImage(bmp))
-            {
-                g.Clear(Color.White);
-                foreach (var tile in selectedTiles)
-                {
-                    if (tile == null) continue;
-                    var ti = LoadTileSync(tile);
-                    if (ti == null) continue;
-
-                    var dx = (tile.X - leftIdx) * TileImage.Size;
-                    var dy = (tile.Y - topIdx) * TileImage.Size;
-
-                    // if offscreen, don't bother
-                    if (dx > bmp.Width || dx < -TileImage.Size || dy > bmp.Height || dy < -TileImage.Size) continue;
-
-                    // draw tile
-                    ti.Render(g, dx, dy, false, 1, 1.0f);
-                }
-            }
-        }
         
         /// <summary>
         /// Load a tile image from storage, pausing the current thread until it is ready
@@ -933,25 +942,30 @@ namespace SlickWindows.Canvas
         /// Write an external image into this canvas.
         /// `px` & `py` are in screen points
         /// </summary>
-        public void CrossLoadImage([NotNull] Image img, int px, int py, Size size)
+        public void CrossLoadImage([NotNull] RawImage img, int px, int py, Size size)
         {
-            var visualSize = new Size((int) (size.Width * VisualScale), (int) (size.Height * VisualScale));
-            using (var bmp = new Bitmap(img, visualSize))
-            {
-                var width = bmp.Width;
-                var height = bmp.Height;
-                var offsetX = (int)(px * VisualScale);
-                var offsetY = (int)(py * VisualScale);
+            if (img.Red == null || img.Green == null || img.Blue == null) return;
 
-                for (int y = 0; y < height; y++)
+            var width = (int)(size.Width * VisualScale);
+            var height = (int)(size.Height * VisualScale);
+            var offsetX = (int)(px * VisualScale);
+            var offsetY = (int)(py * VisualScale);
+
+            var xscale = (float)img.Width / width;
+            var yscale = (float)img.Height / height;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
                 {
-                    for (int x = 0; x < width; x++)
-                    {
-                        var color = bmp.GetPixel(x, y);
-                        if (color.R == 255 && color.G == 255 && color.B == 255) continue; // skip white pixels
-                        //SetPixel(color, (int)((x + px) * VisualScale), (int)((y + py) * VisualScale));
-                        SetPixel(color, x + offsetX, y + offsetY);
-                    }
+                    var sy = (int)(y * yscale) * img.Width;
+                    var sx = (int)(x * xscale);
+
+                    var idx = (sy + sx) % img.Red.Length;
+
+                    var color = Color.FromArgb(255, img.Red[idx], img.Green[idx], img.Blue[idx]);
+                    if (color.R == 255 && color.G == 255 && color.B == 255) continue; // skip white pixels
+                    SetPixel(color, x + offsetX, y + offsetY);
                 }
             }
             SaveChanges();
