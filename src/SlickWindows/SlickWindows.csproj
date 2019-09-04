@@ -44,8 +44,8 @@
     <Reference Include="Containers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll</HintPath>
     </Reference>
-    <Reference Include="LiteDB, Version=4.1.4.0, Culture=neutral, PublicKeyToken=4ee40123013c9f27, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\LiteDB.4.1.4\lib\net40\LiteDB.dll</HintPath>
+    <Reference Include="LiteDB, Version=4.1.3.0, Culture=neutral, PublicKeyToken=4ee40123013c9f27, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\LiteDB.4.1.3\lib\net40\LiteDB.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Ink, Version=1.7.2600.2180, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <SpecificVersion>False</SpecificVersion>
@@ -56,6 +56,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -182,7 +183,7 @@
     <EmbeddedResource Include="..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll">
       <Link>Embed\Containers.dll</Link>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\..\packages\LiteDB.4.1.4\lib\net40\LiteDB.dll">
+    <EmbeddedResource Include="..\..\packages\LiteDB.4.1.3\lib\net40\LiteDB.dll">
       <Link>Embed\LiteDB.dll</Link>
     </EmbeddedResource>
     <Content Include="mona-lisa.ico" />

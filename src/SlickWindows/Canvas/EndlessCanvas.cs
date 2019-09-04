@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
@@ -327,7 +328,10 @@ namespace SlickWindows.Canvas
                                 ms.Seek(0, SeekOrigin.Begin);
                                 lock (_storageLock)
                                 {
-                                    _storage.Store(name, "img", ms);
+                                    var ok = _storage.Store(name, "img", ms);
+                                    if (ok.IsFailure) {
+                                        MessageBox.Show("Storage error: DB might be corrupt:\r\n" + ok.FailureCause, "Storage Error");
+                                    }
                                 }
                             }
                         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Containers;
 using Containers.Types;
 using JetBrains.Annotations;
@@ -12,18 +13,19 @@ namespace SlickCommon.Storage
     {
         [NotNull] private readonly IStreamProvider _pageFile;
         [NotNull] private readonly object _storageLock = new object();
+        [NotNull] private LiteDatabase _db;
 
         private static readonly Exception NotFound = new Exception("The node does not exist");
         private static readonly Exception NoVersion = new Exception("The listed version is missing");
         private static readonly Exception NoDb = new Exception("Could not connect to DB");
-        [NotNull]private readonly LiteDatabase _db;
 
+        private volatile bool _writeLock = false;
 
         public LiteDbStorageContainer([NotNull]IStreamProvider pageFile)
         {
             _pageFile = pageFile;
-            _db = new LiteDatabase(_pageFile.Open());
 
+            _db = new LiteDatabase(_pageFile.Open());
             var nodes = _db.GetCollection<StorageNode>("map");
             nodes?.EnsureIndex("_id", unique: true);
             nodes?.EnsureIndex("Id");
@@ -44,6 +46,8 @@ namespace SlickCommon.Storage
         public Result<Stream> Read(string path, string type, int version)
         {
             var id = $"{path}/{type}/{version}";
+
+            while (_writeLock) { Thread.Sleep(50); }
 
             if (_db.FileStorage == null) return Result<Stream>.Failure(NoDb);
 
@@ -69,10 +73,18 @@ namespace SlickCommon.Storage
         {
             lock (_storageLock)
             {
-                var nodes = _db.GetCollection<StorageNode>("map");
-                if (nodes == null) return Result<Nothing>.Failure(NoDb);
-                nodes.Upsert(path, node);
-                return Result<Nothing>.Success(Nothing.Instance);
+                try
+                {
+                    _writeLock = true;
+                    var nodes = _db.GetCollection<StorageNode>("map");
+                    if (nodes == null) return Result<Nothing>.Failure(NoDb);
+                    nodes.Upsert(path, node);
+                    return Result<Nothing>.Success(Nothing.Instance);
+                }
+                finally
+                {
+                    _writeLock = false;
+                }
             }
         }
 
@@ -80,9 +92,10 @@ namespace SlickCommon.Storage
         public Result<StorageNode> Store(string path, string type, Stream data)
         {
             lock (_storageLock)
-                using (var db = new LiteDatabase(_pageFile.Open()))
+                try
                 {
-                    var nodes = db.GetCollection<StorageNode>("map");
+                    _writeLock = true;
+                    var nodes = _db.GetCollection<StorageNode>("map");
                     if (nodes == null) return Result<StorageNode>.Failure(NoDb);
                     var node = nodes.FindById(path);
 
@@ -99,12 +112,19 @@ namespace SlickCommon.Storage
 
                     if (node.Id == null) throw new Exception("Loading storage node failed!");
 
-                    if (db.FileStorage == null) return Result<StorageNode>.Failure(NoDb);
+                    if (_db.FileStorage == null) return Result<StorageNode>.Failure(NoDb);
 
                     var id = $"{path}/{type}/{node.CurrentVersion}";
-                    db.FileStorage.Delete(id); // make sure it's unique
-                    db.FileStorage.Upload(id, type, data);
-                    nodes.Upsert(path, node);
+                    try
+                    {
+                        _db.FileStorage.Delete(id); // make sure it's unique
+                        _db.FileStorage.Upload(id, type, data);
+                        nodes.Upsert(path, node);
+                    }
+                    catch (Exception ex)
+                    {
+                        return Result.Failure<StorageNode>(ex);
+                    }
 
                     // if version is greater than 2, scan back to delete old versions
                     if (node.CurrentVersion > 2) // clean up versions more than one old
@@ -112,12 +132,16 @@ namespace SlickCommon.Storage
                         for (int i = node.CurrentVersion - 2; i > 0; i--)
                         {
                             id = $"{path}/{type}/{i}";
-                            if (!db.FileStorage.Exists(id)) break;
-                            db.FileStorage.Delete(id);
+                            if (!_db.FileStorage.Exists(id)) break;
+                            _db.FileStorage.Delete(id);
                         }
                     }
 
                     return Result<StorageNode>.Success(node);
+                }
+                finally
+                {
+                    _writeLock = false;
                 }
         }
 
@@ -126,26 +150,33 @@ namespace SlickCommon.Storage
         {
             lock (_storageLock)
             {
-                var pins = _db.GetCollection<InfoPin>("pins");
-                if (pins == null) return Result<InfoPin>.Failure(NoDb);
-                var pin = new InfoPin { Id = path, Description = description };
-                pins.Upsert(path, pin);
-                return Result<InfoPin>.Success(pin);
+                try
+                {
+                    _writeLock = true;
+                    var pins = _db.GetCollection<InfoPin>("pins");
+                    if (pins == null) return Result<InfoPin>.Failure(NoDb);
+                    var pin = new InfoPin { Id = path, Description = description };
+                    pins.Upsert(path, pin);
+                    return Result<InfoPin>.Success(pin);
+                }
+                finally
+                {
+                    _writeLock = false;
+                }
             }
         }
 
         /// <inheritdoc />
         public Result<InfoPin> GetPin(string path)
         {
-            lock (_storageLock)
-            {
-                var pins = _db.GetCollection<InfoPin>("pins");
-                var pin = pins?.FindById(path);
+            while (_writeLock) { Thread.Sleep(50); }
 
-                return (pin == null)
-                    ? Result<InfoPin>.Failure(NotFound)
-                    : Result<InfoPin>.Success(pin);
-            }
+            var pins = _db.GetCollection<InfoPin>("pins");
+            var pin = pins?.FindById(path);
+
+            return (pin == null)
+                ? Result<InfoPin>.Failure(NotFound)
+                : Result<InfoPin>.Success(pin);
         }
 
         /// <inheritdoc />
@@ -153,23 +184,29 @@ namespace SlickCommon.Storage
         {
             lock (_storageLock)
             {
-                var pins = _db.GetCollection<InfoPin>("pins");
-                pins?.Delete(id);
+                try
+                {
+                    _writeLock = true;
+                    var pins = _db.GetCollection<InfoPin>("pins");
+                    pins?.Delete(id);
+                }
+                finally
+                {
+                    _writeLock = false;
+                }
             }
         }
 
         /// <inheritdoc />
         public Result<InfoPin[]> ReadAllPins()
         {
-            lock (_storageLock)
-            {
-                var pins = _db.GetCollection<InfoPin>("pins");
-                var allPins = pins?.FindAll()?.ToArray();
+            while (_writeLock) { Thread.Sleep(50); }
+            var pins = _db.GetCollection<InfoPin>("pins");
+            var allPins = pins?.FindAll()?.ToArray();
 
-                return (allPins == null)
-                    ? Result<InfoPin[]>.Failure(NotFound)
-                    : Result<InfoPin[]>.Success(allPins);
-            }
+            return (allPins == null)
+                ? Result<InfoPin[]>.Failure(NotFound)
+                : Result<InfoPin[]>.Success(allPins);
         }
 
         /// <inheritdoc />
@@ -182,51 +219,52 @@ namespace SlickCommon.Storage
 
             lock (_storageLock)
             {
-                var nodes = _db.GetCollection<StorageNode>("map");
-                if (_db.FileStorage == null) return Result<Nothing>.Failure(NoDb);
-                if (nodes == null) return Result<Nothing>.Failure(NoDb);
-                nodes.EnsureIndex(n => n.IsDeleted);
-
-                // Delete any *old* marked files
-                var old = nodes.Find(n => n.IsDeleted);
-                if (old != null)
+                try
                 {
-                    foreach (var node in old)
+                    _writeLock = true;
+                    var nodes = _db.GetCollection<StorageNode>("map");
+                    if (_db.FileStorage == null) return Result<Nothing>.Failure(NoDb);
+                    if (nodes == null) return Result<Nothing>.Failure(NoDb);
+                    nodes.EnsureIndex(n => n.IsDeleted);
+
+                    // Delete any *old* marked files
+                    var old = nodes.Find(n => n.IsDeleted);
+                    if (old != null)
                     {
-                        for (int i = node.CurrentVersion; i > 0; i--) // delete files
+                        foreach (var node in old)
                         {
-                            var id = $"{path}/{type}/{i}";
-                            if (!_db.FileStorage.Exists(id)) break;
-                            _db.FileStorage.Delete(id);
+                            for (int i = node.CurrentVersion; i > 0; i--) // delete files
+                            {
+                                var id = $"{path}/{type}/{i}";
+                                if (!_db.FileStorage.Exists(id)) break;
+                                _db.FileStorage.Delete(id);
+                            }
+                            nodes.Delete(node.Id); // delete meta data
                         }
-                        nodes.Delete(node.Id); // delete meta data
                     }
-                }
 
-                // mark the target node
-                var target = nodes.FindById(path);
-                if (target != null)
-                {
-                    target.IsDeleted = true;
-                    nodes.Upsert(path, target);
-                }
+                    // mark the target node
+                    var target = nodes.FindById(path);
+                    if (target != null)
+                    {
+                        target.IsDeleted = true;
+                        nodes.Upsert(path, target);
+                    }
 
-                // compact the db
-                try {
                     _db.Shrink();
-                }
-                catch {
-                    // ignore
-                }
 
-                return Result.Success(Nothing.Instance);
+                    return Result.Success(Nothing.Instance);
+                }
+                finally
+                {
+                    _writeLock = false;
+                }
             }
         }
 
         /// <inheritdoc />
         public void Dispose()
         {
-            _db.Dispose();
             _pageFile.Dispose();
         }
     }

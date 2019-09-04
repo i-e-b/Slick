@@ -51,6 +51,8 @@ namespace SlickWindows.Gui
 
             InkCrosshair_LoDpi = CursorImage.MakeCrosshair(1);
             InkCrosshair_HiDpi = CursorImage.MakeCrosshair(2);
+            MoveCursor_LoDpi = CursorImage.MakeMove(1);
+            MoveCursor_HiDpi = CursorImage.MakeMove(2);
             SetCursorForState();
 
 
@@ -238,7 +240,8 @@ namespace SlickWindows.Gui
             }
             else
             {
-                Cursor = Cursors.NoMove2D;
+                if (Dpi > 120) Cursor = MoveCursor_HiDpi;
+                else Cursor = MoveCursor_LoDpi;
             }
         }
 
