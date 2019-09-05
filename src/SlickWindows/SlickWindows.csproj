@@ -68,10 +68,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Canvas\ColorEncoding.cs" />
-    <Compile Include="Canvas\DrawResult.cs" />
     <Compile Include="Canvas\InkSettings.cs" />
-    <Compile Include="Canvas\PenSizes.cs" />
     <Compile Include="Canvas\SystemIoFile.cs" />
     <Compile Include="Canvas\TileImage.cs" />
     <Compile Include="Gui\Components\AutoscaleForm.cs">
@@ -185,6 +182,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="..\..\packages\LiteDB.4.1.3\lib\net40\LiteDB.dll">
       <Link>Embed\LiteDB.dll</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\SlickCommon\bin\Release\netstandard2.0\SlickCommon.dll">
+      <Link>Embed\SlickCommon.dll</Link>
     </EmbeddedResource>
     <Content Include="mona-lisa.ico" />
   </ItemGroup>

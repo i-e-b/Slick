@@ -4,7 +4,7 @@ using Windows.Storage.Streams;
 using JetBrains.Annotations;
 using SlickCommon.Storage;
 
-namespace SlickUWP
+namespace SlickUWP.Adaptors
 {
     internal class StreamWrapper :Stream,  IStreamProvider
     {
@@ -21,8 +21,12 @@ namespace SlickUWP
         /// <inheritdoc />
         public void Dispose()
         {
-            _openStream = null;
-            _source.Dispose();
+            try {
+                _openStream = null;
+                _source.Dispose();
+            } catch (Exception ex) {
+                Console.WriteLine(ex);
+            }
         }
 
         /// <inheritdoc />

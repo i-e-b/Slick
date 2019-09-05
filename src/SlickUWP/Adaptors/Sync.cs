@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Foundation;
 
-namespace SlickUWP
+namespace SlickUWP.Adaptors
 {
     /// <summary>
     /// Helper class to properly wait for async tasks

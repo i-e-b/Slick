@@ -1,4 +1,4 @@
-﻿namespace SlickUWP
+﻿namespace SlickUWP.Storage
 {
     public class StorageNode {
         public string Id { get; set; }

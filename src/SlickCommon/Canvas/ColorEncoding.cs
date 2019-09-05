@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace SlickWindows.Canvas
+namespace SlickCommon.Canvas
 {
     public static class ColorEncoding {
 
