@@ -28,7 +28,7 @@ namespace SlickCommon.Storage
             _db = new LiteDatabase(_pageFile.Open());
             var nodes = _db.GetCollection<StorageNode>("map");
             nodes?.EnsureIndex("_id", unique: true);
-            nodes?.EnsureIndex("Id");
+            //nodes?.EnsureIndex("Id");
         }
 
         /// <inheritdoc />

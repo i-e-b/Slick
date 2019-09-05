@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.Storage;
@@ -16,6 +14,8 @@ using Windows.UI.Xaml.Media;
 using LiteDB;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
+using SlickCommon.ImageFormats;
+using SlickCommon.Storage;
 
 // GENERAL PLAN:
 /*
@@ -68,11 +68,11 @@ namespace SlickUWP
             dynamicTile = new CanvasControl();
             dynamicTile.Draw += DynamicTile_Draw;
             dynamicTile.Margin = new Thickness(0.0);
-            dynamicTile.Height = 128;
-            dynamicTile.Width = 128;
+            dynamicTile.Height = 256;
+            dynamicTile.Width = 256;
             dynamicTile.HorizontalAlignment = HorizontalAlignment.Left;
             dynamicTile.VerticalAlignment = VerticalAlignment.Top;
-            windowGrid.Children.Add(dynamicTile);
+            renderLayer.Children.Add(dynamicTile);
             
 
             // Set up pen/mouse/touch input
@@ -101,7 +101,70 @@ namespace SlickUWP
 
         private void DynamicTile_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
-            args.DrawingSession.DrawCircle(new Vector2(64,64),64, Color.FromArgb(255, 255, 127, 0));
+            
+            // try loading a tile from a test DB
+            
+            var path = @"C:\Users\IainBallard\Documents\Slick\test.slick";
+            var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
+            if (file != null && file.IsAvailable)
+            {
+                //using (var readStream = await file.OpenAsync(FileAccessMode.Read)) // this results in an 'object closed' error later on
+                using (var readStream = Sync.Run(() => file.OpenAsync(FileAccessMode.Read)))
+                {
+                    var wrapper = new StreamWrapper(readStream);
+                    var store = new LiteDbStorageContainer(wrapper);
+                    var pos = new PositionKey(0,0);
+                    var name = pos.ToString();
+                    var res = store.Exists(name);
+                    if (res.IsFailure) return;
+
+                    var version = res.ResultData?.CurrentVersion ?? 1;
+                    var img = store.Read(name, "img", version);
+
+                    if (img.IsFailure) return;
+
+                    var fileData = InterleavedFile.ReadFromStream(img.ResultData);
+                    var Red = new byte[65536];
+                    var Green = new byte[65536];
+                    var Blue = new byte[65536];
+                    if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
+
+                    var packed = new byte[65536 * 4];
+
+                    for (int i = 0; i < Red.Length; i++)
+                    {
+                        // could do a EPX 2x here
+                        packed[4*i+0] = Blue[i];
+                        packed[4*i+1] = Green[i];
+                        packed[4*i+2] = Red[i];
+
+                        if (Blue[i] > 250 && Green[i] > 250 && Red[i] > 250){
+                            packed[4*i+3] = 0;
+                        } else {
+                            packed[4*i+3] = 255;
+                        }
+                    }
+                    
+                    using (var bmp = CanvasBitmap.CreateFromBytes(sender, packed, 256, 256,
+                        DirectXPixelFormat.B8G8R8A8UIntNormalized, 96 /*dpi*/, CanvasAlphaMode.Premultiplied))
+                    {
+                        try
+                        {
+                            args.DrawingSession.DrawImage(bmp, new Rect(0, 0, 256, 256));
+                            text.Text += "; Render from DB succeeded!";
+                        }
+                        catch (Exception ex)
+                        {
+                            text.Text += "; Failed to draw: " + ex;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                text.Text += $"; can't access DB file";
+                args.DrawingSession.DrawCircle(new Vector2(64,64),64, Color.FromArgb(255, 255, 127, 0));
+            }
         }
 
         private void TestDbLoad(StorageFile file)
@@ -172,7 +235,7 @@ namespace SlickUWP
                 DirectXPixelFormat.B8G8R8A8UIntNormalized, 96 /*dpi*/, CanvasAlphaMode.Ignore)) // pixel format must be on the supported list, or the app will bomb
                 // DPI doesn't seem to do anything
             {
-                bmp.SetPixelBytes(values, 0, 0, 128, 128);
+                //bmp.SetPixelBytes(values, 0, 0, 128, 128);
                 args.DrawingSession.DrawImage(bmp, new Rect(0, 0, 128, 128));
             }
         }
@@ -204,36 +267,5 @@ namespace SlickUWP
                 text.Text += "\r\nException: " + ex;
             }
         }
-    }
-    /// <summary>
-    /// Helper class to properly wait for async tasks
-    /// </summary>
-    public static class Sync  
-    {
-        private static readonly TaskFactory _taskFactory = new
-            TaskFactory(CancellationToken.None,
-                TaskCreationOptions.None,
-                TaskContinuationOptions.None,
-                TaskScheduler.Default);
-
-
-
-        /// <summary>
-        /// Run an async function synchronously and return the result
-        /// </summary>
-        public static TResult Run<TResult>(Func<IAsyncOperation<TResult>> func)
-        {
-            return _taskFactory.StartNew(() => func().AsTask()).Unwrap().GetAwaiter().GetResult();
-        }
-
-        /// <summary>
-        /// Run an async function synchronously and return the result
-        /// </summary>
-        public static TResult Run<TResult>(Func<Task<TResult>> func) => _taskFactory.StartNew(func).Unwrap().GetAwaiter().GetResult();
-
-        /// <summary>
-        /// Run an async function synchronously
-        /// </summary>
-        public static void Run(Func<Task> func) => _taskFactory.StartNew(func).Unwrap().GetAwaiter().GetResult();
     }
 }

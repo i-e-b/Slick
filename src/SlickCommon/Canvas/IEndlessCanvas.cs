@@ -41,7 +41,7 @@ namespace SlickCommon.Canvas
         /// Draw the selected tiles, from a given offset, into a bitmap image.
         /// This does NOT change the canvas position or size hint.
         /// </summary>
-        void RenderToImage(RawImage bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles);
+        void RenderToImage(RawImagePlanar bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles);
 
         /// <summary>
         /// Draw curve in the current inking colour
@@ -58,7 +58,7 @@ namespace SlickCommon.Canvas
         /// <summary>
         /// Write an image into the canvas, with position and scaling
         /// </summary>
-        void CrossLoadImage(RawImage image, int left, int top, Size size);
+        void CrossLoadImage(RawImagePlanar image, int left, int top, Size size);
 
         /// <summary>
         /// Return a list of tile indexes that have been selected for export

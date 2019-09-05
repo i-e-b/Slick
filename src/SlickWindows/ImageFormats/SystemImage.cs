@@ -9,7 +9,7 @@ namespace SlickWindows.ImageFormats
     public class SystemImage
     {
         [NotNull]
-        public static RawImage ToRaw([NotNull]Bitmap src)
+        public static RawImagePlanar ToRaw([NotNull]Bitmap src)
         {
             var ri = new Rectangle(Point.Empty, src.Size);
             var srcData = src.LockBits(ri, ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb); // this is actually BGRA
@@ -36,7 +36,7 @@ namespace SlickWindows.ImageFormats
                 B[i] = raw[j+0];
             }
 
-            return new RawImage
+            return new RawImagePlanar
             {
                 Red = R,
                 Green = G,

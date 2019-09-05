@@ -1,6 +1,6 @@
 ﻿namespace SlickCommon.ImageFormats
 {
-    public class RawImage
+    public class RawImagePlanar
     {
         public byte[] Red;
         public byte[] Green;

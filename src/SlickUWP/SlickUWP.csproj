@@ -124,6 +124,8 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Storage\StorageNode.cs" />
+    <Compile Include="StreamWrapper.cs" />
+    <Compile Include="Sync.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -167,7 +169,12 @@
       <Version>1.23.0</Version>
     </PackageReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\SlickCommon\SlickCommon.csproj">
+      <Project>{2799264C-B883-4B88-8D4D-EA0980BA3656}</Project>
+      <Name>SlickCommon</Name>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
   </PropertyGroup>

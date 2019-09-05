@@ -4,7 +4,6 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
@@ -330,7 +329,7 @@ namespace SlickWindows.Canvas
                                 {
                                     var ok = _storage.Store(name, "img", ms);
                                     if (ok.IsFailure) {
-                                        MessageBox.Show("Storage error: DB might be corrupt:\r\n" + ok.FailureCause, "Storage Error");
+                                        throw new Exception("Storage error: DB might be corrupt.", ok.FailureCause);
                                     }
                                 }
                             }
@@ -385,7 +384,7 @@ namespace SlickWindows.Canvas
 
         
         /// <inheritdoc />
-        public void RenderToImage(RawImage bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
+        public void RenderToImage(RawImagePlanar bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
         {
             //TODO: IMPLEMENT_ME();
         }
@@ -946,7 +945,7 @@ namespace SlickWindows.Canvas
         /// Write an external image into this canvas.
         /// `px` & `py` are in screen points
         /// </summary>
-        public void CrossLoadImage([NotNull] RawImage img, int px, int py, Size size)
+        public void CrossLoadImage([NotNull] RawImagePlanar img, int px, int py, Size size)
         {
             if (img.Red == null || img.Green == null || img.Blue == null) return;
 

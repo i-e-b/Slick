@@ -5,16 +5,20 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
 using SlickCommon.Canvas;
+using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
 
 // ReSharper disable BuiltInTypeReferenceStyle
 
 namespace SlickWindows.Canvas
 {
+
+    // TODO: split this into a sharable and Winforms side
+
     /// <summary>
     /// small image fragment
     /// </summary>
-    public class TileImage
+    public class TileImage : ITileImage
     {
         public const int Size = 256;
         public const int Pixels = Size * Size;
@@ -22,7 +26,7 @@ namespace SlickWindows.Canvas
         // Image planes:
         // The RGB planes are as you'd expect. Hilight is a special indexed plane: 0 is transparent.
         [NotNull] public readonly byte[] Red, Green, Blue, Hilight;
-        [NotNull]private readonly int[] raw;
+        [NotNull] private readonly int[] raw;
 
         // caching
         [CanBeNull]private TextureBrush _renderCache;
@@ -37,7 +41,6 @@ namespace SlickWindows.Canvas
         public int Width { get { return Size; } }
         public int Height { get { return Size; } }
         public PositionKey Position { get; set; }
-
 
 
         /// <summary>
@@ -110,7 +113,8 @@ namespace SlickWindows.Canvas
             {
                 lock (_cacheLock)
                 {
-                    cache = CopyDataToTexture(drawScale, rect);
+                    UpdateRawByteCache(drawScale, rect);
+                    cache = RawToTextureBrush(rect.Width, rect.Height);
                 }
             }
 
@@ -133,6 +137,18 @@ namespace SlickWindows.Canvas
             if (_canCache) { _renderCache = cache; }
         }
 
+        public RawImageInterleaved GetRawImage(byte drawScale, float visualScale) {
+            var rect = GetTargetRectangle(0, 0, drawScale, visualScale);
+            UpdateRawByteCache(drawScale, rect);
+
+            return new RawImageInterleaved
+            {
+                Data = raw,
+                Height = rect.Height,
+                Width = rect.Width
+            };
+        }
+
         private static Rectangle GetTargetRectangle(double dx, double dy, byte drawScale, float visualScale)
         {
             var size = Size >> (drawScale - 1);
@@ -148,7 +164,8 @@ namespace SlickWindows.Canvas
             var rect = GetTargetRectangle(0, 0, drawScale, visualScale);
             lock (_cacheLock){
                 _renderCache?.Dispose();
-                _renderCache = CopyDataToTexture(drawScale, rect);
+                UpdateRawByteCache(drawScale, rect);
+                _renderCache = RawToTextureBrush(rect.Width, rect.Height);
             }
         }
 
@@ -236,7 +253,7 @@ namespace SlickWindows.Canvas
 
         private const int Alpha = unchecked((int)0xff000000);
 
-        [NotNull]private TextureBrush CopyDataToTexture(byte drawScale, Rectangle rect)
+        private void UpdateRawByteCache(byte drawScale, Rectangle rect)
         {
             var width = rect.Width;
             var height = rect.Height;
@@ -260,10 +277,6 @@ namespace SlickWindows.Canvas
                 // weird scale. Handle with a dumb nearest-neighbor for now.
                 ScaleNearestNeighbour(size, width, height, sampleCount);
             }
-
-
-            // Copy managed memory over to texture brush
-            return RawToTextureBrush(width, height);
         }
 
         
