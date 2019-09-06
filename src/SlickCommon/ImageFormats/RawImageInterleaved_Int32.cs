@@ -2,8 +2,9 @@
 {
     /// <summary>
     /// Container for 4-channel 8888 image data
+    /// as an array of Int32
     /// </summary>
-    public class RawImageInterleaved
+    public class RawImageInterleaved_Int32
     {
         public int[] Data;
 

@@ -355,7 +355,7 @@ namespace SlickWindows.Canvas
             var scale = 1 << (_drawScale - 1);
 
             var tlLoc = ScreenToCanvas(0,0);
-            var brLoc = ScreenToCanvas(width * scale, Height * scale);
+            var brLoc = ScreenToCanvas(width * scale, height * scale);
 
             var result = new List<PositionKey>();
             var tlPos = tlLoc.TilePosition ?? throw new Exception("TL tile position lookup failed");

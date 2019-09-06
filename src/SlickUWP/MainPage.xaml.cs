@@ -11,7 +11,6 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 using SlickCommon.Storage;
 using SlickUWP.Adaptors;
 using SlickUWP.Canvas;
-using StorageNode = SlickUWP.Storage.StorageNode;
 
 // GENERAL PLAN:
 /*
@@ -36,8 +35,8 @@ namespace SlickUWP
     public sealed partial class MainPage : Page
     {
         private IStorageContainer _tileStore;
-        private TileCanvas _tileCanvas;
-        private WetInkCanvas _wetInk;
+        private readonly TileCanvas _tileCanvas;
+        private readonly WetInkCanvas _wetInk;
 
         public MainPage()
         {
@@ -61,7 +60,7 @@ namespace SlickUWP
             dynamicTile.VerticalAlignment = VerticalAlignment.Top;
             renderLayer.Children.Add(dynamicTile);*/
             
-
+            
             // Set up pen/mouse/touch input
             var ip = baseInkCanvas.InkPresenter;
             // These to get all the drawing and input directly
@@ -77,7 +76,7 @@ namespace SlickUWP
             ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse | CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
             ip.InputProcessingConfiguration.RightDragAction = InkInputRightDragAction.AllowProcessing;
             ip.InputConfiguration.IsEraserInputEnabled = true;
-
+            
 
             // Quick test of loading LiteDB file
 
@@ -107,7 +106,7 @@ namespace SlickUWP
         private void UnprocessedInput_PointerReleased(InkUnprocessedInput sender, PointerEventArgs args)
         {
             // commit the wet ink to the canvas and re-draw
-            _wetInk?.CommitTo(_tileStore);
+            _wetInk?.CommitTo(_tileCanvas);
             _tileCanvas?.Invalidate();
         }
 

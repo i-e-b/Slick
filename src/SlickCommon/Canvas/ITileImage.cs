@@ -21,7 +21,7 @@ namespace SlickCommon.Canvas
         /// </summary>
         /// <param name="drawScale">Current zoom level (used by Map mode)</param>
         /// <param name="visualScale">DPI scaling</param>
-        RawImageInterleaved GetRawImage(byte drawScale, float visualScale);
+        RawImageInterleaved_Int32 GetRawImage(byte drawScale, float visualScale);
 
         /// <summary>
         /// Draw an ink point on this tile. Returns true if the tile contents were changed, false otherwise

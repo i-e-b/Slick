@@ -120,13 +120,13 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Canvas\CachedTile.cs" />
     <Compile Include="Canvas\TileCanvas.cs" />
     <Compile Include="Canvas\WetInkCanvas.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Storage\StorageNode.cs" />
     <Compile Include="Adaptors\StreamWrapper.cs" />
     <Compile Include="Adaptors\Sync.cs" />
   </ItemGroup>
@@ -177,6 +177,9 @@
       <Project>{2799264C-B883-4B88-8D4D-EA0980BA3656}</Project>
       <Name>SlickCommon</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Storage\" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>

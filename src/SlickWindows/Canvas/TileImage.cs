@@ -137,11 +137,11 @@ namespace SlickWindows.Canvas
             if (_canCache) { _renderCache = cache; }
         }
 
-        public RawImageInterleaved GetRawImage(byte drawScale, float visualScale) {
+        public RawImageInterleaved_Int32 GetRawImage(byte drawScale, float visualScale) {
             var rect = GetTargetRectangle(0, 0, drawScale, visualScale);
             UpdateRawByteCache(drawScale, rect);
 
-            return new RawImageInterleaved
+            return new RawImageInterleaved_Int32
             {
                 Data = raw,
                 Height = rect.Height,

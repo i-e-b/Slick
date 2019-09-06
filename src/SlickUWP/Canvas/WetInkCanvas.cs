@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Windows.Graphics.DirectX;
+using Windows.Storage.Streams;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
@@ -11,8 +13,10 @@ using JetBrains.Annotations;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using SlickCommon.Canvas;
+using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
 using SlickUWP.Adaptors;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace SlickUWP.Canvas
 {
@@ -34,9 +38,9 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Finish a pen stoke. It should be rendered into the tile store.
         /// </summary>
-        public void CommitTo(IStorageContainer tileStore)
+        public void CommitTo(TileCanvas tileCanvas)
         {
-            if (tileStore == null) return;
+            if (tileCanvas == null) return;
 
             try
             {
@@ -50,14 +54,19 @@ namespace SlickUWP.Canvas
                 {
                     using (var ds = offscreen.CreateDrawingSession())
                     {
-                        ds.Clear(Colors.White);
+                        ds.Clear(Colors.Transparent);
                         DrawToSession(ds);
                     }
+
                     bytes = offscreen.GetPixelBytes();
                 }
 
-                // TODO: render into tile cache
-
+                // render into tile cache
+                tileCanvas.ImportBytes(new RawImageInterleaved_UInt8{
+                    Data = bytes,
+                    Width = width,
+                    Height = height
+                }, 0, 0);;
 
             }
             catch (Exception ex)
@@ -65,8 +74,9 @@ namespace SlickUWP.Canvas
                 Console.WriteLine(ex);
             }
 
-            //_stroke.Clear();
-            //_renderTarget.Invalidate();
+            // Stroke has been committed. Remove from wet ink and redraw.
+            _stroke.Clear();
+            _renderTarget.Invalidate();
         }
 
         /// <summary>
