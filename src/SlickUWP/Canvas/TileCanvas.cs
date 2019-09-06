@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
 using SlickCommon.Canvas;
@@ -26,14 +28,21 @@ namespace SlickUWP.Canvas
         /// </summary>
         public TileCanvas([NotNull]Grid displayContainer, [NotNull]IStorageContainer tileStore)
         {
-            _displayContainer = displayContainer;
+            _tileCache = new Dictionary<PositionKey, CachedTile>();
+
             _tileStore = tileStore;
 
-            _tileCache = new Dictionary<PositionKey, CachedTile>();
+            _displayContainer = displayContainer;
+            _displayContainer.SizeChanged += _displayContainer_SizeChanged;
 
             X = 0.0;
             Y = 0.0;
 
+            Invalidate();
+        }
+
+        private void _displayContainer_SizeChanged(object sender, Windows.UI.Xaml.SizeChangedEventArgs e)
+        {
             Invalidate();
         }
 
@@ -93,36 +102,42 @@ namespace SlickUWP.Canvas
         {
             if (key == null) return;
 
-            var ct = new CachedTile();
+            var tile = new CachedTile();
             try {
-                _tileCache.Add(key, ct);
+                _displayContainer.Children?.Add(tile.UiCanvas);
+                _tileCache.Add(key, tile);
+                tile.SetState(TileState.Locked);
             }
             catch {
                 return;
             }
 
+            // Read the db and set tile state in the background
+            ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(key, tile); });
+        }
+
+        private void LoadTileDataSync(PositionKey key, CachedTile tile)
+        {
+            if (key == null || tile == null) return;
             var name = key.ToString();
             var res = _tileStore.Exists(name);
-            if (res.IsFailure) {
-                ct.SetState(TileState.Empty);
+            if (res.IsFailure)
+            {
+                tile.SetState(TileState.Empty);
                 return;
             }
 
             var version = res.ResultData?.CurrentVersion ?? 1;
             var img = _tileStore.Read(name, "img", version);
 
-            if (img.IsFailure || img.ResultData == null) {
-                ct.SetState(TileState.Empty);
+            if (img.IsFailure || img.ResultData == null)
+            {
+                tile.SetState(TileState.Empty);
                 return;
             }
 
-
-
-            // TODO: threading
-            // THE REST OF THIS SHOULD BE IN ANOTHER THREAD
-
             var fileData = InterleavedFile.ReadFromStream(img.ResultData);
-            
+
             var Red = new byte[65536];
             var Green = new byte[65536];
             var Blue = new byte[65536];
@@ -133,19 +148,22 @@ namespace SlickUWP.Canvas
             for (int i = 0; i < Red.Length; i++)
             {
                 // could do a EPX 2x here
-                packed[4*i+0] = Blue[i];
-                packed[4*i+1] = Green[i];
-                packed[4*i+2] = Red[i];
+                packed[4 * i + 0] = Blue[i];
+                packed[4 * i + 1] = Green[i];
+                packed[4 * i + 2] = Red[i];
 
-                if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254){
-                    packed[4*i+3] = 0;
-                } else {
-                    packed[4*i+3] = 255;
+                if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
+                {
+                    packed[4 * i + 3] = 0;
+                }
+                else
+                {
+                    packed[4 * i + 3] = 255;
                 }
             }
-            ct.RawImageData = packed;
-            ct.SetState(TileState.Ready);
 
+            tile.RawImageData = packed;
+            tile.SetState(TileState.Ready);
         }
 
         [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
@@ -162,9 +180,9 @@ namespace SlickUWP.Canvas
             var result = new List<PositionKey>();
             var tlPos = tlLoc.TilePosition ?? throw new Exception("TL tile position lookup failed");
             var brPos = brLoc.TilePosition ?? throw new Exception("BR tile position lookup failed");
-            for (int y = tlPos.Y; y <= brPos.Y + 2; y++)
+            for (int y = tlPos.Y; y <= brPos.Y; y++)
             {
-                for (int x = tlPos.X; x <= brPos.X + 3; x++)
+                for (int x = tlPos.X; x <= brPos.X; x++)
                 {
                     result.Add(new PositionKey(x, y));
                 }
@@ -221,8 +239,6 @@ namespace SlickUWP.Canvas
             //TODO:IMPLEMENT_ME();
         }
 
-        
-        
         public const int TileImageSize = 256;
 
         /// <summary>

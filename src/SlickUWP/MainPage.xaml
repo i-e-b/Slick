@@ -7,12 +7,11 @@
     xmlns:Custom="using:Microsoft.Graphics.Canvas.UI.Xaml"
     x:Class="SlickUWP.MainPage"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded">
 
     <Grid x:Name="windowGrid">
 
         <Grid x:Name="renderLayer">
-            <Custom:CanvasControl x:Name="testCanv" HorizontalAlignment="Left" Height="128" Margin="0,0,0,0" VerticalAlignment="Top" Width="128" Background="#FF407281" Draw="TestCanv_Draw" BorderBrush="Black"/>
         </Grid>
 
         <Custom:CanvasControl x:Name="wetInkCanvas" Margin="0,0,0,0" />

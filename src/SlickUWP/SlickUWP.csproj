@@ -123,6 +123,7 @@
     <Compile Include="Canvas\CachedTile.cs" />
     <Compile Include="Canvas\TileCanvas.cs" />
     <Compile Include="Canvas\WetInkCanvas.cs" />
+    <Compile Include="Canvas\InteractionMode.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
