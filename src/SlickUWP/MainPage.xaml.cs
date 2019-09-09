@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Storage;
@@ -91,8 +92,8 @@ namespace SlickUWP
             
             if (file == null || !file.IsAvailable) { throw new Exception("Failed to load Slick file"); }
             
-            var readStream = Sync.Run(() => file.OpenAsync(FileAccessMode.Read));
-            var wrapper = new StreamWrapper(readStream);
+            var accessStream = Sync.Run(() => file.OpenAsync(FileAccessMode.ReadWrite));
+            var wrapper = new StreamWrapper(accessStream);
             var store = new LiteDbStorageContainer(wrapper);
 
             return store;

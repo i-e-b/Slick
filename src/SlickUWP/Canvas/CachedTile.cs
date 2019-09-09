@@ -2,8 +2,11 @@
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.UI;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
+using JetBrains.Annotations;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 
@@ -21,14 +24,19 @@ namespace SlickUWP.Canvas
     /// </summary>
     internal class CachedTile
     {
-        public CanvasControl UiCanvas;
+        [NotNull] private readonly Panel _container;
+        [NotNull] private readonly CoreDispatcher _dispatcher;
+        [NotNull] private readonly CanvasControl UiCanvas;
 
         public TileState State;
 
         public byte[] RawImageData;
 
-        public CachedTile()
+        public CachedTile([NotNull]Panel container)
         {
+            _dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
+
+            _container = container;
             State = TileState.Locked;
 
             UiCanvas = new CanvasControl();
@@ -38,7 +46,13 @@ namespace SlickUWP.Canvas
             UiCanvas.Width = 256;
             UiCanvas.HorizontalAlignment = HorizontalAlignment.Left;
             UiCanvas.VerticalAlignment = VerticalAlignment.Top;
+
+            _container.Children?.Add(UiCanvas);
         }
+
+        public const int ByteSize = 256 * 256 * 4;
+        public int Width => 256;
+        public int Height => 256;
 
         private void Tile_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
@@ -52,7 +66,7 @@ namespace SlickUWP.Canvas
                     return;
 
                 case TileState.Empty:
-                    g.Clear(Colors.White);
+                    g.Clear(Colors.Beige); // should be transparent
                     return;
 
                 case TileState.Ready:
@@ -87,8 +101,6 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void MoveTo(float x, float y)
         {
-            if (UiCanvas == null) return;
-
             UiCanvas.RenderTransform = new TranslateTransform
             {
                 X = x,
@@ -101,7 +113,11 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Detach()
         {
-            if (UiCanvas == null) return;
+            _dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            {
+                // Container removal has to happen on a specific thread, because this is still 1991.
+                _container.Children?.Remove(UiCanvas);
+            });
             UiCanvas.Draw -= Tile_Draw;
         }
 
@@ -111,7 +127,47 @@ namespace SlickUWP.Canvas
         public void SetState(TileState state)
         {
             State = state;
-            UiCanvas?.Invalidate();
+            UiCanvas.Invalidate();
+        }
+
+        /// <summary>
+        /// Set the raw image data to solid white
+        /// </summary>
+        public void AllocateEmptyImage()
+        {
+            RawImageData = new byte[ByteSize];
+            for (int i = 0; i < ByteSize; i++) { RawImageData[i] = 255; }
+        }
+
+        /// <summary>
+        /// Returns true if the image data is empty, or all pixels are *very* close to white. Ignores alpha.
+        /// </summary>
+        public bool ImageIsBlank()
+        {
+            if (RawImageData == null || State == TileState.Empty) return true;
+            if (State == TileState.Locked) return false;
+
+            
+            for (int i = 0; i < ByteSize; i+=4) {
+                if (RawImageData[i+0] < 252) return false; // B
+                if (RawImageData[i+1] < 252) return false; // G
+                if (RawImageData[i+2] < 252) return false; // R
+            }
+            return true;
+        }
+
+        public void Invalidate()
+        {
+            UiCanvas.Invalidate();
+        }
+
+        /// <summary>
+        /// Remove the cache, and set state to empty
+        /// </summary>
+        public void Deallocate()
+        {
+            State = TileState.Empty;
+            RawImageData = null;
         }
     }
 }

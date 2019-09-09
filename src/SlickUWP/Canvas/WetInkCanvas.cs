@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.UI;
@@ -42,26 +43,33 @@ namespace SlickUWP.Canvas
                 byte[] bytes;
                 int width = (int)_renderTarget.ActualWidth;
                 int height = (int)_renderTarget.ActualHeight;
+                Quad coverage = null;
+                var strokeToRender = _stroke.ToArray();
+                _stroke.Clear(); // ready for next
 
-                // Get an offscreen target
-                var device = CanvasDevice.GetSharedDevice(); // NEVER dispose of 'GetSharedDevice' or put it in a `using`. You will crash your program.
-                using (var offscreen = new CanvasRenderTarget(device, width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
-                {
-                    using (var ds = offscreen.CreateDrawingSession())
+                // render and copy on a separate thread
+                ThreadPool.QueueUserWorkItem(x => {
+                    var device = CanvasDevice.GetSharedDevice(); // NEVER dispose of 'GetSharedDevice' or put it in a `using`. You will crash your program.
+                    using (var offscreen = new CanvasRenderTarget(device, width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
                     {
-                        ds?.Clear(Colors.Transparent);
-                        DrawToSession(ds);
+                        using (var ds = offscreen.CreateDrawingSession())
+                        {
+                            ds?.Clear(Colors.Transparent);
+                            coverage = DrawToSession(ds, strokeToRender);
+                        }
+                        bytes = offscreen.GetPixelBytes();
                     }
 
-                    bytes = offscreen.GetPixelBytes();
-                }
 
-                // render into tile cache
-                tileCanvas.ImportBytes(new RawImageInterleaved_UInt8{
-                    Data = bytes,
-                    Width = width,
-                    Height = height
-                }, 0, 0);
+
+                    // render into tile cache
+                    // todo: handle the case where a tile is still locked
+                    tileCanvas.ImportBytes(new RawImageInterleaved_UInt8{
+                        Data = bytes,
+                        Width = width,
+                        Height = height
+                    }, coverage.X, coverage.Y, coverage.Width, coverage.Height, 0, 0);
+                });
 
             }
             catch (Exception ex)
@@ -121,7 +129,7 @@ namespace SlickUWP.Canvas
                 if (g == null) return;
 
                 g.Clear(Colors.Transparent);
-                DrawToSession(g);
+                DrawToSession(g, _stroke.ToArray());
             }
             catch (Exception ex)
             {
@@ -129,92 +137,50 @@ namespace SlickUWP.Canvas
             }
         }
 
-        private void DrawToSession(CanvasDrawingSession g)
+        [NotNull]
+        private Quad DrawToSession(CanvasDrawingSession g, DPoint[] strokeToRender)
         {
-            if (g == null) return;
+            var coverage = new Quad(0,0,0,0);
+            if (g == null) return coverage;
             try
             {
-                var pts = _stroke.ToArray(); // get a static copy
-                if (pts == null || pts.Length < 1) return;
-
-                g.Antialiasing = CanvasAntialiasing.Antialiased;
-                g.Blend = CanvasBlend.SourceOver;
-
-                var prev = pts[0];
-                DPoint current;
-                float width;
-
+                var pts = strokeToRender;
+                if (pts == null || pts.Length < 1) return coverage;
 
                 // using the ink infrastructure for drawing...
-                /* */
                 var strokes = new List<InkStroke>();
-                var attr = new InkDrawingAttributes{
-                    Size = new Size(4,4),
-                    Color = Colors.Goldenrod
+                var attr = new InkDrawingAttributes{ // TODO: load this from the palette
+                    Size = new Size(2,2),
+                    Color = Colors.Black
                 };
                 var s = new CoreIncrementalInkStroke(attr, Matrix3x2.Identity);
 
                 for (int i = 0; i < pts.Length; i++)
                 {
-                    current = pts[i];
+                    var current = pts[i];
                     s.AppendInkPoints(new[]{
                         new InkPoint(new Point(current.X, current.Y), (float) current.Pressure)
                     });
                 }
 
-                strokes.Add(s.CreateInkStroke());
+                var stroke = s.CreateInkStroke();
+                if (stroke == null) throw new Exception("Stroke creation failed");
+                strokes.Add(stroke);
+
+                var bounds = stroke.BoundingRect;
+                coverage.X = (int)bounds.X - 1;
+                coverage.Y = (int)bounds.Y - 1;
+                coverage.Width = (int)bounds.Width + 2;
+                coverage.Height = (int)bounds.Height + 2;
+
                 g.DrawInk(strokes);
-                //*/
-
-                // this gives accurate widths, but artifacts in curves
-                /* 
-                for (int i = 1; i < pts.Length - 1; i++)
-                {
-                    current = pts[i];
-                    if (Diff(prev, current) < 2.0) continue;
-
-                    width = (float)(4.0 * current.Pressure) ;
-
-                    g.DrawLine((float)prev.X, (float)prev.Y, (float)current.X, (float)current.Y, Color.FromArgb(255, 0, 0, 0), width, strokeStyle);
-                    prev = current;
-                }
-
-                current = pts[pts.Length - 1];
-                width = (float)(4.0 * current.Pressure) ;
-                g.DrawLine((float)prev.X, (float)prev.Y, (float)current.X, (float)current.Y, Color.FromArgb(255, 0, 0, 0), width, strokeStyle);
-                //*/
-
-
-
-
-
-                // This give us complete lines, but no ability to change width?
-                /* 
-                var device = CanvasDevice.GetSharedDevice();
-                CanvasPathBuilder pathBuilder = new CanvasPathBuilder(device);
-
-                pathBuilder.BeginFigure((float)prev.X, (float)prev.Y);
-                for (int i = 1; i < pts.Length; i++)
-                {
-                    current = pts[i];
-                    if (Diff(prev, current) < 1.0) continue;
-                    pathBuilder.AddLine((float)current.X, (float)current.Y);
-                    prev = current;
-                }
-                pathBuilder.EndFigure(CanvasFigureLoop.Open);
-                
-                CanvasGeometry geom = CanvasGeometry.CreatePath(pathBuilder);
-                g.DrawGeometry(geom, Colors.Black);//*/
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
             }
-        }
 
-        private double Diff(DPoint prev, DPoint current)
-        {
-            return Math.Max(Math.Abs(prev.X - current.X), Math.Abs(prev.Y - current.Y));
+            return coverage;
         }
     }
 }

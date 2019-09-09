@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
 using SlickCommon.Canvas;
@@ -19,6 +19,8 @@ namespace SlickUWP.Canvas
         [NotNull] private readonly Grid _displayContainer;
         [NotNull] private readonly IStorageContainer _tileStore;
         [NotNull] private readonly Dictionary<PositionKey, CachedTile> _tileCache;
+
+        [NotNull] private static readonly object _storageLock = new object();
 
         public double X;
         public double Y;
@@ -38,6 +40,8 @@ namespace SlickUWP.Canvas
             X = 0.0;
             Y = 0.0;
 
+            ThreadPool.SetMinThreads(2, 2);
+            ThreadPool.SetMaxThreads(40, 40);
             Invalidate();
         }
 
@@ -50,7 +54,11 @@ namespace SlickUWP.Canvas
         /// Use this if the tile data is changed
         /// </summary>
         public void ClearCache() {
+
+            var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
+            foreach (var tile in toDetach) { tile.Detach(); }
             _tileCache.Clear();
+
             Invalidate();
         }
 
@@ -59,13 +67,12 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Invalidate()
         {
-            // TODO:
             // 1) figure out what tiles should be showing
             // 2) add any not in the cache
             // 3) remove anything in the cache that should not be visible
             // 4) ensure the tiles are in the correct offset position
 
-            var required = VisibleTiles((int) _displayContainer.ActualWidth, (int) _displayContainer.ActualHeight);
+            var required = VisibleTiles(0, 0, (int)_displayContainer.ActualWidth, (int)_displayContainer.ActualHeight);
             var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
 
             // add any missing
@@ -78,12 +85,12 @@ namespace SlickUWP.Canvas
             // remove any extra
             foreach (var key in toRemove)
             {
-                var container = _tileCache[key];
-                if (container == null) continue;
+                if (!_tileCache.TryGetValue(key, out var container)) continue;
 
+                // todo: pull out to function
                 container.Detach();
-                _displayContainer.Children?.Remove(container.UiCanvas);
                 _tileCache.Remove(key);
+
             }
 
             // re-align what's left
@@ -92,6 +99,8 @@ namespace SlickUWP.Canvas
                 var pos = VisualRectangle(kvp.Key);
                 kvp.Value?.MoveTo(pos.X, pos.Y);
             }
+
+            _displayContainer.InvalidateArrange();
         }
 
         /// <summary>
@@ -102,9 +111,8 @@ namespace SlickUWP.Canvas
         {
             if (key == null) return;
 
-            var tile = new CachedTile();
+            var tile = new CachedTile(_displayContainer);
             try {
-                _displayContainer.Children?.Add(tile.UiCanvas);
                 _tileCache.Add(key, tile);
                 tile.SetState(TileState.Locked);
             }
@@ -116,66 +124,16 @@ namespace SlickUWP.Canvas
             ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(key, tile); });
         }
 
-        private void LoadTileDataSync(PositionKey key, CachedTile tile)
-        {
-            if (key == null || tile == null) return;
-            var name = key.ToString();
-            var res = _tileStore.Exists(name);
-            if (res.IsFailure)
-            {
-                tile.SetState(TileState.Empty);
-                return;
-            }
-
-            var version = res.ResultData?.CurrentVersion ?? 1;
-            var img = _tileStore.Read(name, "img", version);
-
-            if (img.IsFailure || img.ResultData == null)
-            {
-                tile.SetState(TileState.Empty);
-                return;
-            }
-
-            var fileData = InterleavedFile.ReadFromStream(img.ResultData);
-
-            var Red = new byte[65536];
-            var Green = new byte[65536];
-            var Blue = new byte[65536];
-            if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
-
-            var packed = new byte[65536 * 4];
-
-            for (int i = 0; i < Red.Length; i++)
-            {
-                // could do a EPX 2x here
-                packed[4 * i + 0] = Blue[i];
-                packed[4 * i + 1] = Green[i];
-                packed[4 * i + 2] = Red[i];
-
-                if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
-                {
-                    packed[4 * i + 3] = 0;
-                }
-                else
-                {
-                    packed[4 * i + 3] = 255;
-                }
-            }
-
-            tile.RawImageData = packed;
-            tile.SetState(TileState.Ready);
-        }
-
         [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
 
 
         [NotNull]
-        public List<PositionKey> VisibleTiles(int width, int height)
+        public List<PositionKey> VisibleTiles(int dx, int dy, int width, int height)
         {
             var scale = 1;// 1 << (_drawScale - 1);
 
-            var tlLoc = ScreenToCanvas(0,0);
-            var brLoc = ScreenToCanvas(width * scale, height * scale);
+            var tlLoc = ScreenToCanvas(dx, dy);
+            var brLoc = ScreenToCanvas(dx + width * scale, dy + height * scale);
 
             var result = new List<PositionKey>();
             var tlPos = tlLoc.TilePosition ?? throw new Exception("TL tile position lookup failed");
@@ -234,9 +192,214 @@ namespace SlickUWP.Canvas
         /// Draw an image into the tile canvas (committing to storage).
         /// The base position is the visible area of the Display Container.
         /// </summary>
-        public void ImportBytes(RawImageInterleaved_UInt8 img, int xOffset, int yOffset)
+        public void ImportBytes(RawImageInterleaved_UInt8 img, int targetLeft, int targetTop, int targetWidth, int targetHeight, int sourceLeft, int sourceTop)
         {
-            //TODO:IMPLEMENT_ME();
+            if (img == null) return;
+
+            // Cases:
+            // 1) tile is loaded and empty -- create storage, write, commit to backing
+            // 2) tile is locked -- abort
+            // 3) tile is ready -- merge onto array, commit to backing
+
+            var positionKeys = VisibleTiles(targetLeft, targetTop, targetWidth, targetHeight);
+            var changedTiles = new Queue<PositionKey>();
+
+            foreach (var key in positionKeys)
+            {
+                var rect = VisualRectangle(key);
+                if (!_tileCache.ContainsKey(key)) {
+                    // TODO: pull out to function
+                    var newTile = new CachedTile(_displayContainer);
+                    _tileCache.Add(key, newTile);
+                }
+
+                var tile = _tileCache[key];
+                if (tile == null) continue; // should never happen
+
+                switch (tile.State) {
+                    case TileState.Empty:
+                        // allocate and write
+                        tile.AllocateEmptyImage();
+                        var really = AlphaMapImageToTile(img, rect, tile, sourceLeft, sourceTop);
+                        if (!really) {
+                            tile.Deallocate();
+                        }
+                        else {
+                            tile.SetState(TileState.Ready);
+                            tile.Invalidate(); // cause a redraw -- TODO: should not be needed
+                            changedTiles.Enqueue(key);
+                        }
+                        continue;
+
+                    case TileState.Locked:
+                        // Can't safely write at the moment.
+                        // TODO: can we push back and keep the ink wet?
+                        continue;
+
+                    case TileState.Ready:
+                        var changed = AlphaMapImageToTile(img, rect, tile, sourceLeft, sourceTop);
+                        tile.Invalidate(); // cause a redraw -- TODO: should not be needed
+                        if (changed) { changedTiles.Enqueue(key); }
+                        break;
+                }
+            }
+
+            while (changedTiles.TryDequeue(out var key))
+            {
+                // write back to database
+                var xkey = key;
+                //ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(xkey); });
+                WriteTileToBackingStoreSync(xkey);
+            }
+
+        }
+
+        
+        private void LoadTileDataSync(PositionKey key, CachedTile tile)
+        {
+            if (key == null || tile == null) return;
+
+            //lock (_storageLock)
+            {
+                var name = key.ToString();
+                var res = _tileStore.Exists(name);
+                if (res.IsFailure)
+                {
+                    tile.SetState(TileState.Empty);
+                    return;
+                }
+
+                var version = res.ResultData?.CurrentVersion ?? 1;
+                var img = _tileStore.Read(name, "img", version);
+
+                if (img.IsFailure || img.ResultData == null)
+                {
+                    tile.SetState(TileState.Empty);
+                    return;
+                }
+
+                var fileData = InterleavedFile.ReadFromStream(img.ResultData);
+
+                var Red = new byte[65536];
+                var Green = new byte[65536];
+                var Blue = new byte[65536];
+                if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
+
+                var packed = new byte[CachedTile.ByteSize];
+
+                for (int i = 0; i < Red.Length; i++)
+                {
+                    // could do a EPX 2x here
+                    packed[4 * i + 0] = Blue[i];
+                    packed[4 * i + 1] = Green[i];
+                    packed[4 * i + 2] = Red[i];
+
+                    if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
+                    {
+                        packed[4 * i + 3] = 0;
+                    }
+                    else
+                    {
+                        packed[4 * i + 3] = 255;
+                    }
+                }
+
+                tile.RawImageData = packed;
+                tile.SetState(TileState.Ready);
+            }
+        }
+
+
+        private void WriteTileToBackingStoreSync(PositionKey key)
+        {
+            if (key == null) return;
+
+            if (!_tileCache.TryGetValue(key, out var tile)) return;
+            if (tile == null) return;
+            if (tile.State == TileState.Locked) return;
+
+            var name = key.ToString();
+
+            if (tile.ImageIsBlank())
+            {
+                //lock (_storageLock)
+                {
+                    _tileStore.Delete(name, "img");
+
+                    tile.SetState(TileState.Empty);
+                }
+            }
+            else
+            {
+                var packed = tile.RawImageData;
+                var Red = new byte[packed.Length / 4];
+                var Green = new byte[packed.Length / 4];
+                var Blue = new byte[packed.Length / 4];
+
+                for (int i = 0; i < Red.Length; i++)
+                {
+                    Blue[i] = packed[4 * i + 0];
+                    Green[i] = packed[4 * i + 1];
+                    Red[i] = packed[4 * i + 2];
+                }
+
+                using (var ms = new MemoryStream())
+                {
+                    WaveletCompress.Compress(Red, Green, Blue, tile.Width, tile.Height).WriteToStream(ms);
+                    ms.Seek(0, SeekOrigin.Begin);
+                    //lock (_storageLock)
+                    {
+                        var ok = _tileStore.Store(name, "img", ms);
+
+                        if (ok.IsFailure)
+                        {
+                            throw new Exception("Storage error: DB might be corrupt.", ok.FailureCause);
+                        }
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Returns true if any pixels were changed
+        /// </summary>
+        private static bool AlphaMapImageToTile(RawImageInterleaved_UInt8 img, Quad rect, CachedTile tile, int imgDx, int imgDy)
+        {
+            var dst = tile?.RawImageData;
+            var src = img?.Data;
+            if (src == null || dst == null || rect == null) return false;
+
+            bool changed = false;
+
+            int left = rect.X - imgDx;
+            int top = rect.Y - imgDy;
+
+            for (int y = 0; y < 256; y++)
+            {
+                for (int x = 0; x < 256; x++)
+                {
+                    var src_i = ((y + top) * img.Width * 4) + ((x + left) * 4);
+                    var dst_i = y * (256 * 4) + (x * 4);
+
+                    if (dst_i < 0) break;
+                    if (src_i < 0) break;
+                    if (dst_i >= dst.Length) return changed;
+                    if (src_i >= src.Length) return changed;
+
+                    int newAlpha = src[src_i + 3]; // alpha
+                    int oldAlpha = 255 - newAlpha;
+                    if (newAlpha < 10) continue;
+
+                    // Alpha blend over existing color
+                    dst[dst_i + 0] = (byte) (((dst[dst_i + 0] * oldAlpha) >> 8) + ((src[src_i + 0] * newAlpha) >> 8));
+                    dst[dst_i + 1] = (byte) (((dst[dst_i + 1] * oldAlpha) >> 8) + ((src[src_i + 1] * newAlpha) >> 8));
+                    dst[dst_i + 2] = (byte) (((dst[dst_i + 2] * oldAlpha) >> 8) + ((src[src_i + 2] * newAlpha) >> 8));
+                    dst[dst_i + 3] = 255;
+
+                    changed = true;
+                }
+            }
+            return changed;
         }
 
         public const int TileImageSize = 256;
@@ -289,19 +452,6 @@ namespace SlickUWP.Canvas
         {
             CanvasToScreen(tile, out var x, out var y);
             return new Quad((int)x, (int)y, TileImageSize, TileImageSize);
-        }
-
-        // TEMP! TODO: delete me!
-        public void SetPixel(int color, int x, int y)
-        {
-            var loca = ScreenToCanvas(x,y);
-            var pk = loca.TilePosition ?? throw new Exception("Screen index failed");
-
-            //if (!_canvasTiles.ContainsKey(pk)) _canvasTiles.Add(pk, new TileImage(pk));
-            //var img = _canvasTiles[pk];
-
-            //img?.DrawOnTile(loca.X, loca.Y, 1, color, InkType.Import, _drawScale);
-            //_changedTiles.Add(pk);
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Foundation;
+using JetBrains.Annotations;
 
 namespace SlickUWP.Adaptors
 {
@@ -10,7 +11,7 @@ namespace SlickUWP.Adaptors
     /// </summary>
     public static class Sync  
     {
-        private static readonly TaskFactory _taskFactory = new
+        [NotNull]private static readonly TaskFactory _taskFactory = new
             TaskFactory(CancellationToken.None,
                 TaskCreationOptions.None,
                 TaskContinuationOptions.None,
@@ -35,5 +36,14 @@ namespace SlickUWP.Adaptors
         /// Run an async function synchronously
         /// </summary>
         public static void Run(Func<Task> func) => _taskFactory.StartNew(func).Unwrap().GetAwaiter().GetResult();
+
+        
+        /// <summary>
+        /// Run an async function synchronously and return the result
+        /// </summary>
+        public static void Run(Func<IAsyncAction> func)
+        {
+            _taskFactory.StartNew(() => func().AsTask()).Unwrap().GetAwaiter().GetResult();
+        }
     }
 }
