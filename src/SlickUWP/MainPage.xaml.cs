@@ -43,6 +43,8 @@ namespace SlickUWP
         Point _lastPoint;
         InteractionMode _mode = InteractionMode.None;
 
+        public bool PaletteVisible { get { return paletteView?.Opacity > 0.5; } }
+
         public MainPage()
         {
             InitializeComponent();
@@ -57,14 +59,16 @@ namespace SlickUWP
             ip.UnprocessedInput.PointerReleased += UnprocessedInput_PointerReleased;
             ip.InputProcessingConfiguration.Mode = InkInputProcessingMode.None;
             
-            text.Text = "Ready";
+            //text.Text = "Ready";
 
             ip.IsInputEnabled = true;
             ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse | CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
             ip.InputProcessingConfiguration.RightDragAction = InkInputRightDragAction.AllowProcessing;
             ip.InputConfiguration.IsEraserInputEnabled = true;
+
+            paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
         }
-        
+
 
         /// <summary>
         /// Start the canvas up with the default document
@@ -110,7 +114,21 @@ namespace SlickUWP
 
         private void UnprocessedInput_PointerPressed(InkUnprocessedInput sender, PointerEventArgs args)
         {
+            _mode = InteractionMode.None;
             if (args?.CurrentPoint == null) return;
+
+
+            if (PaletteVisible) {
+                _mode = InteractionMode.PalettePicker;
+                if (paletteView.IsHit(args))
+                {
+                    // set pointer to ink...
+                    _wetInk.SetPenColor(args.CurrentPoint.PointerId, paletteView.LastColor);
+                    _wetInk.SetPenSize(args.CurrentPoint.PointerId, paletteView.LastSize);
+                    paletteView.Opacity = 0.0;
+                }
+                return;
+            }
             
             _lastPoint = args.CurrentPoint.Position;
 
@@ -172,17 +190,17 @@ namespace SlickUWP
                 if (file != null)
                 {
                     // Application now has read/write access to the picked file
-                    text.Text += " File OK";
+                    //text.Text += " File OK";
                     TestDbLoad(file);
                 }
                 else
                 {
-                    text.Text += " File FAILED";
+                    //text.Text += " File FAILED";
                 }
             }
             catch (Exception ex)
             {
-                text.Text += "\r\nException: " + ex;
+                //text.Text += "\r\nException: " + ex;
             }
         }
 
@@ -195,13 +213,28 @@ namespace SlickUWP
                 {
                     var db = new LiteDatabase(readStream.AsStream());
                     var nodes = db.GetCollection<StorageNode>("map");
-                    text.Text += $"; connected to test DB. {nodes.Count()} nodes";
+                    //text.Text += $"; connected to test DB. {nodes.Count()} nodes";
                 }
             }
             else
             {
-                text.Text += $"; can't access DB file";
+                //text.Text += $"; can't access DB file";
             }
+        }
+
+        private void ShowPaletteButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            if (paletteView.Opacity >= 0.5)
+            {
+                // hide palette
+                paletteView.Opacity = 0.0;
+            }
+            else
+            {
+                // show palette
+                paletteView.Opacity = 1.0;
+            }
+
         }
     }
 }

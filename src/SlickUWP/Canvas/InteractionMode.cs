@@ -2,6 +2,24 @@
 {
     internal enum InteractionMode
     {
-        None, Draw, Move
+        /// <summary>
+        /// Input should be ignored
+        /// </summary>
+        None,
+        
+        /// <summary>
+        /// Input should be treated as pen strokes
+        /// </summary>
+        Draw,
+        
+        /// <summary>
+        /// Input should be treated as canvas movement
+        /// </summary>
+        Move,
+
+        /// <summary>
+        /// Input should be passed to palette screen
+        /// </summary>
+        PalettePicker
     }
 }

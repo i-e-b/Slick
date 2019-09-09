@@ -25,12 +25,17 @@ namespace SlickUWP.Canvas
         [NotNull] private readonly List<DPoint> _stroke;
         [NotNull] private readonly Queue<DPoint[]> _dryingInk; // strokes we are currently drying
 
+        [NotNull] private readonly Dictionary<uint, Color> _penColors; 
+        [NotNull] private readonly Dictionary<uint, double> _penSizes; 
+
         public WetInkCanvas([NotNull]CanvasControl renderTarget)
         {
             _renderTarget = renderTarget;
             _renderTarget.Draw += _renderTarget_Draw;
             _stroke = new List<DPoint>();
             _dryingInk = new Queue<DPoint[]>();
+            _penColors = new Dictionary<uint, Color>();
+            _penSizes = new Dictionary<uint, double>();
         }
 
         /// <summary>
@@ -165,6 +170,9 @@ namespace SlickUWP.Canvas
 
                 // using the ink infrastructure for drawing...
                 var strokes = new List<InkStroke>();
+
+                TODO: get size and color from dictionary, or set default
+
                 var attr = new InkDrawingAttributes{ // TODO: load this from the palette
                     Size = new Size(2,2),
                     Color = pending ? Colors.Brown : Colors.Black
@@ -197,6 +205,18 @@ namespace SlickUWP.Canvas
             }
 
             return coverage;
+        }
+
+        public void SetPenSize(uint pointerId, double size)
+        {
+            if (!_penSizes.TryAdd(pointerId, size))
+                _penSizes[pointerId] = size;
+        }
+
+        public void SetPenColor(uint pointerId, Color color)
+        {
+            if (!_penColors.TryAdd(pointerId, color))
+                _penColors[pointerId] = color;
         }
     }
 }

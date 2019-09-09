@@ -5,23 +5,39 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:Custom="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    xmlns:Custom1="using:SlickUWP.Gui"
     x:Class="SlickUWP.MainPage"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded">
 
     <Grid x:Name="windowGrid">
 
-        <Grid x:Name="renderLayer">
-        </Grid>
+        <!-- Palette input -->
 
+        <!-- `renderLayer` holds the individual visible tiles to be composed. This is entirely handled in code. -->
+        <Grid x:Name="renderLayer"/>
+
+        <!-- This draws 'ink' caused by user input that is not yet written to the tile cache and database -->
         <Custom:CanvasControl x:Name="wetInkCanvas" Margin="0,0,0,0" />
+
+        <!-- This is the visual of our pen-input picker. We get inputs from the `baseInkCanvas` and map from there. -->
+        <Custom1:CornerPalette x:Name="paletteView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0" />
+
+        <!-- The ink canvas records input, and sits over all controls other than the push-buttons -->
         <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0"/>
-        <TextBlock x:Name="text" HorizontalAlignment="Left" Margin="34,10,0,0" Text="TextBlock" TextWrapping="Wrap" VerticalAlignment="Top" Height="419" Width="459"/>
         <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" Click="PickPageButton_Click" BorderThickness="1,1,1,1">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
+        <Button x:Name="showPaletteButton" Content="Palette" Margin="10,10,0,0" VerticalAlignment="Top" Background="#99FFFFFF" BorderThickness="1,1,1,1" Click="ShowPaletteButton_Click">
+            <Button.BorderBrush>
+                <SolidColorBrush Color="#FF747474" Opacity="1"/>
+            </Button.BorderBrush>
+        </Button>
+
+
+
 
 
 
