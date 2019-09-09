@@ -23,12 +23,14 @@ namespace SlickUWP.Canvas
     {
         [NotNull] private readonly CanvasControl _renderTarget;
         [NotNull] private readonly List<DPoint> _stroke;
+        [NotNull] private readonly Queue<DPoint[]> _dryingInk; // strokes we are currently drying
 
         public WetInkCanvas([NotNull]CanvasControl renderTarget)
         {
             _renderTarget = renderTarget;
             _renderTarget.Draw += _renderTarget_Draw;
             _stroke = new List<DPoint>();
+            _dryingInk = new Queue<DPoint[]>();
         }
 
         /// <summary>
@@ -40,46 +42,53 @@ namespace SlickUWP.Canvas
 
             try
             {
-                byte[] bytes;
                 int width = (int)_renderTarget.ActualWidth;
                 int height = (int)_renderTarget.ActualHeight;
-                Quad coverage = null;
-                var strokeToRender = _stroke.ToArray();
+
+                _dryingInk.Enqueue(_stroke.ToArray());
                 _stroke.Clear(); // ready for next
 
                 // render and copy on a separate thread
-                ThreadPool.QueueUserWorkItem(x => {
-                    var device = CanvasDevice.GetSharedDevice(); // NEVER dispose of 'GetSharedDevice' or put it in a `using`. You will crash your program.
-                    using (var offscreen = new CanvasRenderTarget(device, width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
-                    {
-                        using (var ds = offscreen.CreateDrawingSession())
-                        {
-                            ds?.Clear(Colors.Transparent);
-                            coverage = DrawToSession(ds, strokeToRender);
-                        }
-                        bytes = offscreen.GetPixelBytes();
-                    }
-
-
-
-                    // render into tile cache
-                    // todo: handle the case where a tile is still locked
-                    tileCanvas.ImportBytes(new RawImageInterleaved_UInt8{
-                        Data = bytes,
-                        Width = width,
-                        Height = height
-                    }, coverage.X, coverage.Y, coverage.Width, coverage.Height, 0, 0);
-                });
+                ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas, width, height));
 
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
             }
+        }
 
-            // Stroke has been committed. Remove from wet ink and redraw.
-            _stroke.Clear();
-            _renderTarget.Invalidate();
+        private WaitCallback DryWaitingStroke([NotNull]TileCanvas tileCanvas, int width, int height)
+        {
+            return x => {
+                byte[] bytes;
+                Quad coverage;
+                
+                // Try to get a waiting stroke (peek, so we can draw the waiting stroke)
+                if (!_dryingInk.TryPeek(out var strokeToRender)) return;
+
+                var device = CanvasDevice.GetSharedDevice(); // NEVER dispose of 'GetSharedDevice' or put it in a `using`. You will crash your program.
+                using (var offscreen = new CanvasRenderTarget(device, width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
+                {
+                    using (var ds = offscreen.CreateDrawingSession())
+                    {
+                        ds?.Clear(Colors.Transparent);
+                        coverage = DrawToSession(ds, strokeToRender);
+                    }
+                    bytes = offscreen.GetPixelBytes();
+                }
+
+                // render into tile cache
+                // todo: handle the case where a tile is still locked
+                tileCanvas.ImportBytes(new RawImageInterleaved_UInt8{
+                    Data = bytes,
+                    Width = width,
+                    Height = height
+                }, coverage.X, coverage.Y, coverage.Width, coverage.Height, 0, 0);
+
+                _renderTarget.Invalidate();
+                _dryingInk.TryDequeue(out _); // pull it off the queue
+            };
         }
 
         /// <summary>
@@ -130,6 +139,13 @@ namespace SlickUWP.Canvas
 
                 g.Clear(Colors.Transparent);
                 DrawToSession(g, _stroke.ToArray());
+
+                // Overdraw any ink that is still drying...
+                var drying = _dryingInk.ToArray();
+                foreach (var stroke in drying)
+                {
+                    DrawToSession(g, stroke, true);
+                }
             }
             catch (Exception ex)
             {
@@ -138,7 +154,7 @@ namespace SlickUWP.Canvas
         }
 
         [NotNull]
-        private Quad DrawToSession(CanvasDrawingSession g, DPoint[] strokeToRender)
+        private Quad DrawToSession(CanvasDrawingSession g, DPoint[] strokeToRender, bool pending = false)
         {
             var coverage = new Quad(0,0,0,0);
             if (g == null) return coverage;
@@ -151,7 +167,7 @@ namespace SlickUWP.Canvas
                 var strokes = new List<InkStroke>();
                 var attr = new InkDrawingAttributes{ // TODO: load this from the palette
                     Size = new Size(2,2),
-                    Color = Colors.Black
+                    Color = pending ? Colors.Brown : Colors.Black
                 };
                 var s = new CoreIncrementalInkStroke(attr, Matrix3x2.Identity);
 

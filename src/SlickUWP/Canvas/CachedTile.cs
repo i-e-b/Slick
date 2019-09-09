@@ -26,28 +26,37 @@ namespace SlickUWP.Canvas
     {
         [NotNull] private readonly Panel _container;
         [NotNull] private readonly CoreDispatcher _dispatcher;
-        [NotNull] private readonly CanvasControl UiCanvas;
+        private CanvasControl UiCanvas;
 
         public TileState State;
 
         public byte[] RawImageData;
+        private float _x, _y;
 
         public CachedTile([NotNull]Panel container)
         {
             _dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
 
             _container = container;
+
             State = TileState.Locked;
+            _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                UiCanvas = new CanvasControl();
+                UiCanvas.Draw += Tile_Draw;
+                UiCanvas.Margin = new Thickness(0.0);
+                UiCanvas.Height = 256;
+                UiCanvas.Width = 256;
+                UiCanvas.HorizontalAlignment = HorizontalAlignment.Left;
+                UiCanvas.VerticalAlignment = VerticalAlignment.Top;
 
-            UiCanvas = new CanvasControl();
-            UiCanvas.Draw += Tile_Draw;
-            UiCanvas.Margin = new Thickness(0.0);
-            UiCanvas.Height = 256;
-            UiCanvas.Width = 256;
-            UiCanvas.HorizontalAlignment = HorizontalAlignment.Left;
-            UiCanvas.VerticalAlignment = VerticalAlignment.Top;
+                _container.Children?.Add(UiCanvas);
 
-            _container.Children?.Add(UiCanvas);
+                
+                // There might have been image data loaded, and tile movement while waiting for the UI thread to catch up
+                UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
+                UiCanvas?.Invalidate();
+            });
         }
 
         public const int ByteSize = 256 * 256 * 4;
@@ -66,14 +75,14 @@ namespace SlickUWP.Canvas
                     return;
 
                 case TileState.Empty:
-                    g.Clear(Colors.Beige); // should be transparent
+                    g.Clear(Colors.White);
                     return;
 
                 case TileState.Ready:
 
                     if (RawImageData == null)
                     {
-                        g.Clear(Colors.Red); // Should not happen!
+                        g.Clear(Colors.Fuchsia); // Should not happen!
                         return;
                     }
 
@@ -86,7 +95,7 @@ namespace SlickUWP.Canvas
                         }
                         catch
                         {
-                            g.Clear(Colors.Red);
+                            g.Clear(Colors.DarkOrange);
                         }
                     }
                     return;
@@ -101,6 +110,9 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void MoveTo(float x, float y)
         {
+            _x = x;
+            _y = y;
+            if (UiCanvas == null) return;
             UiCanvas.RenderTransform = new TranslateTransform
             {
                 X = x,
@@ -113,12 +125,15 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Detach()
         {
-            _dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
                 // Container removal has to happen on a specific thread, because this is still 1991.
-                _container.Children?.Remove(UiCanvas);
+                if (UiCanvas != null)
+                {
+                    _container.Children?.Remove(UiCanvas);
+                    UiCanvas.Draw -= Tile_Draw;
+                }
             });
-            UiCanvas.Draw -= Tile_Draw;
         }
 
         /// <summary>
@@ -127,7 +142,7 @@ namespace SlickUWP.Canvas
         public void SetState(TileState state)
         {
             State = state;
-            UiCanvas.Invalidate();
+            UiCanvas?.Invalidate();
         }
 
         /// <summary>
@@ -158,7 +173,7 @@ namespace SlickUWP.Canvas
 
         public void Invalidate()
         {
-            UiCanvas.Invalidate();
+            UiCanvas?.Invalidate();
         }
 
         /// <summary>

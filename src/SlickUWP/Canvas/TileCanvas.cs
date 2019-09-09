@@ -248,8 +248,8 @@ namespace SlickUWP.Canvas
             {
                 // write back to database
                 var xkey = key;
-                //ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(xkey); });
-                WriteTileToBackingStoreSync(xkey);
+                ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(xkey); });
+                //WriteTileToBackingStoreSync(xkey);
             }
 
         }
