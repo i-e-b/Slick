@@ -32,6 +32,7 @@ namespace SlickUWP.Canvas
 
         public byte[] RawImageData;
         private float _x, _y;
+        private volatile bool _ready = false;
 
         public CachedTile([NotNull]Panel container)
         {
@@ -40,21 +41,24 @@ namespace SlickUWP.Canvas
             _container = container;
 
             State = TileState.Locked;
+            _ready = true;
             _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                UiCanvas = new CanvasControl();
-                UiCanvas.Draw += Tile_Draw;
-                UiCanvas.Margin = new Thickness(0.0);
-                UiCanvas.Height = 256;
-                UiCanvas.Width = 256;
-                UiCanvas.HorizontalAlignment = HorizontalAlignment.Left;
-                UiCanvas.VerticalAlignment = VerticalAlignment.Top;
+                UiCanvas = new CanvasControl
+                {
+                    UseSharedDevice = true,
+                    Margin = new Thickness(0.0),
+                    Height = 256,
+                    Width = 256,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top
+                };
 
-                _container.Children?.Add(UiCanvas);
-
-                
                 // There might have been image data loaded, and tile movement while waiting for the UI thread to catch up
                 UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
+
+                _container.Children?.Add(UiCanvas);
+                UiCanvas.Draw += Tile_Draw;
                 UiCanvas?.Invalidate();
             });
         }
@@ -65,6 +69,8 @@ namespace SlickUWP.Canvas
 
         private void Tile_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
+            if (!_ready || !UiCanvas.ReadyToDraw) return;
+
             var g = args?.DrawingSession;
             if (g == null) return;
 
@@ -86,18 +92,22 @@ namespace SlickUWP.Canvas
                         return;
                     }
 
-                    using (var bmp = CanvasBitmap.CreateFromBytes(sender, RawImageData, 256, 256, // these two should be doubled if we interpolate
-                        DirectXPixelFormat.B8G8R8A8UIntNormalized, 96, CanvasAlphaMode.Premultiplied))
+                    try
                     {
-                        try
+                        using (var bmp = CanvasBitmap.CreateFromBytes(sender, RawImageData, 256, 256, // these two should be doubled if we interpolate
+                            DirectXPixelFormat.B8G8R8A8UIntNormalized, 96, CanvasAlphaMode.Premultiplied))
                         {
+                            //bmp.SetPixelBytes(RawImageData);
                             g.DrawImage(bmp, new Rect(0, 0, 256, 256));
-                        }
-                        catch
-                        {
-                            g.Clear(Colors.DarkOrange);
+                            g.Flush(); // you'll get "Exception thrown at 0x12F9AF43 (Microsoft.Graphics.Canvas.dll) in SlickUWP.exe: 0xC0000005: Access violation reading location 0x1B2EEF78. occurred"
+                                       // if you fail to flush before disposing of the bmp
                         }
                     }
+                    catch
+                    {
+                        g.Clear(Colors.DarkOrange);
+                    }
+
                     return;
 
                 default:
@@ -125,13 +135,17 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Detach()
         {
+            _ready = false;
+            if (UiCanvas != null) UiCanvas.Draw -= Tile_Draw;
+
+            // Container removal has to happen on a specific thread, because this is still 1991.
             _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                // Container removal has to happen on a specific thread, because this is still 1991.
                 if (UiCanvas != null)
                 {
                     _container.Children?.Remove(UiCanvas);
-                    UiCanvas.Draw -= Tile_Draw;
+                    UiCanvas.RemoveFromVisualTree();
+                    UiCanvas = null;
                 }
             });
         }
@@ -150,8 +164,10 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void AllocateEmptyImage()
         {
+            _ready = false;
             RawImageData = new byte[ByteSize];
             for (int i = 0; i < ByteSize; i++) { RawImageData[i] = 255; }
+            _ready = true;
         }
 
         /// <summary>
@@ -181,6 +197,7 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Deallocate()
         {
+            _ready = false;
             State = TileState.Empty;
             RawImageData = null;
         }

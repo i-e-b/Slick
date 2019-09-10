@@ -30,7 +30,12 @@
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="showPaletteButton" Content="Palette" Margin="10,10,0,0" VerticalAlignment="Top" Background="#99FFFFFF" BorderThickness="1,1,1,1" Click="ShowPaletteButton_Click">
+        <Button x:Name="showPaletteButton" Content="Palette" Margin="10,10,0,0" VerticalAlignment="Top" Background="#99FFFFFF" BorderThickness="1,1,1,1" Click="ShowPaletteButton_Click" Width="64">
+            <Button.BorderBrush>
+                <SolidColorBrush Color="#FF747474" Opacity="1"/>
+            </Button.BorderBrush>
+        </Button>
+        <Button x:Name="mapModeButton" Content="Map" Margin="10,0,0,10" VerticalAlignment="Bottom" Background="#99FFFFFF" Click="MapModeButton_Click" BorderThickness="1,1,1,1" Width="64">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>

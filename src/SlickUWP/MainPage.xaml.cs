@@ -134,8 +134,14 @@ namespace SlickUWP
                 }
                 return;
             }
-            
+
             _lastPoint = args.CurrentPoint.Position;
+
+            if (_tileCanvas.CurrentZoom() != 1) {
+                // Don't allow drawing when zoomed out
+                _mode = InteractionMode.Move;
+                return;
+            }
 
             if (args.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift))
             {
@@ -241,6 +247,11 @@ namespace SlickUWP
                 paletteView.Opacity = 1.0;
             }
 
+        }
+
+        private void MapModeButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            _tileCanvas?.SwitchScale();
         }
     }
 }

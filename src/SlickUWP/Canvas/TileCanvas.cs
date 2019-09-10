@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Windows.Foundation;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
 using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
@@ -23,6 +25,9 @@ namespace SlickUWP.Canvas
         public double X;
         public double Y;
 
+        private double _viewScale = 1.0;
+        private Size _lastDisplaySize;
+
         /// <summary>
         /// Start rendering tiles into a display container. Always starts at 0,0
         /// </summary>
@@ -33,18 +38,20 @@ namespace SlickUWP.Canvas
             _tileStore = tileStore;
 
             _displayContainer = displayContainer;
+            _lastDisplaySize = new Size(_displayContainer.ActualWidth, _displayContainer.ActualHeight);
             _displayContainer.SizeChanged += _displayContainer_SizeChanged;
 
             X = 0.0;
             Y = 0.0;
 
             ThreadPool.SetMinThreads(2, 2);
-            ThreadPool.SetMaxThreads(40, 40);
+            ThreadPool.SetMaxThreads(10, 10);
             Invalidate();
         }
 
         private void _displayContainer_SizeChanged(object sender, Windows.UI.Xaml.SizeChangedEventArgs e)
         {
+            _lastDisplaySize = e.NewSize;
             Invalidate();
         }
 
@@ -76,26 +83,46 @@ namespace SlickUWP.Canvas
             // add any missing
             foreach (var key in required)
             {
-                toRemove.Remove(key);
-                if (!_tileCache.ContainsKey(key)) AddToCache(key);
+                try
+                {
+                    toRemove.Remove(key);
+                    if (!_tileCache.ContainsKey(key)) AddToCache(key);
+                }
+                catch
+                {
+                    // ignore
+                }
             }
 
             // remove any extra
             foreach (var key in toRemove)
             {
-                if (!_tileCache.TryGetValue(key, out var container)) continue;
+                try
+                {
+                    if (!_tileCache.TryGetValue(key, out var container)) continue;
 
-                // todo: pull out to function
-                container.Detach();
-                _tileCache.Remove(key);
-
+                    // todo: pull out to function
+                    container.Detach();
+                    _tileCache.Remove(key);
+                }
+                catch
+                {
+                    // ignore
+                }
             }
 
             // re-align what's left
             foreach (var kvp in _tileCache)
             {
-                var pos = VisualRectangle(kvp.Key);
-                kvp.Value?.MoveTo(pos.X, pos.Y);
+                try
+                {
+                    var pos = VisualRectangle(kvp.Key);
+                    kvp.Value?.MoveTo(pos.X, pos.Y);
+                }
+                catch
+                {
+                    // ignore
+                }
             }
 
             _displayContainer.InvalidateArrange();
@@ -119,7 +146,7 @@ namespace SlickUWP.Canvas
             }
 
             // Read the db and set tile state in the background
-            ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(key, tile); });
+            ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(key); });
         }
 
         [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
@@ -128,10 +155,12 @@ namespace SlickUWP.Canvas
         [NotNull]
         public List<PositionKey> VisibleTiles(int dx, int dy, int width, int height)
         {
-            var scale = 1;// 1 << (_drawScale - 1);
+            var scale = 1 / _viewScale;
+            var extraW = width * scale / 2;
+            var extraH = height * scale / 2;
 
-            var tlLoc = ScreenToCanvas(dx, dy);
-            var brLoc = ScreenToCanvas(dx + width * scale, dy + height * scale);
+            var tlLoc = ScreenToCanvas(dx - extraW, dy - extraH);
+            var brLoc = ScreenToCanvas(dx + width + extraW, dy + height + extraH);
 
             var result = new List<PositionKey>();
             var tlPos = tlLoc.TilePosition ?? throw new Exception("TL tile position lookup failed");
@@ -151,8 +180,8 @@ namespace SlickUWP.Canvas
         /// Relative move of the canvas (e.g. from touch scrolling)
         /// </summary>
         public void Scroll(double dx, double dy){
-            X += dx;
-            Y += dy;
+            X += dx / _viewScale;
+            Y += dy / _viewScale;
 
             Invalidate();
         }
@@ -170,7 +199,22 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Rotate through scaling options
         /// </summary>
-        public int SwitchScale() { return 0; }
+        public int SwitchScale() {
+            _viewScale /= 2;
+            if (_viewScale < 0.249) _viewScale = 1.0;
+
+            _displayContainer.RenderTransform = new ScaleTransform
+            {
+                CenterX = _displayContainer.ActualWidth/2,
+                CenterY = _displayContainer.ActualHeight/2,
+                ScaleX = _viewScale,
+                ScaleY = _viewScale
+            };
+
+            Invalidate();
+
+            return (int)(1 / _viewScale);
+        }
 
         /// <summary>
         /// Centre on the given point, and set scale as 1:1
@@ -252,61 +296,57 @@ namespace SlickUWP.Canvas
 
         }
 
-        
-        private void LoadTileDataSync(PositionKey key, CachedTile tile)
+        private void LoadTileDataSync(PositionKey key)
         {
-            if (key == null || tile == null) return;
+            if (key == null) return;
 
-            //lock (_storageLock)
+            if (!_tileCache.TryGetValue(key, out var tile)) return; // has been unloaded while queued
+
+            var name = key.ToString();
+            var res = _tileStore.Exists(name);
+            if (res.IsFailure)
             {
-                var name = key.ToString();
-                var res = _tileStore.Exists(name);
-                if (res.IsFailure)
-                {
-                    tile.SetState(TileState.Empty);
-                    return;
-                }
-
-                var version = res.ResultData?.CurrentVersion ?? 1;
-                var img = _tileStore.Read(name, "img", version);
-
-                if (img.IsFailure || img.ResultData == null)
-                {
-                    tile.SetState(TileState.Empty);
-                    return;
-                }
-
-                var fileData = InterleavedFile.ReadFromStream(img.ResultData);
-
-                var Red = new byte[65536];
-                var Green = new byte[65536];
-                var Blue = new byte[65536];
-                if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
-
-                var packed = new byte[CachedTile.ByteSize];
-
-                for (int i = 0; i < Red.Length; i++)
-                {
-                    // could do a EPX 2x here
-                    packed[4 * i + 0] = Blue[i];
-                    packed[4 * i + 1] = Green[i];
-                    packed[4 * i + 2] = Red[i];
-
-                    if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
-                    {
-                        packed[4 * i + 3] = 0;
-                    }
-                    else
-                    {
-                        packed[4 * i + 3] = 255;
-                    }
-                }
-
-                tile.RawImageData = packed;
-                tile.SetState(TileState.Ready);
+                tile.SetState(TileState.Empty);
+                return;
             }
-        }
 
+            var version = res.ResultData?.CurrentVersion ?? 1;
+            var img = _tileStore.Read(name, "img", version);
+
+            if (img.IsFailure || img.ResultData == null)
+            {
+                tile.SetState(TileState.Empty);
+                return;
+            }
+
+            var fileData = InterleavedFile.ReadFromStream(img.ResultData);
+
+            var Red = new byte[65536];
+            var Green = new byte[65536];
+            var Blue = new byte[65536];
+            if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
+
+            var packed = new byte[CachedTile.ByteSize];
+
+            for (int i = 0; i < Red.Length; i++)
+            {
+                packed[4 * i + 0] = Blue[i];
+                packed[4 * i + 1] = Green[i];
+                packed[4 * i + 2] = Red[i];
+
+                if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
+                {
+                    packed[4 * i + 3] = 0;
+                }
+                else
+                {
+                    packed[4 * i + 3] = 255;
+                }
+            }
+
+            tile.RawImageData = packed;
+            tile.SetState(TileState.Ready);
+        }
 
         private void WriteTileToBackingStoreSync(PositionKey key)
         {
@@ -460,6 +500,11 @@ namespace SlickUWP.Canvas
         {
             CanvasToScreen(tile, out var x, out var y);
             return new Quad((int)x, (int)y, TileImageSize, TileImageSize);
+        }
+
+        public int CurrentZoom()
+        {
+            return (int)Math.Round(1.0 / _viewScale);
         }
     }
 }
