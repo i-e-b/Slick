@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
 using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Storage;
@@ -48,25 +47,6 @@ namespace SlickUWP
         public MainPage()
         {
             InitializeComponent();
-                        
-            // Set up pen/mouse/touch input
-            var ip = baseInkCanvas.InkPresenter;
-
-            // These to get all the drawing and input directly
-            ip.ActivateCustomDrying();
-            ip.UnprocessedInput.PointerMoved += UnprocessedInput_PointerMoved;
-            ip.UnprocessedInput.PointerPressed += UnprocessedInput_PointerPressed;
-            ip.UnprocessedInput.PointerReleased += UnprocessedInput_PointerReleased;
-            ip.InputProcessingConfiguration.Mode = InkInputProcessingMode.None;
-            
-            //text.Text = "Ready";
-
-            ip.IsInputEnabled = true;
-            ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse | CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
-            ip.InputProcessingConfiguration.RightDragAction = InkInputRightDragAction.AllowProcessing;
-            ip.InputConfiguration.IsEraserInputEnabled = true;
-
-            paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
         }
 
 
@@ -75,6 +55,30 @@ namespace SlickUWP
         /// </summary>
         private void Page_Loaded(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
+            // Set up pen/mouse/touch input
+            var ip = baseInkCanvas?.InkPresenter;
+
+            if (ip == null) throw new Exception("Base ink presenter is missing");
+            if (paletteView == null) throw new Exception("Palette object is missing");
+
+            ip.ActivateCustomDrying();
+
+            if (ip.UnprocessedInput == null || ip.InputProcessingConfiguration == null || ip.InputConfiguration == null) throw new Exception("Ink Presenter is malformed");
+
+            // These to get all the drawing and input directly
+            ip.UnprocessedInput.PointerMoved += UnprocessedInput_PointerMoved;
+            ip.UnprocessedInput.PointerPressed += UnprocessedInput_PointerPressed;
+            ip.UnprocessedInput.PointerReleased += UnprocessedInput_PointerReleased;
+            ip.InputProcessingConfiguration.Mode = InkInputProcessingMode.None;
+            
+            ip.IsInputEnabled = true;
+            ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse | CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
+            ip.InputProcessingConfiguration.RightDragAction = InkInputRightDragAction.AllowProcessing;
+            ip.InputConfiguration.IsEraserInputEnabled = true;
+
+            paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
+
+
             _tileStore = LoadTileStore();
             if (renderLayer == null) throw new Exception("Invalid page structure (1)");
 
@@ -115,7 +119,7 @@ namespace SlickUWP
         private void UnprocessedInput_PointerPressed(InkUnprocessedInput sender, PointerEventArgs args)
         {
             _mode = InteractionMode.None;
-            if (args?.CurrentPoint == null) return;
+            if (args?.CurrentPoint == null || paletteView == null || _wetInk == null) return;
 
 
             if (PaletteVisible) {
@@ -123,8 +127,8 @@ namespace SlickUWP
                 if (paletteView.IsHit(args))
                 {
                     // set pointer to ink...
-                    _wetInk.SetPenColor(args.CurrentPoint.PointerId, paletteView.LastColor);
-                    _wetInk.SetPenSize(args.CurrentPoint.PointerId, paletteView.LastSize);
+                    _wetInk.SetPenColor(args.CurrentPoint, paletteView.LastColor);
+                    _wetInk.SetPenSize(args.CurrentPoint, paletteView.LastSize);
                     paletteView.Opacity = 0.0;
                 }
                 return;
@@ -146,6 +150,7 @@ namespace SlickUWP
                 _wetInk?.StartStroke(sender, args);
             }
         }
+
 
         private void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
         {

@@ -20,8 +20,6 @@ namespace SlickUWP.Canvas
         [NotNull] private readonly IStorageContainer _tileStore;
         [NotNull] private readonly Dictionary<PositionKey, CachedTile> _tileCache;
 
-        [NotNull] private static readonly object _storageLock = new object();
-
         public double X;
         public double Y;
 
@@ -322,16 +320,14 @@ namespace SlickUWP.Canvas
 
             if (tile.ImageIsBlank())
             {
-                //lock (_storageLock)
-                {
-                    _tileStore.Delete(name, "img");
-
-                    tile.SetState(TileState.Empty);
-                }
+                _tileStore.Delete(name, "img");
+                tile.SetState(TileState.Empty);
             }
             else
             {
                 var packed = tile.RawImageData;
+                if (packed == null) return;
+
                 var Red = new byte[packed.Length / 4];
                 var Green = new byte[packed.Length / 4];
                 var Blue = new byte[packed.Length / 4];
@@ -347,14 +343,11 @@ namespace SlickUWP.Canvas
                 {
                     WaveletCompress.Compress(Red, Green, Blue, tile.Width, tile.Height).WriteToStream(ms);
                     ms.Seek(0, SeekOrigin.Begin);
-                    //lock (_storageLock)
-                    {
-                        var ok = _tileStore.Store(name, "img", ms);
+                    var ok = _tileStore.Store(name, "img", ms);
 
-                        if (ok.IsFailure)
-                        {
-                            throw new Exception("Storage error: DB might be corrupt.", ok.FailureCause);
-                        }
+                    if (ok.IsFailure)
+                    {
+                        throw new Exception("Storage error: DB might be corrupt.", ok.FailureCause);
                     }
                 }
             }
@@ -386,20 +379,35 @@ namespace SlickUWP.Canvas
                     if (dst_i >= dst.Length) return changed;
                     if (src_i >= src.Length) return changed;
 
-                    int newAlpha = src[src_i + 3]; // alpha
-                    int oldAlpha = 255 - newAlpha;
-                    if (newAlpha < 10) continue;
+                    var srcAlpha = src[src_i + 3];
+                    if (srcAlpha < 5) continue;
+
+                    var newAlpha = srcAlpha / 255.0f;
+                    var oldAlpha = 1.0f - newAlpha;
 
                     // Alpha blend over existing color
-                    dst[dst_i + 0] = (byte) (((dst[dst_i + 0] * oldAlpha) >> 8) + ((src[src_i + 0] * newAlpha) >> 8));
-                    dst[dst_i + 1] = (byte) (((dst[dst_i + 1] * oldAlpha) >> 8) + ((src[src_i + 1] * newAlpha) >> 8));
-                    dst[dst_i + 2] = (byte) (((dst[dst_i + 2] * oldAlpha) >> 8) + ((src[src_i + 2] * newAlpha) >> 8));
+                    // This for plain alpha:
+                    //dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0] * newAlpha));
+                    //dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1] * newAlpha));
+                    //dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2] * newAlpha));
+
+                    // This for pre-multiplied alpha
+                    dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0]));
+                    dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1]));
+                    dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2]));
                     dst[dst_i + 3] = 255;
 
                     changed = true;
                 }
             }
             return changed;
+        }
+
+        private static byte Clip(float value)
+        {
+            if (value >= 255) return 255;
+            if (value <= 0) return 0;
+            return (byte)Math.Round(value);
         }
 
         public const int TileImageSize = 256;
