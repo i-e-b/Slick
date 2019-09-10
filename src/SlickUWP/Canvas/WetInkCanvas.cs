@@ -91,8 +91,7 @@ namespace SlickUWP.Canvas
                 // Try to get a waiting stroke (peek, so we can draw the waiting stroke)
                 if (!_dryingInk.TryPeek(out var strokeToRender)) return;
 
-                var device = CanvasDevice.GetSharedDevice(); // NEVER dispose of 'GetSharedDevice' or put it in a `using`. You will crash your program.
-                using (var offscreen = new CanvasRenderTarget(device, width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
+                using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
                 {
                     using (var ds = offscreen.CreateDrawingSession())
                     {
@@ -111,7 +110,7 @@ namespace SlickUWP.Canvas
                 }, coverage.X, coverage.Y, coverage.Width, coverage.Height, 0, 0);
 
                 _renderTarget.Invalidate();
-                _dryingInk.TryDequeue(out _); // pull it off the queue
+                _dryingInk.TryDequeue(out _); // pull it off the queue (don't do this if a tile was locked)
             };
         }
 

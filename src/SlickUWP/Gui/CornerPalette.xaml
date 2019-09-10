@@ -9,41 +9,90 @@
     d:DesignHeight="300"
     d:DesignWidth="800">
 
-    <Grid>
-        <Grid.Background>
-            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                <LinearGradientBrush.RelativeTransform>
-                    <CompositeTransform CenterY="0.5" CenterX="0.5" Rotation="-45"/>
-                </LinearGradientBrush.RelativeTransform>
-                <GradientStop Color="#FF787878" Offset="0.021"/>
-                <GradientStop Color="Transparent" Offset="1"/>
-            </LinearGradientBrush>
-        </Grid.Background>
+    <Grid Background="#7FFFFFFF">
         <Rectangle HorizontalAlignment="Stretch" Height="70" VerticalAlignment="Top" Fill="White"/>
         <TextBlock Margin="114,10,10,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="50" Width="276"><Run Text="Press the color and size with the input device you want to change"/><LineBreak/><Run/></TextBlock>
 
-        <TextBlock HorizontalAlignment="Left" Margin="10,82,0,0" Text="Small" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="11"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,110,0,0" Text="Default" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="11"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,145,0,0" Text="Large" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="11"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,192,0,0" Text="Huge" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="11"/>
-
-        <!-- Black -->
-        <Ellipse HorizontalAlignment="Left" Height="18" Margin="64,80,0,0" VerticalAlignment="Top" Width="18" Fill="BlueViolet" Stroke="White"/>
-        <Ellipse HorizontalAlignment="Left" Height="22" Margin="62,106,0,0" VerticalAlignment="Top" Width="22" Fill="BlueViolet" Stroke="White"/>
-        <Ellipse HorizontalAlignment="Left" Height="30" Margin="58,136,0,0" VerticalAlignment="Top" Width="30" Fill="BlueViolet" Stroke="White"/>
-        <Ellipse HorizontalAlignment="Left" Height="50" Margin="48,174,0,0" VerticalAlignment="Top" Width="50" Fill="BlueViolet" Stroke="White"/>
+        <!-- Default purple -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="48,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="BlueViolet" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="BlueViolet" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="BlueViolet" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="BlueViolet" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
 
         <!-- White / Erase-->
-        <Ellipse HorizontalAlignment="Left" Height="18" Margin="119,80,0,0" VerticalAlignment="Top" Width="18" Fill="White" Stroke="Black"/>
-        <Ellipse HorizontalAlignment="Left" Height="22" Margin="117,106,0,0" VerticalAlignment="Top" Width="22" Fill="White" Stroke="Black"/>
-        <Ellipse HorizontalAlignment="Left" Height="30" Margin="113,136,0,0" VerticalAlignment="Top" Width="30" Fill="White" Stroke="Black"/>
-        <Ellipse HorizontalAlignment="Left" Height="50" Margin="103,174,0,0" VerticalAlignment="Top" Width="50" Fill="White" Stroke="Black"/>
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="103,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="White" Stroke="Black" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="White" Stroke="Black" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="White" Stroke="Black" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="White" Stroke="Black" Canvas.Top="94"/>
+        </Canvas>
 
         <!-- Black -->
-        <Ellipse HorizontalAlignment="Left" Height="18" Margin="174,80,0,0" VerticalAlignment="Top" Width="18" Fill="Black" Stroke="White"/>
-        <Ellipse HorizontalAlignment="Left" Height="22" Margin="172,106,0,0" VerticalAlignment="Top" Width="22" Fill="Black" Stroke="White"/>
-        <Ellipse HorizontalAlignment="Left" Height="30" Margin="168,136,0,0" VerticalAlignment="Top" Width="30" Fill="Black" Stroke="White"/>
-        <Ellipse HorizontalAlignment="Left" Height="50" Margin="158,174,0,0" VerticalAlignment="Top" Width="50" Fill="Black" Stroke="White"/>
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="158,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="Black" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="Black" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="Black" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="Black" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
+        <!-- Red -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="213,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="Red" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="Red" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="Red" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="Red" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
+        <!-- Green -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="268,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="ForestGreen" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="ForestGreen" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="ForestGreen" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="ForestGreen" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
+        <!-- Pink -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="323,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="HotPink" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="HotPink" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="HotPink" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="HotPink" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
+        <!-- Teal -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="378,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="CadetBlue" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="CadetBlue" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="CadetBlue" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="CadetBlue" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
+        <!-- Blue -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="433,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="DeepSkyBlue" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="DeepSkyBlue" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="DeepSkyBlue" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="DeepSkyBlue" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
+        <!-- Orange -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="488,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="Orange" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="Orange" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="Orange" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="Orange" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+        
+        <!-- Grey -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="488,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="Gray" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="Gray" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="Gray" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="Gray" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
 
     </Grid>
 </UserControl>
