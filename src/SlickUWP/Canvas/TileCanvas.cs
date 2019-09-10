@@ -19,7 +19,7 @@ namespace SlickUWP.Canvas
     public class TileCanvas
     {
         [NotNull] private readonly Grid _displayContainer;
-        [NotNull] private readonly IStorageContainer _tileStore;
+        [NotNull] private IStorageContainer _tileStore;
         [NotNull] private readonly Dictionary<PositionKey, CachedTile> _tileCache;
 
         public double X;
@@ -58,8 +58,9 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Use this if the tile data is changed
         /// </summary>
-        public void ClearCache() {
+        public void ChangeStorage([NotNull]IStorageContainer newTileStore) {
 
+            _tileStore = newTileStore;
             var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
             foreach (var tile in toDetach) { tile.Detach(); }
             _tileCache.Clear();
@@ -291,7 +292,6 @@ namespace SlickUWP.Canvas
                 // write back to database
                 var xkey = key;
                 ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(xkey); });
-                //WriteTileToBackingStoreSync(xkey);
             }
 
         }

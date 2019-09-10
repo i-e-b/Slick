@@ -80,7 +80,7 @@ namespace SlickUWP
             paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
 
 
-            _tileStore = LoadTileStore();
+            _tileStore = LoadTileStore(@"C:\Users\IainBallard\Documents\Slick\test.slick");
             if (renderLayer == null) throw new Exception("Invalid page structure (1)");
 
             _tileCanvas = new TileCanvas(renderLayer, _tileStore);
@@ -94,12 +94,14 @@ namespace SlickUWP
         /// <summary>
         /// Load a storage container for the currently selected storage file
         /// </summary>
-        [NotNull]private IStorageContainer LoadTileStore()
+        [NotNull]private IStorageContainer LoadTileStore(string path)
         {
-            var path = @"C:\Users\IainBallard\Documents\Slick\test.slick"; // TODO: proper picker
+            //var path = @"C:\Users\IainBallard\Documents\Slick\test.slick"; // TODO: proper picker
             var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
             
             if (file == null || !file.IsAvailable) { throw new Exception("Failed to load Slick file"); }
+
+
             
             var accessStream = Sync.Run(() => file.OpenAsync(FileAccessMode.ReadWrite));
             var wrapper = new StreamWrapper(accessStream);
@@ -199,38 +201,17 @@ namespace SlickUWP
 
                 //var file = Sync.Run(() => picker.PickSingleFileAsync()); // doing anything synchronous here causes a deadlock.
                 var file = await picker.PickSingleFileAsync();
-                if (file != null)
+                if (file != null && file.IsAvailable)
                 {
+                    _tileStore?.Dispose();
+                    _tileStore = LoadTileStore(file.Path);
+                    _tileCanvas?.ChangeStorage(_tileStore);
                     // Application now has read/write access to the picked file
-                    //text.Text += " File OK";
-                    TestDbLoad(file);
-                }
-                else
-                {
-                    //text.Text += " File FAILED";
                 }
             }
             catch (Exception ex)
             {
                 //text.Text += "\r\nException: " + ex;
-            }
-        }
-
-        // TESTCRAP
-        private void TestDbLoad(StorageFile file)
-        {
-            if (file != null && file.IsAvailable)
-            {
-                using (IRandomAccessStream readStream = Sync.Run(() => file.OpenAsync(FileAccessMode.Read)))
-                {
-                    var db = new LiteDatabase(readStream.AsStream());
-                    var nodes = db.GetCollection<StorageNode>("map");
-                    //text.Text += $"; connected to test DB. {nodes.Count()} nodes";
-                }
-            }
-            else
-            {
-                //text.Text += $"; can't access DB file";
             }
         }
 
@@ -252,6 +233,7 @@ namespace SlickUWP
         private void MapModeButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
             _tileCanvas?.SwitchScale();
+            if (mapModeButton != null) mapModeButton.Content = (_tileCanvas?.CurrentZoom() == 4) ? "Canvas" : "Map";
         }
     }
 }

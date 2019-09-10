@@ -33,6 +33,7 @@ namespace SlickUWP.Canvas
         public byte[] RawImageData;
         private float _x, _y;
         private volatile bool _ready = false;
+        private volatile bool _detached = false;
 
         public CachedTile([NotNull]Panel container)
         {
@@ -63,13 +64,17 @@ namespace SlickUWP.Canvas
             });
         }
 
+        ~CachedTile() {
+            if (!_detached) throw new Exception("Cached tile was garbage collected without being detached!");
+        }
+
         public const int ByteSize = 256 * 256 * 4;
         public int Width => 256;
         public int Height => 256;
 
         private void Tile_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
-            if (!_ready || !UiCanvas.ReadyToDraw) return;
+            if (!_ready || sender?.ReadyToDraw == false) return;
 
             var g = args?.DrawingSession;
             if (g == null) return;
@@ -141,12 +146,12 @@ namespace SlickUWP.Canvas
             // Container removal has to happen on a specific thread, because this is still 1991.
             _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                if (UiCanvas != null)
-                {
-                    _container.Children?.Remove(UiCanvas);
-                    UiCanvas.RemoveFromVisualTree();
-                    UiCanvas = null;
-                }
+                if (UiCanvas == null) return;
+
+                _container.Children?.Remove(UiCanvas);
+                UiCanvas.RemoveFromVisualTree();
+                UiCanvas = null;
+                _detached = true;
             });
         }
 
