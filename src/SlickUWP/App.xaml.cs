@@ -20,6 +20,12 @@ namespace SlickUWP
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
+            UnhandledException += App_UnhandledException ;
+        }
+
+        private void App_UnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            Console.WriteLine(e?.Exception?.ToString() ?? "Invalid exception in backstop handler");
         }
 
         /// <summary>

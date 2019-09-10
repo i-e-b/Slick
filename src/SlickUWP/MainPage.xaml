@@ -40,6 +40,11 @@
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
+        <Button x:Name="undoButton" Content="Undo" Margin="0,10,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Background="#99FFFFFF" Click="UndoButton_Click" BorderThickness="1,1,1,1">
+            <Button.BorderBrush>
+                <SolidColorBrush Color="#FF747474" Opacity="1"/>
+            </Button.BorderBrush>
+        </Button>
 
 
 

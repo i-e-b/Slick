@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Windows.Foundation;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -18,15 +17,18 @@ namespace SlickUWP.Canvas
     /// </summary>
     public class TileCanvas
     {
+        // tiles, cache, display
         [NotNull] private readonly Grid _displayContainer;
         [NotNull] private IStorageContainer _tileStore;
         [NotNull] private readonly Dictionary<PositionKey, CachedTile> _tileCache;
+        
+        // History
+        [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
 
         public double X;
         public double Y;
 
         private double _viewScale = 1.0;
-        private Size _lastDisplaySize;
 
         /// <summary>
         /// Start rendering tiles into a display container. Always starts at 0,0
@@ -34,11 +36,11 @@ namespace SlickUWP.Canvas
         public TileCanvas([NotNull]Grid displayContainer, [NotNull]IStorageContainer tileStore)
         {
             _tileCache = new Dictionary<PositionKey, CachedTile>();
+            _lastChangedTiles = new HashSet<PositionKey>();
 
             _tileStore = tileStore;
 
             _displayContainer = displayContainer;
-            _lastDisplaySize = new Size(_displayContainer.ActualWidth, _displayContainer.ActualHeight);
             _displayContainer.SizeChanged += _displayContainer_SizeChanged;
 
             X = 0.0;
@@ -51,7 +53,6 @@ namespace SlickUWP.Canvas
 
         private void _displayContainer_SizeChanged(object sender, Windows.UI.Xaml.SizeChangedEventArgs e)
         {
-            _lastDisplaySize = e.NewSize;
             Invalidate();
         }
 
@@ -59,8 +60,14 @@ namespace SlickUWP.Canvas
         /// Use this if the tile data is changed
         /// </summary>
         public void ChangeStorage([NotNull]IStorageContainer newTileStore) {
-
             _tileStore = newTileStore;
+            ResetCache();
+        }
+
+        /// <summary>
+        /// Called when the base store changes (changed page, or undo)
+        /// </summary>
+        private void ResetCache() {
             var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
             foreach (var tile in toDetach) { tile.Detach(); }
             _tileCache.Clear();
@@ -246,6 +253,7 @@ namespace SlickUWP.Canvas
 
             var positionKeys = VisibleTiles(targetLeft, targetTop, targetWidth, targetHeight);
             var changedTiles = new Queue<PositionKey>();
+            _lastChangedTiles.Clear(); // last set of tiles are now forever. For multi undo, we could push a stack here
 
             foreach (var key in positionKeys)
             {
@@ -291,6 +299,7 @@ namespace SlickUWP.Canvas
             {
                 // write back to database
                 var xkey = key;
+                _lastChangedTiles.Add(key);
                 ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(xkey); });
             }
 
@@ -505,6 +514,48 @@ namespace SlickUWP.Canvas
         public int CurrentZoom()
         {
             return (int)Math.Round(1.0 / _viewScale);
+        }
+
+        /// <summary>
+        /// Roll back the versions of the last changed tiles
+        /// </summary>
+        public void Undo()
+        {            
+            // multi-undo: Could store prev. changed tiles set in the metadata store.
+
+            foreach (var tile in _lastChangedTiles)
+            {
+                // if tiles exist for version-1:
+                // - roll the version back in meta
+                // - reload tile (purge from cache and flip the reload trigger)
+                var path = tile.ToString();
+                var node = _tileStore.Exists(path);
+                if (node.IsFailure) continue;
+                if (node.ResultData == null) continue;
+
+                var prevVersion = node.ResultData.CurrentVersion - 1;
+
+                if (prevVersion < 1)
+                {
+                    // undoing the first stroke. Mark it deleted.
+                    var deadNode = new StorageNode { CurrentVersion = node.ResultData.CurrentVersion, Id = node.ResultData.Id, IsDeleted = true };
+                    _tileStore.UpdateNode(path, deadNode);
+                    ResetCache();
+                }
+                else
+                {
+                    var ok = _tileStore.Read(path, "img", prevVersion);
+                    if (ok.IsFailure) continue;
+
+                    var newNode = new StorageNode { CurrentVersion = prevVersion, Id = node.ResultData.Id, IsDeleted = false };
+                    _tileStore.UpdateNode(path, newNode);
+                    ResetCache();
+                }
+            }
+
+            // Reset the last update set
+            // For multi-undo, we should roll back to a previous undo set.
+            _lastChangedTiles.Clear();
         }
     }
 }

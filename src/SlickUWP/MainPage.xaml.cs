@@ -235,5 +235,10 @@ namespace SlickUWP
             _tileCanvas?.SwitchScale();
             if (mapModeButton != null) mapModeButton.Content = (_tileCanvas?.CurrentZoom() == 4) ? "Canvas" : "Map";
         }
+
+        private void UndoButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            _tileCanvas.Undo();
+        }
     }
 }
