@@ -188,6 +188,7 @@ namespace SlickUWP
             _tileCanvas?.Scroll(dx, dy);
 
             _lastPoint = thisPoint.Position;
+            _tileCanvas?.Invalidate();
         }
 
         private async void PickPageButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)

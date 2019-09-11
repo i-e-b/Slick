@@ -87,53 +87,40 @@ namespace SlickUWP.Canvas
 
             var required = VisibleTiles(0, 0, (int)_displayContainer.ActualWidth, (int)_displayContainer.ActualHeight);
             var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
+            var toAdd = new HashSet<PositionKey>();
 
             // add any missing
             foreach (var key in required)
             {
-                try
-                {
-                    toRemove.Remove(key);
-                    if (!_tileCache.ContainsKey(key)) AddToCache(key);
-                }
-                catch
-                {
-                    // ignore
-                }
+                toRemove.Remove(key);
+                if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
             }
 
             // remove any extra
             foreach (var key in toRemove)
             {
-                try
-                {
-                    if (!_tileCache.TryGetValue(key, out var container)) continue;
+                if (!_tileCache.TryGetValue(key, out var container)) {
+                    throw new Exception("Lost container!");
+                }
 
-                    // todo: pull out to function
-                    container.Detach();
-                    _tileCache.Remove(key);
-                }
-                catch
-                {
-                    // ignore
-                }
+                container.Detach();
+                _tileCache.Remove(key);
+            }
+
+            // add any missing (we do this after remove to use the canvas pool effectively)
+            foreach (var key in toAdd)
+            {
+                if (!_tileCache.ContainsKey(key)) AddToCache(key);
             }
 
             // re-align what's left
             foreach (var kvp in _tileCache)
             {
-                try
-                {
-                    var pos = VisualRectangle(kvp.Key);
-                    kvp.Value?.MoveTo(pos.X, pos.Y);
-                }
-                catch
-                {
-                    // ignore
-                }
+                var pos = VisualRectangle(kvp.Key);
+                kvp.Value?.MoveTo(pos.X, pos.Y);
             }
 
-            _displayContainer.InvalidateArrange();
+            //_displayContainer.InvalidateArrange();
         }
 
         /// <summary>
@@ -154,7 +141,8 @@ namespace SlickUWP.Canvas
             }
 
             // Read the db and set tile state in the background
-            ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(key); });
+            var xkey = key;
+            ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(xkey, tile); });
         }
 
         [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
@@ -252,7 +240,6 @@ namespace SlickUWP.Canvas
             // 3) tile is ready -- merge onto array, commit to backing
 
             var positionKeys = VisibleTiles(targetLeft, targetTop, targetWidth, targetHeight);
-            var changedTiles = new Queue<PositionKey>();
             _lastChangedTiles.Clear(); // last set of tiles are now forever. For multi undo, we could push a stack here
 
             foreach (var key in positionKeys)
@@ -277,8 +264,9 @@ namespace SlickUWP.Canvas
                         }
                         else {
                             tile.SetState(TileState.Ready);
-                            tile.Invalidate(); // cause a redraw -- TODO: should not be needed
-                            changedTiles.Enqueue(key);
+                            
+                            _lastChangedTiles.Add(key);
+                            ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
                         }
                         continue;
 
@@ -289,27 +277,23 @@ namespace SlickUWP.Canvas
 
                     case TileState.Ready:
                         var changed = AlphaMapImageToTile(img, rect, tile, sourceLeft, sourceTop);
-                        tile.Invalidate(); // cause a redraw -- TODO: should not be needed
-                        if (changed) { changedTiles.Enqueue(key); }
+                        tile.Invalidate();
+                        if (changed) { 
+                            _lastChangedTiles.Add(key);
+                            ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
+                        }
                         break;
                 }
             }
-
-            while (changedTiles.TryDequeue(out var key))
-            {
-                // write back to database
-                var xkey = key;
-                _lastChangedTiles.Add(key);
-                ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(xkey); });
-            }
-
         }
 
-        private void LoadTileDataSync(PositionKey key)
+        private void LoadTileDataSync(PositionKey key, CachedTile tile)
         {
             if (key == null) return;
 
-            if (!_tileCache.TryGetValue(key, out var tile)) return; // has been unloaded while queued
+            /*if (!_tileCache.TryGetValue(key, out var tile)) {
+                return; // has been unloaded while queued
+            }*/
 
             var name = key.ToString();
             var res = _tileStore.Exists(name);
@@ -353,15 +337,15 @@ namespace SlickUWP.Canvas
                 }
             }
 
-            tile.RawImageData = packed;
+            tile.SetTileData(packed);
             tile.SetState(TileState.Ready);
         }
 
-        private void WriteTileToBackingStoreSync(PositionKey key)
+        private void WriteTileToBackingStoreSync(PositionKey key, CachedTile tile)
         {
             if (key == null) return;
 
-            if (!_tileCache.TryGetValue(key, out var tile)) return;
+            //if (!_tileCache.TryGetValue(key, out var tile)) return;
             if (tile == null) return;
             if (tile.State == TileState.Locked) return;
 
@@ -374,7 +358,7 @@ namespace SlickUWP.Canvas
             }
             else
             {
-                var packed = tile.RawImageData;
+                var packed = tile.GetTileData();
                 if (packed == null) return;
 
                 var Red = new byte[packed.Length / 4];
@@ -407,7 +391,7 @@ namespace SlickUWP.Canvas
         /// </summary>
         private static bool AlphaMapImageToTile(RawImageInterleaved_UInt8 img, Quad rect, CachedTile tile, int imgDx, int imgDy)
         {
-            var dst = tile?.RawImageData;
+            var dst = tile?.GetTileData();
             var src = img?.Data;
             if (src == null || dst == null || rect == null) return false;
 

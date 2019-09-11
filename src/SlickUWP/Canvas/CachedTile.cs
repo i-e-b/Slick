@@ -17,59 +17,55 @@ namespace SlickUWP.Canvas
     /// </summary>
     internal class CachedTile
     {
-        [NotNull] private readonly Panel _container;
-        [NotNull] private readonly CoreDispatcher _dispatcher;
-        private CanvasControl UiCanvas;
+        [NotNull] private readonly CanvasControl UiCanvas;
 
         public TileState State;
 
-        public byte[] RawImageData;
+        private byte[] RawImageData;
         private float _x, _y;
         private volatile bool _ready = false;
         private volatile bool _detached = false;
 
+        public const int ByteSize = 256 * 256 * 4;
+        public int Width => 256;
+        public int Height => 256;
+
         public CachedTile([NotNull]Panel container)
         {
-            _dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
-
-            _container = container;
+            var dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
 
             State = TileState.Locked;
+            UiCanvas = Win2dCanvasPool.Employ();
 
-            // TODO: keep a pool of CanvasControls, and only make new ones when exhausted.
-            //        That might stop these weird crashes.
+            _ready = true;
 
-            _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                UiCanvas = new CanvasControl
-                {
-                    UseSharedDevice = true,
-                    Margin = new Thickness(0.0),
-                    Height = 256,
-                    Width = 256,
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top
-                };
-
-                // There might have been image data loaded, and tile movement while waiting for the UI thread to catch up
-                UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
-
-                _container.Children?.Add(UiCanvas);
-
-            }).GetAwaiter().OnCompleted(() => {
+                container.Children?.Add(UiCanvas);
+                UiCanvas.Visibility = Visibility.Visible;
                 UiCanvas.Draw += Tile_Draw;
-                UiCanvas?.Invalidate();
-                _ready = true;
+            }).GetAwaiter().OnCompleted(() =>
+            {
+                UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
+                UiCanvas.Invalidate();
             });
         }
 
         ~CachedTile() {
-            if (!_detached) throw new Exception("Cached tile was garbage collected without being detached!");
+            if (!_detached)
+                throw new Exception("Cached tile was garbage collected without being detached!");
+        }
+        
+
+        public void SetTileData(byte[] rawData) {
+            RawImageData = rawData;
+            UiCanvas.Invalidate();
         }
 
-        public const int ByteSize = 256 * 256 * 4;
-        public int Width => 256;
-        public int Height => 256;
+        public byte[] GetTileData()
+        {
+            return RawImageData;
+        }
 
         private void Tile_Draw(CanvasControl sender, CanvasDrawEventArgs args)
         {
@@ -85,7 +81,8 @@ namespace SlickUWP.Canvas
                     return;
 
                 case TileState.Empty:
-                    g.Clear(Colors.White);
+                    //g.Clear(Colors.White);
+                    g.Clear(Colors.Beige);
                     return;
 
                 case TileState.Ready:
@@ -114,7 +111,9 @@ namespace SlickUWP.Canvas
                     return;
 
                 default:
-                    throw new Exception("Non exhaustive switch in Tile_Draw");
+                    g.Clear(Colors.MediumTurquoise);
+                    return;
+                    //throw new Exception("Non exhaustive switch in Tile_Draw");
             }
         }
 
@@ -125,7 +124,6 @@ namespace SlickUWP.Canvas
         {
             _x = x;
             _y = y;
-            if (UiCanvas == null) return;
             UiCanvas.RenderTransform = new TranslateTransform
             {
                 X = x,
@@ -139,17 +137,10 @@ namespace SlickUWP.Canvas
         public void Detach()
         {
             _ready = false;
-            if (UiCanvas != null) { UiCanvas.Visibility = Visibility.Collapsed; }
             if (_detached) return;
-
-            // Container removal has to happen on a specific thread, because this is still 1991.
-            _dispatcher.RunAsync(CoreDispatcherPriority.Low, () =>
-            {
-                if (UiCanvas == null) return;
-                UiCanvas.Draw -= Tile_Draw;
-                UiCanvas.RemoveFromVisualTree();
-                _container.Children?.Remove(UiCanvas);
-            }).GetAwaiter().OnCompleted(() => { _detached = true; });
+            UiCanvas.Draw -= Tile_Draw;
+            Win2dCanvasPool.Retire(UiCanvas);
+            _detached = true;
         }
 
         /// <summary>
@@ -158,7 +149,7 @@ namespace SlickUWP.Canvas
         public void SetState(TileState state)
         {
             State = state;
-            UiCanvas?.Invalidate();
+            UiCanvas.Invalidate();
         }
 
         /// <summary>
@@ -189,7 +180,8 @@ namespace SlickUWP.Canvas
 
         public void Invalidate()
         {
-            UiCanvas?.Invalidate();
+            UiCanvas.Draw += Tile_Draw;
+            UiCanvas.Invalidate();
         }
 
         /// <summary>
