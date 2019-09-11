@@ -8,7 +8,7 @@
     xmlns:Custom1="using:SlickUWP.Gui"
     x:Class="SlickUWP.MainPage"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded" Tapped="Page_Tapped" DoubleTapped="Page_DoubleTapped" PreviewKeyDown="Page_PreviewKeyDown" PreviewKeyUp="Page_PreviewKeyUp">
 
     <Grid x:Name="windowGrid">
 
@@ -24,7 +24,9 @@
         <Custom1:CornerPalette x:Name="paletteView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0" />
 
         <!-- The ink canvas records input, and sits over all controls other than the push-buttons -->
-        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0"/>
+        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" DoubleTapped="BaseInkCanvas_DoubleTapped" PointerPressed="BaseInkCanvas_PointerPressed"/>
+        
+        <!-- Mode switch buttons -->
         <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" Click="PickPageButton_Click" BorderThickness="1,1,1,1">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>

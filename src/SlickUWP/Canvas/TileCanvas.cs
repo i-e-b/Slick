@@ -61,6 +61,13 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void ChangeStorage([NotNull]IStorageContainer newTileStore) {
             _tileStore = newTileStore;
+
+            // recentre and reset zoom
+            X = 0.0;
+            Y = 0.0;
+            CentreAndZoom(_displayContainer.ActualWidth / 2, _displayContainer.ActualHeight / 2);
+
+            // clear caches and invalidate
             ResetCache();
         }
 
@@ -71,6 +78,7 @@ namespace SlickUWP.Canvas
             var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
             foreach (var tile in toDetach) { tile.Detach(); }
             _tileCache.Clear();
+            _lastChangedTiles.Clear();
 
             Invalidate();
         }
@@ -220,7 +228,33 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Centre on the given point, and set scale as 1:1
         /// </summary>
-        public void CentreAndZoom(int wX, int wY){ }
+        public void CentreAndZoom(double wX, double wY){
+            // TODO: centre at this zoom level
+
+            // w[XY] are in screen co-ords at 100%
+            // centre at 100%:
+            var cx = _displayContainer.ActualWidth / 2;
+            var cy = _displayContainer.ActualHeight / 2;
+
+            // scroll at 100%:
+            var dx = wX - cx;
+            var dy = wY - cy;
+
+            // scroll to centre at current zoom
+            X += dx / _viewScale;
+            Y += dy / _viewScale;
+
+            _viewScale = 1.0;
+            _displayContainer.RenderTransform = new ScaleTransform
+            {
+                CenterX = cx,
+                CenterY = cy,
+                ScaleX = _viewScale,
+                ScaleY = _viewScale
+            };
+
+            Invalidate();
+        }
 
         /// <summary>
         /// Remove all tiles from the display container.

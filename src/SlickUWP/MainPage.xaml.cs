@@ -4,6 +4,7 @@ using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Storage;
 using Windows.System;
+using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
 using Windows.UI.Xaml.Controls;
@@ -68,15 +69,17 @@ namespace SlickUWP
             ip.UnprocessedInput.PointerMoved += UnprocessedInput_PointerMoved;
             ip.UnprocessedInput.PointerPressed += UnprocessedInput_PointerPressed;
             ip.UnprocessedInput.PointerReleased += UnprocessedInput_PointerReleased;
+
             ip.InputProcessingConfiguration.Mode = InkInputProcessingMode.None;
-            
-            ip.IsInputEnabled = true;
-            ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse | CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
             ip.InputProcessingConfiguration.RightDragAction = InkInputRightDragAction.AllowProcessing;
+            
             ip.InputConfiguration.IsEraserInputEnabled = true;
+            ip.InputConfiguration.IsPrimaryBarrelButtonInputEnabled = true;
+
+            ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse | CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
+            ip.IsInputEnabled = true;
 
             paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
-
 
             _tileStore = LoadTileStore(@"C:\Users\IainBallard\Documents\Slick\test.slick");
             if (renderLayer == null) throw new Exception("Invalid page structure (1)");
@@ -99,7 +102,6 @@ namespace SlickUWP
             
             if (file == null || !file.IsAvailable) { throw new Exception("Failed to load Slick file"); }
 
-
             
             var accessStream = Sync.Run(() => file.OpenAsync(FileAccessMode.ReadWrite));
             var wrapper = new StreamWrapper(accessStream);
@@ -116,13 +118,21 @@ namespace SlickUWP
             _tileCanvas?.Invalidate();
         }
 
-
+        ulong lastStamp = 0;
         private void UnprocessedInput_PointerPressed(InkUnprocessedInput sender, PointerEventArgs args)
         {
             _mode = InteractionMode.None;
-            if (args?.CurrentPoint == null || paletteView == null || _wetInk == null) return;
+            if (args?.CurrentPoint == null || paletteView == null || _wetInk == null || _tileCanvas == null) return;
 
+            // TODO: need to detect double-taps for centre-and-zoom etc.
+            var diff = args.CurrentPoint.Timestamp - lastStamp;
+            lastStamp = args.CurrentPoint.Timestamp;
+            var tapTime = TimeSpan.FromMilliseconds(diff / 1000.0); // by guesswork
 
+            //var appView = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
+            //appView.Title = tapTime.TotalSeconds + " seconds";
+
+            // Check for palette
             if (PaletteVisible) {
                 _mode = InteractionMode.PalettePicker;
                 if (paletteView.IsHit(args))
@@ -137,12 +147,19 @@ namespace SlickUWP
 
             _lastPoint = args.CurrentPoint.Position;
 
+            // Don't allow drawing when zoomed out
             if (_tileCanvas.CurrentZoom() != 1) {
-                // Don't allow drawing when zoomed out
+                if (tapTime.TotalSeconds >0 && tapTime.TotalSeconds < 0.6) {
+                    // TODO: get double click time from system settings?
+                    _tileCanvas.CentreAndZoom(_lastPoint.X, _lastPoint.Y);
+                    SetCorrectZoomControlText();
+                }
+
                 _mode = InteractionMode.Move;
                 return;
             }
 
+            // Finally, set the interaction mode
             if (args.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift))
             {
                 _mode = InteractionMode.Move;
@@ -211,6 +228,7 @@ namespace SlickUWP
                     _tileStore?.Dispose();
                     _tileStore = LoadTileStore(file.Path);
                     _tileCanvas?.ChangeStorage(_tileStore);
+                    SetCorrectZoomControlText();
                     // Application now has read/write access to the picked file
                 }
             }
@@ -238,12 +256,51 @@ namespace SlickUWP
         private void MapModeButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
             _tileCanvas?.SwitchScale();
+            SetCorrectZoomControlText();
+        }
+
+        private void SetCorrectZoomControlText()
+        {
             if (mapModeButton != null) mapModeButton.Content = (_tileCanvas?.CurrentZoom() == 4) ? "Canvas" : "Map";
         }
 
         private void UndoButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
             _tileCanvas.Undo();
+        }
+
+        private void BaseInkCanvas_DoubleTapped(object sender, Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        {
+            if (e == null || _tileCanvas == null) return;
+
+            var pos = e.GetPosition(baseInkCanvas);
+            _tileCanvas.CentreAndZoom((int)pos.X, (int)pos.Y);
+        }
+
+        private void Page_Tapped(object sender, Windows.UI.Xaml.Input.TappedRoutedEventArgs e)
+        {
+            // only fires if it's on a button.
+            Console.WriteLine("page tapped");
+        }
+
+        private void Page_DoubleTapped(object sender, Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        {
+            // only fires if it's on a button.
+        }
+
+        private void Page_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            Console.WriteLine("page key down");
+        }
+
+        private void Page_PreviewKeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            Console.WriteLine("page key up");
+        }
+
+        private void BaseInkCanvas_PointerPressed(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            Console.WriteLine("ink pressed");
         }
     }
 }
