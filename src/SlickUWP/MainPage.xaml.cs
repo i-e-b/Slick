@@ -1,15 +1,13 @@
 ﻿using System;
-using System.IO;
+using System.Diagnostics;
 using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Storage;
-using Windows.Storage.Streams;
 using Windows.System;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
-using LiteDB;
 using SlickCommon.Storage;
 using SlickUWP.Adaptors;
 using SlickUWP.Canvas;
@@ -178,17 +176,23 @@ namespace SlickUWP
             }
         }
 
+        /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
+        [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
+
         private void MoveCanvas([NotNull]PointerEventArgs args)
         {
             var thisPoint = args.CurrentPoint;
             if (thisPoint == null) return;
 
+            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 33) return;
+            moveSw.Restart();
+
             var dx = _lastPoint.X - thisPoint.Position.X;
             var dy = _lastPoint.Y - thisPoint.Position.Y;
-            _tileCanvas?.Scroll(dx, dy);
+            if (Math.Abs(dx) < 2 && Math.Abs(dy) < 2) return;
 
+            _tileCanvas?.Scroll(dx, dy);
             _lastPoint = thisPoint.Position;
-            _tileCanvas?.Invalidate();
         }
 
         private async void PickPageButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)

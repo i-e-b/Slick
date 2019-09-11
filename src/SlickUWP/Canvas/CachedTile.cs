@@ -2,8 +2,6 @@
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.UI;
-using Windows.UI.Core;
-using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -23,7 +21,6 @@ namespace SlickUWP.Canvas
 
         private byte[] RawImageData;
         private float _x, _y;
-        private volatile bool _ready = false;
         private volatile bool _detached = false;
 
         public const int ByteSize = 256 * 256 * 4;
@@ -32,23 +29,12 @@ namespace SlickUWP.Canvas
 
         public CachedTile([NotNull]Panel container)
         {
-            var dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
-
             State = TileState.Locked;
-            UiCanvas = Win2dCanvasPool.Employ();
-
-            _ready = true;
-
-            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                container.Children?.Add(UiCanvas);
-                UiCanvas.Visibility = Visibility.Visible;
-                UiCanvas.Draw += Tile_Draw;
-            }).GetAwaiter().OnCompleted(() =>
-            {
-                UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
-                UiCanvas.Invalidate();
-            });
+            UiCanvas = Win2dCanvasPool.Employ(container);
+            UiCanvas.Tag = this; // allow the Win2dCanvasPool and it's singleton draw event to find us.
+            
+            UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
+            UiCanvas.Invalidate();
         }
 
         ~CachedTile() {
@@ -67,13 +53,8 @@ namespace SlickUWP.Canvas
             return RawImageData;
         }
 
-        private void Tile_Draw(CanvasControl sender, CanvasDrawEventArgs args)
+        public void DrawToSession([NotNull]CanvasControl sender, [NotNull]CanvasDrawingSession g)
         {
-            if (!_ready || sender?.ReadyToDraw == false) return;
-
-            var g = args?.DrawingSession;
-            if (g == null) return;
-
             switch (State)
             {
                 case TileState.Locked:
@@ -81,8 +62,7 @@ namespace SlickUWP.Canvas
                     return;
 
                 case TileState.Empty:
-                    //g.Clear(Colors.White);
-                    g.Clear(Colors.Beige);
+                    g.Clear(Colors.White);
                     return;
 
                 case TileState.Ready:
@@ -100,7 +80,7 @@ namespace SlickUWP.Canvas
                         {
                             g.DrawImage(bmp, new Rect(0, 0, 256, 256));
                             g.Flush(); // you'll get "Exception thrown at 0x12F9AF43 (Microsoft.Graphics.Canvas.dll) in SlickUWP.exe: 0xC0000005: Access violation reading location 0x1B2EEF78. occurred"
-                                       // if you fail to flush before disposing of the bmp
+                            // if you fail to flush before disposing of the bmp
                         }
                     }
                     catch
@@ -113,7 +93,7 @@ namespace SlickUWP.Canvas
                 default:
                     g.Clear(Colors.MediumTurquoise);
                     return;
-                    //throw new Exception("Non exhaustive switch in Tile_Draw");
+                //throw new Exception("Non exhaustive switch in Tile_Draw");
             }
         }
 
@@ -136,9 +116,7 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Detach()
         {
-            _ready = false;
-            if (_detached) return;
-            UiCanvas.Draw -= Tile_Draw;
+            UiCanvas.Tag = null; 
             Win2dCanvasPool.Retire(UiCanvas);
             _detached = true;
         }
@@ -180,7 +158,7 @@ namespace SlickUWP.Canvas
 
         public void Invalidate()
         {
-            UiCanvas.Draw += Tile_Draw;
+            //UiCanvas.Draw += Tile_Draw;
             UiCanvas.Invalidate();
         }
 
@@ -189,10 +167,8 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Deallocate()
         {
-            _ready = false;
             State = TileState.Empty;
             RawImageData = null;
-            _ready = true;
         }
     }
 }

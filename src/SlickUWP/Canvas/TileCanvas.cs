@@ -75,6 +75,7 @@ namespace SlickUWP.Canvas
             Invalidate();
         }
 
+        private volatile bool _inReflow = false;
         /// <summary>
         /// Use this if the window size changes or the viewport is scrolled
         /// </summary>
@@ -84,6 +85,9 @@ namespace SlickUWP.Canvas
             // 2) add any not in the cache
             // 3) remove anything in the cache that should not be visible
             // 4) ensure the tiles are in the correct offset position
+
+            if (_inReflow) return;
+            _inReflow = true;
 
             var required = VisibleTiles(0, 0, (int)_displayContainer.ActualWidth, (int)_displayContainer.ActualHeight);
             var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
@@ -100,7 +104,8 @@ namespace SlickUWP.Canvas
             foreach (var key in toRemove)
             {
                 if (!_tileCache.TryGetValue(key, out var container)) {
-                    throw new Exception("Lost container!");
+                    continue;
+                    //throw new Exception("Lost container!");
                 }
 
                 container.Detach();
@@ -120,7 +125,7 @@ namespace SlickUWP.Canvas
                 kvp.Value?.MoveTo(pos.X, pos.Y);
             }
 
-            //_displayContainer.InvalidateArrange();
+            _inReflow = false;
         }
 
         /// <summary>
