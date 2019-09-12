@@ -30,6 +30,9 @@ namespace SlickUWP.Canvas
 
         private double _viewScale = 1.0;
 
+        public const int TileImageSize = 256;
+
+
         /// <summary>
         /// Start rendering tiles into a display container. Always starts at 0,0
         /// </summary>
@@ -482,8 +485,6 @@ namespace SlickUWP.Canvas
             return (byte)Math.Round(value);
         }
 
-        public const int TileImageSize = 256;
-
         /// <summary>
         /// Convert a screen position to a canvas pixel
         /// </summary>
@@ -585,6 +586,19 @@ namespace SlickUWP.Canvas
             // Reset the last update set
             // For multi-undo, we should roll back to a previous undo set.
             _lastChangedTiles.Clear();
+        }
+
+        public void CentreOn(PositionKey pos)
+        {
+            if (pos == null) return;
+
+            X = (pos.X * TileImageSize);
+            Y = (pos.Y * TileImageSize);
+            
+            X -= _displayContainer.ActualWidth / 2;
+            Y -= _displayContainer.ActualHeight / 2;
+
+            Invalidate();
         }
     }
 }

@@ -9,9 +9,9 @@
     d:DesignHeight="300"
     d:DesignWidth="800">
 
-    <Grid Background="#7FFFFFFF">
-        <Rectangle HorizontalAlignment="Stretch" Height="70" VerticalAlignment="Top" Fill="White"/>
-        <TextBlock Margin="114,10,10,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="50" Width="276"><Run Text="Press the color and size with the input device you want to change"/><LineBreak/><Run/></TextBlock>
+    <Grid Background="#BFFFFFFF">
+        <Rectangle HorizontalAlignment="Stretch" Height="70" VerticalAlignment="Top" Fill="White" d:IsLocked="True"/>
+        <TextBlock Margin="114,10,10,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="50" Width="276" d:IsLocked="True"><Run Text="Press the color and size with the input device you want to change"/><LineBreak/><Run/></TextBlock>
 
         <!-- Default purple -->
         <Canvas HorizontalAlignment="Left" Height="144" Margin="48,80,0,0" VerticalAlignment="Top" Width="50">
@@ -84,13 +84,13 @@
             <Ellipse Height="30" Width="30" Fill="Orange" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
             <Ellipse Height="50" Width="50" Fill="Orange" Stroke="White" Canvas.Top="94"/>
         </Canvas>
-        
+
         <!-- Grey -->
         <Canvas HorizontalAlignment="Left" Height="144" Margin="488,80,0,0" VerticalAlignment="Top" Width="50">
-            <Ellipse Height="18" Width="18" Fill="Gray" Stroke="White" Canvas.Left="16"/>
-            <Ellipse Height="22" Width="22" Fill="Gray" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
-            <Ellipse Height="30" Width="30" Fill="Gray" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
-            <Ellipse Height="50" Width="50" Fill="Gray" Stroke="White" Canvas.Top="94"/>
+            <Ellipse Height="18" Width="18" Fill="#FF9B9B9B" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="#FF9B9B9B" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="#FF9B9B9B" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="#FF9B9B9B" Stroke="White" Canvas.Top="94"/>
         </Canvas>
 
 

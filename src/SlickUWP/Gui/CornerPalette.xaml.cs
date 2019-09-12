@@ -45,6 +45,7 @@ namespace SlickUWP.Gui
         /// </summary>
         private double MapSize(double buttonWidth)
         {
+            // Approximate Ellipse size -> pen size mapping:
             // 18 -> 1.5
             // 22 -> 2.5
             // 30 -> 6.5

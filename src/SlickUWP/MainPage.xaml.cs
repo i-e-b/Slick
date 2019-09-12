@@ -4,9 +4,9 @@ using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Storage;
 using Windows.System;
-using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input.Inking;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
 using SlickCommon.Storage;
@@ -43,6 +43,7 @@ namespace SlickUWP
         InteractionMode _mode = InteractionMode.None;
 
         public bool PaletteVisible { get { return paletteView?.Opacity > 0.5; } }
+        public bool PinsVisible { get { return pinsView?.Opacity > 0.5; } }
 
         public MainPage()
         {
@@ -60,6 +61,7 @@ namespace SlickUWP
 
             if (ip == null) throw new Exception("Base ink presenter is missing");
             if (paletteView == null) throw new Exception("Palette object is missing");
+            if (pinsView == null) throw new Exception("Palette object is missing");
 
             ip.ActivateCustomDrying();
 
@@ -80,11 +82,13 @@ namespace SlickUWP
             ip.IsInputEnabled = true;
 
             paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
+            pinsView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
 
             _tileStore = LoadTileStore(@"C:\Users\IainBallard\Documents\Slick\test.slick");
             if (renderLayer == null) throw new Exception("Invalid page structure (1)");
 
             _tileCanvas = new TileCanvas(renderLayer, _tileStore);
+            pinsView?.SetConnections(_tileCanvas, _tileStore);
 
             _wetInk = new WetInkCanvas(wetInkCanvas ?? throw new Exception("Invalid page structure (2)"));
 
@@ -107,6 +111,8 @@ namespace SlickUWP
             var wrapper = new StreamWrapper(accessStream);
             var store = new LiteDbStorageContainer(wrapper);
 
+            if (_tileCanvas != null) pinsView?.SetConnections(_tileCanvas, store);
+
             return store;
         }
         
@@ -123,10 +129,11 @@ namespace SlickUWP
         {
             _mode = InteractionMode.None;
             if (args?.CurrentPoint == null || paletteView == null || _wetInk == null || _tileCanvas == null) return;
+            var thisPoint = args.CurrentPoint;
 
             // TODO: need to detect double-taps for centre-and-zoom etc.
-            var diff = args.CurrentPoint.Timestamp - lastStamp;
-            lastStamp = args.CurrentPoint.Timestamp;
+            var diff = thisPoint.Timestamp - lastStamp;
+            lastStamp = thisPoint.Timestamp;
             var tapTime = TimeSpan.FromMilliseconds(diff / 1000.0); // by guesswork
 
             //var appView = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
@@ -138,33 +145,34 @@ namespace SlickUWP
                 if (paletteView.IsHit(args))
                 {
                     // set pointer to ink...
-                    _wetInk.SetPenColor(args.CurrentPoint, paletteView.LastColor);
-                    _wetInk.SetPenSize(args.CurrentPoint, paletteView.LastSize);
+                    _wetInk.SetPenColor(thisPoint, paletteView.LastColor);
+                    _wetInk.SetPenSize(thisPoint, paletteView.LastSize);
                     paletteView.Opacity = 0.0;
                 }
                 return;
             }
 
-            _lastPoint = args.CurrentPoint.Position;
 
             // Don't allow drawing when zoomed out
             if (_tileCanvas.CurrentZoom() != 1) {
-                if (tapTime.TotalSeconds >0 && tapTime.TotalSeconds < 0.6) {
-                    // TODO: get double click time from system settings?
-                    _tileCanvas.CentreAndZoom(_lastPoint.X, _lastPoint.Y);
+                if (IsDoubleTap(args, tapTime)) {
+                    _tileCanvas?.CentreAndZoom(thisPoint.Position.X, thisPoint.Position.Y);
                     SetCorrectZoomControlText();
                 }
 
+                _lastPoint = thisPoint.Position;
                 _mode = InteractionMode.Move;
                 return;
             }
+
+            _lastPoint = thisPoint.Position;
 
             // Finally, set the interaction mode
             if (args.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift))
             {
                 _mode = InteractionMode.Move;
             }
-            else if (args.CurrentPoint.PointerDevice?.PointerDeviceType == PointerDeviceType.Touch)
+            else if (thisPoint.PointerDevice?.PointerDeviceType == PointerDeviceType.Touch)
             {
                 _mode = InteractionMode.Move;
             }
@@ -173,6 +181,20 @@ namespace SlickUWP
                 _mode = InteractionMode.Draw;
                 _wetInk?.StartStroke(sender, args);
             }
+        }
+
+        private bool IsDoubleTap(PointerEventArgs args, TimeSpan tapTime)
+        {
+            return tapTime.TotalSeconds > 0 && tapTime.TotalSeconds < 0.6 && Distance(_lastPoint, args.CurrentPoint.Position) < 32;
+        }
+
+        private double Distance(Point a, Point b)
+        {
+            return Math.Sqrt(
+                Math.Pow(a.X - b.X, 2)
+                +
+                Math.Pow(a.Y - b.Y, 2)
+                );
         }
 
 
@@ -214,13 +236,17 @@ namespace SlickUWP
 
         private async void PickPageButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
+            if (pinsView != null) pinsView.Opacity = 0.0;
+            if (paletteView != null) paletteView.Opacity = 0.0;
+
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
             picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
             //picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
             picker.FileTypeFilter?.Add(".slick");
 
-            //var file = Sync.Run(() => picker.PickSingleFileAsync()); // doing anything synchronous here causes a deadlock.
+            //NEVER DO THIS: var file = Sync.Run(() => picker.PickSingleFileAsync()); // doing anything synchronous here causes a deadlock.
 
+            // ReSharper disable once PossibleNullReferenceException
             var file = await picker.PickSingleFileAsync().AsTask();
             if (file == null || !file.IsAvailable) return;
 
@@ -229,12 +255,6 @@ namespace SlickUWP
             _tileCanvas?.ChangeStorage(_tileStore);
             SetCorrectZoomControlText();
             // Application now has read/write access to the picked file
-        }
-
-        private void ShowPaletteButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
-        {
-            if (paletteView == null) return;
-            paletteView.Opacity = paletteView.Opacity >= 0.5 ? 0.0 : 1.0;
         }
 
         private void MapModeButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
@@ -253,16 +273,37 @@ namespace SlickUWP
             _tileCanvas?.Undo();
         }
 
+        private static CoreCursor drawCurs =  new CoreCursor(CoreCursorType.Cross, 0);
+        private static CoreCursor moveCurs =  new CoreCursor(CoreCursorType.SizeAll, 0);
+
         private void Page_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
-            // TODO: switch cursor?
-            Console.WriteLine("page key down");
+            //  https://blogs.msdn.microsoft.com/devfish/2012/08/01/customcursors-in-windows-8-csharp-metro-applications/
+            if (e.Key == VirtualKey.Shift) {
+                Window.Current.CoreWindow.PointerCursor = moveCurs;
+            }
         }
 
         private void Page_PreviewKeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
-            // TODO: switch cursor?
-            Console.WriteLine("page key up");
+            if (e.Key == VirtualKey.Shift) {
+                Window.Current.CoreWindow.PointerCursor = drawCurs;
+            }
+        }
+
+        private void PinsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (pinsView == null || paletteView == null) return;
+            paletteView.Opacity = 0.0;
+            pinsView.Opacity = pinsView.Opacity >= 0.5 ? 0.0 : 1.0;
+        }
+        
+
+        private void ShowPaletteButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        {
+            if (pinsView == null || paletteView == null) return;
+            pinsView.Opacity = 0.0;
+            paletteView.Opacity = paletteView.Opacity >= 0.5 ? 0.0 : 1.0;
         }
     }
 }

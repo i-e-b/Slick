@@ -129,6 +129,9 @@
     <Compile Include="Gui\CornerPalette.xaml.cs">
       <DependentUpon>CornerPalette.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Gui\PinsOverlay.xaml.cs">
+      <DependentUpon>PinsOverlay.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
@@ -157,6 +160,10 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Page Include="Gui\CornerPalette.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Gui\PinsOverlay.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

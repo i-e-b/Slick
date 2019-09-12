@@ -10,39 +10,46 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded" PreviewKeyDown="Page_PreviewKeyDown" PreviewKeyUp="Page_PreviewKeyUp">
 
-    <Grid x:Name="windowGrid">
+    <Grid x:Name="windowGrid" Background="#FF7E8A9E">
 
         <!-- Palette input -->
 
         <!-- `renderLayer` holds the individual visible tiles to be composed. This is entirely handled in code. -->
-        <Grid x:Name="renderLayer"/>
+        <Grid x:Name="renderLayer" d:IsLocked="True"/>
 
         <!-- This draws 'ink' caused by user input that is not yet written to the tile cache and database -->
-        <Custom:CanvasControl x:Name="wetInkCanvas" Margin="0,0,0,0" />
+        <Custom:CanvasControl x:Name="wetInkCanvas" Margin="0,0,0,0" d:IsLocked="True" />
 
-        <!-- This is the visual of our pen-input picker. We get inputs from the `baseInkCanvas` and map from there. -->
         <Custom1:CornerPalette x:Name="paletteView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0" />
 
-        <!-- The ink canvas records input, and sits over all controls other than the push-buttons -->
+        <!-- This is the visual of our pen-input picker. We get inputs from the `baseInkCanvas` and map from there. -->
         <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0"/>
-        
+        <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch"/>
+
+        <!-- The ink canvas records input, and sits over all controls other than the push-buttons -->
+
         <!-- Mode switch buttons -->
-        <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" Click="PickPageButton_Click" BorderThickness="1,1,1,1">
+        <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" Click="PickPageButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="showPaletteButton" Content="Palette" Margin="10,10,0,0" VerticalAlignment="Top" Background="#99FFFFFF" BorderThickness="1,1,1,1" Click="ShowPaletteButton_Click" Width="64">
+        <Button x:Name="showPaletteButton" Content="Palette" Margin="10,10,0,0" VerticalAlignment="Top" Background="#99FFFFFF" BorderThickness="1,1,1,1" Click="ShowPaletteButton_Click" Width="80" d:IsLocked="True">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="mapModeButton" Content="Map" Margin="10,0,0,10" VerticalAlignment="Bottom" Background="#99FFFFFF" Click="MapModeButton_Click" BorderThickness="1,1,1,1" Width="64">
+        <Button x:Name="mapModeButton" Content="Map" Margin="10,0,0,10" VerticalAlignment="Bottom" Background="#99FFFFFF" Click="MapModeButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="undoButton" Content="Undo" Margin="0,10,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Background="#99FFFFFF" Click="UndoButton_Click" BorderThickness="1,1,1,1">
+        <Button x:Name="undoButton" Content="Undo" Margin="0,10,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Background="#99FFFFFF" Click="UndoButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
+            <Button.BorderBrush>
+                <SolidColorBrush Color="#FF747474" Opacity="1"/>
+            </Button.BorderBrush>
+        </Button>
+        <Button x:Name="pinsButton" Content="Pins" Margin="10,0,0,45" VerticalAlignment="Bottom" Background="#99FFFFFF" Click="PinsButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
