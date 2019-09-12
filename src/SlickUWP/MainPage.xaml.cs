@@ -95,7 +95,7 @@ namespace SlickUWP
         /// <summary>
         /// Load a storage container for the currently selected storage file
         /// </summary>
-        [NotNull]private IStorageContainer LoadTileStore(string path)
+        [NotNull]private IStorageContainer LoadTileStore([NotNull]string path)
         {
             //var path = @"C:\Users\IainBallard\Documents\Slick\test.slick"; // TODO: proper picker
             var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
@@ -214,43 +214,27 @@ namespace SlickUWP
 
         private async void PickPageButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
-            try
-            {
-                var picker = new Windows.Storage.Pickers.FileOpenPicker();
-                picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
-                //picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-                picker.FileTypeFilter.Add(".slick");
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
+            //picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+            picker.FileTypeFilter?.Add(".slick");
 
-                //var file = Sync.Run(() => picker.PickSingleFileAsync()); // doing anything synchronous here causes a deadlock.
-                var file = await picker.PickSingleFileAsync();
-                if (file != null && file.IsAvailable)
-                {
-                    _tileStore?.Dispose();
-                    _tileStore = LoadTileStore(file.Path);
-                    _tileCanvas?.ChangeStorage(_tileStore);
-                    SetCorrectZoomControlText();
-                    // Application now has read/write access to the picked file
-                }
-            }
-            catch (Exception ex)
-            {
-                //text.Text += "\r\nException: " + ex;
-            }
+            //var file = Sync.Run(() => picker.PickSingleFileAsync()); // doing anything synchronous here causes a deadlock.
+
+            var file = await picker.PickSingleFileAsync().AsTask();
+            if (file == null || !file.IsAvailable) return;
+
+            _tileStore?.Dispose();
+            _tileStore = LoadTileStore(file.Path);
+            _tileCanvas?.ChangeStorage(_tileStore);
+            SetCorrectZoomControlText();
+            // Application now has read/write access to the picked file
         }
 
         private void ShowPaletteButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
-            if (paletteView.Opacity >= 0.5)
-            {
-                // hide palette
-                paletteView.Opacity = 0.0;
-            }
-            else
-            {
-                // show palette
-                paletteView.Opacity = 1.0;
-            }
-
+            if (paletteView == null) return;
+            paletteView.Opacity = paletteView.Opacity >= 0.5 ? 0.0 : 1.0;
         }
 
         private void MapModeButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
@@ -266,41 +250,19 @@ namespace SlickUWP
 
         private void UndoButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
-            _tileCanvas.Undo();
-        }
-
-        private void BaseInkCanvas_DoubleTapped(object sender, Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
-        {
-            if (e == null || _tileCanvas == null) return;
-
-            var pos = e.GetPosition(baseInkCanvas);
-            _tileCanvas.CentreAndZoom((int)pos.X, (int)pos.Y);
-        }
-
-        private void Page_Tapped(object sender, Windows.UI.Xaml.Input.TappedRoutedEventArgs e)
-        {
-            // only fires if it's on a button.
-            Console.WriteLine("page tapped");
-        }
-
-        private void Page_DoubleTapped(object sender, Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
-        {
-            // only fires if it's on a button.
+            _tileCanvas?.Undo();
         }
 
         private void Page_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
+            // TODO: switch cursor?
             Console.WriteLine("page key down");
         }
 
         private void Page_PreviewKeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
+            // TODO: switch cursor?
             Console.WriteLine("page key up");
-        }
-
-        private void BaseInkCanvas_PointerPressed(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
-        {
-            Console.WriteLine("ink pressed");
         }
     }
 }

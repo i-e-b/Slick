@@ -328,11 +328,11 @@ namespace SlickUWP.Canvas
 
         private void LoadTileDataSync(PositionKey key, CachedTile tile)
         {
-            if (key == null) return;
+            if (key == null || tile == null) return;
 
-            /*if (!_tileCache.TryGetValue(key, out var tile)) {
+            if (!_tileCache.ContainsKey(key)) { //???
                 return; // has been unloaded while queued
-            }*/
+            }
 
             var name = key.ToString();
             var res = _tileStore.Exists(name);
@@ -544,9 +544,11 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Undo()
         {            
-            // multi-undo: Could store prev. changed tiles set in the metadata store.
+            // for multi-undo, we could store prev. changed tiles set in the metadata store, or stack up change sets in ram.
 
-            foreach (var tile in _lastChangedTiles)
+            var changed = _lastChangedTiles.ToArray();
+            var changesMade = false;
+            foreach (var tile in changed)
             {
                 // if tiles exist for version-1:
                 // - roll the version back in meta
@@ -563,7 +565,7 @@ namespace SlickUWP.Canvas
                     // undoing the first stroke. Mark it deleted.
                     var deadNode = new StorageNode { CurrentVersion = node.ResultData.CurrentVersion, Id = node.ResultData.Id, IsDeleted = true };
                     _tileStore.UpdateNode(path, deadNode);
-                    ResetCache();
+                    changesMade = true;
                 }
                 else
                 {
@@ -572,8 +574,12 @@ namespace SlickUWP.Canvas
 
                     var newNode = new StorageNode { CurrentVersion = prevVersion, Id = node.ResultData.Id, IsDeleted = false };
                     _tileStore.UpdateNode(path, newNode);
-                    ResetCache();
+                    changesMade = true;
                 }
+            }
+
+            if (changesMade) {
+                ResetCache();
             }
 
             // Reset the last update set
