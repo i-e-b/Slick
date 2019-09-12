@@ -600,5 +600,14 @@ namespace SlickUWP.Canvas
 
             Invalidate();
         }
+
+        [NotNull]
+        public PositionKey PositionOfCurrentCentre()
+        {            
+            var cx = X + _displayContainer.ActualWidth / 2;
+            var cy = Y + _displayContainer.ActualHeight / 2;
+
+            return new PositionKey(cx / TileImageSize, cy / TileImageSize);
+        }
     }
 }

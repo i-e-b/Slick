@@ -1,5 +1,7 @@
 ﻿using System.Linq;
+using System.Threading;
 using Windows.Devices.Input;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
@@ -41,28 +43,37 @@ namespace SlickUWP.Gui
             _storage = storage;
 
             // Load pins (adding the default centre view)
-            if (existingPinList?.Items == null) return;
-            existingPinList.Items.Clear();
-            existingPinList.Items.Add(new ListViewItem
-            {
-                Tag = InfoPin.Centre(),
-                Content = "Page Centre"
-            });
-            
+            ThreadPool.QueueUserWorkItem(x => { ReloadPins(); });
+        }
+
+        private void ReloadPins()
+        {
+            if (existingPinList?.Items == null || _storage == null) return;
+
             var pinResult = _storage.ReadAllPins();
             if (pinResult.IsFailure) return;
             var pins = pinResult.ResultData?.OrderBy(p => p?.Description);
             if (pins == null) return;
 
-            foreach (var pin in pins)
+            existingPinList.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                if (pin == null) continue;
+                existingPinList.Items.Clear();
                 existingPinList.Items.Add(new ListViewItem
                 {
-                    Tag = pin,
-                    Content = pin.Description
+                    Tag = InfoPin.Centre(),
+                    Content = "Page Centre"
                 });
-            }
+
+                foreach (var pin in pins)
+                {
+                    if (pin == null) continue;
+                    existingPinList.Items.Add(new ListViewItem
+                    {
+                        Tag = pin,
+                        Content = pin.Description
+                    });
+                }
+            });
         }
 
         private void ExistingPinList_DoubleTapped(object sender, Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
@@ -92,17 +103,36 @@ namespace SlickUWP.Gui
         private void NewPinNameBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             // enable or disable the add button
-            addPinButton.IsEnabled = !string.IsNullOrWhiteSpace(newPinNameBox.Text);
+            if (addPinButton == null) return;
+            addPinButton.IsEnabled = !string.IsNullOrWhiteSpace(newPinNameBox?.Text);
         }
 
         private void AddPinButton_Click(object sender, RoutedEventArgs e)
         {
             // add a new pin to the database and the list view. Then close the overlay
+            if (_view == null || _storage == null) return;
+            if (string.IsNullOrWhiteSpace(newPinNameBox?.Text)) return;
+
+            var pos = _view.PositionOfCurrentCentre();
+            _storage.SetPin(pos.ToString(), newPinNameBox?.Text);
+            newPinNameBox.Text = "";
+
+            ThreadPool.QueueUserWorkItem(x => { ReloadPins(); });
+
+            HidePinsOverlay();
         }
 
         private void DeleteSelectedPinButton_Click(object sender, RoutedEventArgs e)
         {
             // delete the selected pin. Don't close the overlay
+            if (_view == null || _storage == null) return;
+            if (existingPinList?.SelectedItem == null) return;
+            
+            if (!(existingPinList?.SelectedItem is ListViewItem item)) return;
+            if (!(item.Tag is InfoPin pin)) return;
+
+            _storage.RemovePin(pin.Id);
+            ThreadPool.QueueUserWorkItem(x => { ReloadPins(); });
         }
 
         private void ViewSelectedPinButton_Click(object sender, RoutedEventArgs e)
