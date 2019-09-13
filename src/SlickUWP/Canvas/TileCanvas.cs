@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -21,17 +22,20 @@ namespace SlickUWP.Canvas
         [NotNull] private readonly Grid _displayContainer;
         [NotNull] private IStorageContainer _tileStore;
         [NotNull] private readonly Dictionary<PositionKey, CachedTile> _tileCache;
+        [NotNull] private readonly HashSet<PositionKey> _selectedTiles;
         
         // History
         [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
 
         public double X;
         public double Y;
+        private double _cx;
+        private double _cy;
 
         private double _viewScale = 1.0;
 
         public const int TileImageSize = 256;
-
+        private volatile bool _inReflow = false;
 
         /// <summary>
         /// Start rendering tiles into a display container. Always starts at 0,0
@@ -40,11 +44,15 @@ namespace SlickUWP.Canvas
         {
             _tileCache = new Dictionary<PositionKey, CachedTile>();
             _lastChangedTiles = new HashSet<PositionKey>();
+            _selectedTiles = new HashSet<PositionKey>();
 
             _tileStore = tileStore;
 
             _displayContainer = displayContainer;
             _displayContainer.SizeChanged += _displayContainer_SizeChanged;
+            
+            _cx = _displayContainer.ActualWidth / 2;
+            _cy = _displayContainer.ActualHeight / 2;
 
             X = 0.0;
             Y = 0.0;
@@ -56,6 +64,8 @@ namespace SlickUWP.Canvas
 
         private void _displayContainer_SizeChanged(object sender, Windows.UI.Xaml.SizeChangedEventArgs e)
         {
+            _cx = _displayContainer.ActualWidth / 2;
+            _cy = _displayContainer.ActualHeight / 2;
             Invalidate();
         }
 
@@ -86,7 +96,7 @@ namespace SlickUWP.Canvas
             Invalidate();
         }
 
-        private volatile bool _inReflow = false;
+
         /// <summary>
         /// Use this if the window size changes or the viewport is scrolled
         /// </summary>
@@ -134,6 +144,8 @@ namespace SlickUWP.Canvas
             {
                 var pos = VisualRectangle(kvp.Key);
                 kvp.Value?.MoveTo(pos.X, pos.Y);
+
+                kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
             }
 
             _inReflow = false;
@@ -167,12 +179,8 @@ namespace SlickUWP.Canvas
         [NotNull]
         public List<PositionKey> VisibleTiles(int dx, int dy, int width, int height)
         {
-            var scale = 1 / _viewScale;
-            var extraW = width * scale / 2;
-            var extraH = height * scale / 2;
-
-            var tlLoc = ScreenToCanvas(dx - extraW, dy - extraH);
-            var brLoc = ScreenToCanvas(dx + width + extraW, dy + height + extraH);
+            var tlLoc = ScreenToCanvas(dx, dy);
+            var brLoc = ScreenToCanvas(dx + width, dy + height);
 
             var result = new List<PositionKey>();
             var tlPos = tlLoc.TilePosition ?? throw new Exception("TL tile position lookup failed");
@@ -496,23 +504,46 @@ namespace SlickUWP.Canvas
         /// Convert a screen position to a canvas pixel
         /// </summary>
         [NotNull]public CanvasPixelPosition ScreenToCanvas(double x, double y) {
-            //var dss = 1.0 / (1 << (_drawScale - 1));
-            //var invScale = 1.0 / VisualScale;
+            var cx = _cx;
+            var cy = _cy;
+            
+            // distance from top-left at 100% zoom
+            var dx = x / _viewScale;
+            var dy = y / _viewScale;
 
-            var sx = x;// * invScale;
-            var sy = y;// * invScale;
+            // extra offset due to zoom level
+            var ox = (cx / _viewScale) - cx;
+            var oy = (cy / _viewScale) - cy;
 
-            var ox = X;// * dss;
-            var oy = Y;// * dss;
+            // offset by current X,Y
+            var qx = X + dx - ox;
+            var qy = Y + dy - oy;
+
+            // quantise to tile size
+            var tx = Math.Floor(qx / TileImageSize);
+            var ty = Math.Floor(qy / TileImageSize);
+
+            var ax = qx - (tx * TileImageSize);
+            var ay = qy - (ty * TileImageSize);
+            if (ax < 0) ax += TileImageSize;
+            if (ay < 0) ay += TileImageSize;
+
+/*
+            var sx = x / _viewScale;// * invScale;
+            var sy = y / _viewScale;// * invScale;
+
+            var ox = X * _viewScale;// * dss;
+            var oy = Y * _viewScale;// * dss;
 
             var tx = Math.Floor((sx + ox) / TileImageSize);
             var ty = Math.Floor((sy + oy) / TileImageSize);
 
-            var ax = (ox - (tx * TileImageSize) + sx);// * invScale;
-            var ay = (oy - (ty * TileImageSize) + sy);// * invScale;
+            var ax = (ox - (tx * TileImageSize) + sx) * _viewScale;// * invScale;
+            var ay = (oy - (ty * TileImageSize) + sy) * _viewScale;// * invScale;
             
             if (ax < 0) ax += TileImageSize;
             if (ay < 0) ay += TileImageSize;
+            */
 
             return new CanvasPixelPosition{
                 TilePosition = new PositionKey(tx,ty),
@@ -615,6 +646,19 @@ namespace SlickUWP.Canvas
             var cy = Y + _displayContainer.ActualHeight / 2;
 
             return new PositionKey(cx / TileImageSize, cy / TileImageSize);
+        }
+
+        public void AddSelection(double x, double y)
+        {
+            var pos = ScreenToCanvas(x,y);
+            _selectedTiles.Add(pos.TilePosition);
+            Invalidate();
+        }
+
+        public void ClearSelection()
+        {
+            _selectedTiles.Clear();
+            Invalidate();
         }
     }
 }

@@ -120,6 +120,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="AsyncOperationExtension.cs" />
     <Compile Include="Canvas\CachedTile.cs" />
     <Compile Include="Canvas\TileCanvas.cs" />
     <Compile Include="Canvas\TileState.cs" />

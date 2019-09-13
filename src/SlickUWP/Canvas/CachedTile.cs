@@ -2,6 +2,7 @@
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.UI;
+using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -13,7 +14,7 @@ namespace SlickUWP.Canvas
     /// <summary>
     /// Looks after UI elements of a tile
     /// </summary>
-    internal class CachedTile
+    public class CachedTile
     {
         [NotNull] private readonly CanvasControl UiCanvas;
 
@@ -30,10 +31,9 @@ namespace SlickUWP.Canvas
         public CachedTile([NotNull]Panel container)
         {
             State = TileState.Locked;
-            UiCanvas = Win2dCanvasPool.Employ(container);
-            UiCanvas.Tag = this; // allow the Win2dCanvasPool and it's singleton draw event to find us.
-            
+            UiCanvas = Win2dCanvasPool.Employ(container, this);
             UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
+
             UiCanvas.Invalidate();
         }
 
@@ -120,7 +120,6 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Detach()
         {
-            UiCanvas.Tag = null; 
             Win2dCanvasPool.Retire(UiCanvas);
             _detached = true;
         }
@@ -173,6 +172,12 @@ namespace SlickUWP.Canvas
         {
             State = TileState.Empty;
             RawImageData = null;
+        }
+
+        public void SetSelected(bool isSelected)
+        {
+            // relies on the background being a different color
+            UiCanvas.Opacity = isSelected ? 0.5 : 1.0;
         }
     }
 }

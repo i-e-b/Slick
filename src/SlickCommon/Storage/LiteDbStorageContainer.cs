@@ -13,7 +13,7 @@ namespace SlickCommon.Storage
     {
         [NotNull] private readonly IStreamProvider _pageFile;
         [NotNull] private readonly object _storageLock = new object();
-        [NotNull] private LiteDatabase _db;
+        [NotNull] private readonly LiteDatabase _db;
 
         private static readonly Exception NotFound = new Exception("The node does not exist");
         private static readonly Exception NoVersion = new Exception("The listed version is missing");
@@ -275,8 +275,11 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public void Dispose()
         {
-            _db.Dispose();
-            _pageFile.Dispose();
+            lock (_storageLock)
+            {
+                _db.Dispose();
+                _pageFile.Dispose();
+            }
         }
     }
 }

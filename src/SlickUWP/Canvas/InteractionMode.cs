@@ -18,6 +18,11 @@
         Move,
 
         /// <summary>
+        /// Tiles should be selected for export
+        /// </summary>
+        SelectTiles,
+
+        /// <summary>
         /// Input should be passed to palette screen
         /// </summary>
         PalettePicker

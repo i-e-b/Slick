@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.Threading.Tasks;
 using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Storage;
 using Windows.System;
+using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Core.Preview;
 using Windows.UI.Input.Inking;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
 using SlickCommon.Storage;
 using SlickUWP.Adaptors;
@@ -65,11 +69,12 @@ namespace SlickUWP
         /// <summary>
         /// Start the canvas up with the default document
         /// </summary>
-        private void Page_Loaded(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void Page_Loaded(object sender, RoutedEventArgs e)
         {
             // Set up pen/mouse/touch input
             var ip = baseInkCanvas?.InkPresenter;
 
+            
             if (ip == null) throw new Exception("Base ink presenter is missing");
             if (paletteView == null) throw new Exception("Palette object is missing");
             if (pinsView == null) throw new Exception("Palette object is missing");
@@ -95,7 +100,8 @@ namespace SlickUWP
             paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
             pinsView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
 
-            _tileStore = LoadTileStore(@"C:\Users\IainBallard\Documents\Slick\test.slick");
+            _tileStore = Sync.Run(() => LoadTileStore(@"C:\Users\IainBallard\Documents\Slick\test.slick")); // TODO: less hard-coded path
+            if (_tileStore == null) throw new Exception("Failed to load initial page");
             if (renderLayer == null) throw new Exception("Invalid page structure (1)");
 
             _tileCanvas = new TileCanvas(renderLayer, _tileStore);
@@ -110,18 +116,27 @@ namespace SlickUWP
         /// <summary>
         /// Load a storage container for the currently selected storage file
         /// </summary>
-        [NotNull]private IStorageContainer LoadTileStore([NotNull]string path)
+        [NotNull]private async Task<IStorageContainer> LoadTileStore([NotNull]string path)
         {
-            var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
             
+            var directoryName = Path.GetDirectoryName(path);
+            if (string.IsNullOrWhiteSpace(directoryName)) throw new Exception("Path directory is invalid");
+
+            var folder = await StorageFolder.GetFolderFromPathAsync(directoryName).NotNull();
+            if (folder == null) { throw new Exception("Path to Slick file is not available"); }
+
+            var fileName = Path.GetFileName(path);
+            if (string.IsNullOrWhiteSpace(fileName)) throw new Exception("Path file name is invalid");
+            var file = await folder.CreateFileAsync(fileName, CreationCollisionOption.OpenIfExists).NotNull();
+
             if (file == null || !file.IsAvailable) { throw new Exception("Failed to load Slick file"); }
 
-            
             if (_tileStore != null) {
                 _tileStore.Dispose();
                 _tileStore = null;
             }
-            var accessStream = Sync.Run(() => file.OpenAsync(FileAccessMode.ReadWrite));
+
+            var accessStream = await file.OpenAsync(FileAccessMode.ReadWrite).NotNull();
             var wrapper = new StreamWrapper(accessStream);
             var store = new LiteDbStorageContainer(wrapper);
 
@@ -141,11 +156,12 @@ namespace SlickUWP
         ulong lastStamp = 0;
         private void UnprocessedInput_PointerPressed(InkUnprocessedInput sender, PointerEventArgs args)
         {
-            _mode = InteractionMode.None;
             if (args?.CurrentPoint == null || paletteView == null || _wetInk == null || _tileCanvas == null) return;
             var thisPoint = args.CurrentPoint;
 
-            // TODO: need to detect double-taps for centre-and-zoom etc.
+            args.Handled = true;
+
+            // need to detect double-taps for centre-and-zoom etc.
             var diff = thisPoint.Timestamp - lastStamp;
             lastStamp = thisPoint.Timestamp;
             var tapTime = TimeSpan.FromMilliseconds(diff / 1000.0); // by guesswork
@@ -166,6 +182,8 @@ namespace SlickUWP
                 return;
             }
 
+            // if in selection mode, don't change
+            if (_mode == InteractionMode.SelectTiles) return;
 
             // Don't allow drawing when zoomed out
             if (_tileCanvas.CurrentZoom() != 1) {
@@ -174,41 +192,32 @@ namespace SlickUWP
                     SetCorrectZoomControlText();
                 }
 
+                SetCursor(moveCurs);
                 _lastPoint = thisPoint.Position;
                 _mode = InteractionMode.Move;
                 return;
             }
 
+            _mode = InteractionMode.None;
             _lastPoint = thisPoint.Position;
 
             // Finally, set the interaction mode
             if (args.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift))
             {
+                SetCursor(moveCurs);
                 _mode = InteractionMode.Move;
             }
             else if (thisPoint.PointerDevice?.PointerDeviceType == PointerDeviceType.Touch)
             {
+                SetCursor(moveCurs);
                 _mode = InteractionMode.Move;
             }
             else
             {
+                SetCursor(drawCurs);
                 _mode = InteractionMode.Draw;
                 _wetInk?.StartStroke(sender, args);
             }
-        }
-
-        private bool IsDoubleTap(PointerEventArgs args, TimeSpan tapTime)
-        {
-            return tapTime.TotalSeconds > 0 && tapTime.TotalSeconds < 0.6 && Distance(_lastPoint, args.CurrentPoint.Position) < 32;
-        }
-
-        private double Distance(Point a, Point b)
-        {
-            return Math.Sqrt(
-                Math.Pow(a.X - b.X, 2)
-                +
-                Math.Pow(a.Y - b.Y, 2)
-                );
         }
 
 
@@ -218,11 +227,17 @@ namespace SlickUWP
 
             switch (_mode) {
                 case InteractionMode.Move:
+                    SetCursor(moveCurs);
                     MoveCanvas(args);
                     return;
 
                 case InteractionMode.Draw:
+                    SetCursor(drawCurs);
                     _wetInk?.Stroke(args);
+                    return;
+
+                case InteractionMode.SelectTiles:
+                    _tileCanvas?.AddSelection(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
                     return;
 
                 default: return;
@@ -248,7 +263,7 @@ namespace SlickUWP
             _lastPoint = thisPoint.Position;
         }
 
-        private async void PickPageButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private async void PickPageButton_Click(object sender, RoutedEventArgs e)
         {
             if (pinsView != null) pinsView.Opacity = 0.0;
             if (paletteView != null) paletteView.Opacity = 0.0;
@@ -264,14 +279,17 @@ namespace SlickUWP
             var file = await picker.PickSingleFileAsync().AsTask();
             if (file == null || !file.IsAvailable) return;
 
+            var newStore = await LoadTileStore(file.Path);
+            if (newStore == null) return;
+
             _tileStore?.Dispose();
-            _tileStore = LoadTileStore(file.Path);
+            _tileStore = newStore;
             _tileCanvas?.ChangeStorage(_tileStore);
             SetCorrectZoomControlText();
             // Application now has read/write access to the picked file
         }
 
-        private void MapModeButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void MapModeButton_Click(object sender, RoutedEventArgs e)
         {
             _tileCanvas?.SwitchScale();
             SetCorrectZoomControlText();
@@ -282,27 +300,36 @@ namespace SlickUWP
             if (mapModeButton != null) mapModeButton.Content = (_tileCanvas?.CurrentZoom() == 4) ? "Canvas" : "Map";
         }
 
-        private void UndoButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void UndoButton_Click(object sender, RoutedEventArgs e)
         {
             _tileCanvas?.Undo();
         }
 
-        private static CoreCursor drawCurs =  new CoreCursor(CoreCursorType.Cross, 0);
-        private static CoreCursor moveCurs =  new CoreCursor(CoreCursorType.SizeAll, 0);
+        private static readonly CoreCursor drawCurs =  new CoreCursor(CoreCursorType.Cross, 0);
+        private static readonly CoreCursor moveCurs =  new CoreCursor(CoreCursorType.SizeAll, 0);
 
-        private void Page_PreviewKeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        private void Page_PreviewKeyDown(object sender, [NotNull]Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
             //  https://blogs.msdn.microsoft.com/devfish/2012/08/01/customcursors-in-windows-8-csharp-metro-applications/
             if (e.Key == VirtualKey.Shift) {
-                Window.Current.CoreWindow.PointerCursor = moveCurs;
+                SetCursor(moveCurs);
             }
         }
 
-        private void Page_PreviewKeyUp(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        private void Page_PreviewKeyUp(object sender, [NotNull]Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
-            if (e.Key == VirtualKey.Shift) {
-                Window.Current.CoreWindow.PointerCursor = drawCurs;
+            if (e.Key == VirtualKey.Shift)
+            {
+                SetCursor(drawCurs);
             }
+        }
+
+        private void SetCursor(CoreCursor cursor)
+        {
+            var win = Window.Current?.CoreWindow;
+            if (win == null) return;
+
+            win.PointerCursor = cursor;
         }
 
         private void PinsButton_Click(object sender, RoutedEventArgs e)
@@ -311,13 +338,45 @@ namespace SlickUWP
             paletteView.Opacity = 0.0;
             pinsView.Opacity = pinsView.Opacity >= 0.5 ? 0.0 : 1.0;
         }
-        
 
-        private void ShowPaletteButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void ShowPaletteButton_Click(object sender, RoutedEventArgs e)
         {
             if (pinsView == null || paletteView == null) return;
             pinsView.Opacity = 0.0;
             paletteView.Opacity = paletteView.Opacity >= 0.5 ? 0.0 : 1.0;
         }
+
+        private void SelectTilesButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_tileCanvas == null) return;
+
+            if (_mode == InteractionMode.SelectTiles) {
+                // Toggle OFF
+                _mode = InteractionMode.None;
+                selectTilesButton.Background = pickPageButton.Background;
+                _tileCanvas?.ClearSelection();
+            }
+            else {
+                // Toggle ON
+                _mode = InteractionMode.SelectTiles;
+                selectTilesButton.Background = new SolidColorBrush(Colors.CadetBlue);
+            }
+        }
+        
+        private bool IsDoubleTap(PointerEventArgs args, TimeSpan tapTime)
+        {
+            if (args?.CurrentPoint == null) return false;
+            return tapTime.TotalSeconds > 0 && tapTime.TotalSeconds < 0.6 && Distance(_lastPoint, args.CurrentPoint.Position) < 32;
+        }
+
+        private double Distance(Point a, Point b)
+        {
+            return Math.Sqrt(
+                Math.Pow(a.X - b.X, 2)
+                +
+                Math.Pow(a.Y - b.Y, 2)
+            );
+        }
+
     }
 }

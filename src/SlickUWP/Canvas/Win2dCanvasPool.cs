@@ -42,14 +42,21 @@ namespace SlickUWP.Canvas
         /// Should be returned to the pool with `Retire`
         /// </summary>
         /// <param name="container"></param>
+        /// <param name="cachedTile"></param>
         [NotNull]
-        public static CanvasControl Employ([NotNull]Panel container)
+        public static CanvasControl Employ([NotNull] Panel container, [NotNull]CachedTile cachedTile)
         {
+            var dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
+
             lock (_lock)
             {
                 if (_pool.TryDequeue(out var result)) {
-                    result.Visibility = Visibility.Visible;
-                    result.Invalidate();
+                    dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                    {
+                        result.Tag = cachedTile;
+                        result.Invalidate();
+                        result.Visibility = Visibility.Visible;
+                    });
                     return result;
                 }
             }
@@ -67,22 +74,31 @@ namespace SlickUWP.Canvas
             };
 
 
-            var dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
             ctrl.Draw += _drawHub.Draw;
             ctrl.Invalidate();
 
-            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => { container.Children?.Add(ctrl); });
+            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => { 
+                container.Children?.Add(ctrl);
+                ctrl.Tag = cachedTile;
+            });
 
             return ctrl;
         }
 
         public static void Retire(CanvasControl ctrl){
             if (ctrl == null) return;
+            var dispatcher = ctrl.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
+
             lock (_lock)
             {
-                ctrl.Visibility = Visibility.Collapsed;
                 _pool.Enqueue(ctrl);
             }
+
+            dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            {
+                ctrl.Tag = null;
+                ctrl.Visibility = Visibility.Collapsed;
+            });
         }
 
     }
