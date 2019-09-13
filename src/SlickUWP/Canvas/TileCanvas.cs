@@ -217,8 +217,8 @@ namespace SlickUWP.Canvas
 
             _displayContainer.RenderTransform = new ScaleTransform
             {
-                CenterX = _displayContainer.ActualWidth/2,
-                CenterY = _displayContainer.ActualHeight/2,
+                CenterX = (int)(_displayContainer.ActualWidth / 2),
+                CenterY = (int)(_displayContainer.ActualHeight / 2),
                 ScaleX = _viewScale,
                 ScaleY = _viewScale
             };
@@ -250,8 +250,8 @@ namespace SlickUWP.Canvas
             _viewScale = 1.0;
             _displayContainer.RenderTransform = new ScaleTransform
             {
-                CenterX = cx,
-                CenterY = cy,
+                CenterX = (int)cx,
+                CenterY = (int)cy,
                 ScaleX = _viewScale,
                 ScaleY = _viewScale
             };
@@ -354,7 +354,14 @@ namespace SlickUWP.Canvas
                 return;
             }
 
-            var fileData = InterleavedFile.ReadFromStream(img.ResultData);
+            InterleavedFile fileData = null;
+            try
+            {
+                fileData = InterleavedFile.ReadFromStream(img.ResultData);
+            } catch {
+                tile.State = TileState.Corrupted;
+                return;
+            }
 
             var Red = new byte[65536];
             var Green = new byte[65536];

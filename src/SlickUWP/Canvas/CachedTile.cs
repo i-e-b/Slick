@@ -60,6 +60,10 @@ namespace SlickUWP.Canvas
                 case TileState.Locked:
                     g.Clear(Colors.DarkGray); // which is lighter than 'Gray'
                     return;
+                    
+                case TileState.Corrupted:
+                    g.Clear(Colors.Red);
+                    return;
 
                 case TileState.Empty:
                     g.Clear(Colors.White);
@@ -106,8 +110,8 @@ namespace SlickUWP.Canvas
             _y = y;
             UiCanvas.RenderTransform = new TranslateTransform
             {
-                X = x,
-                Y = y
+                X = (int)x,
+                Y = (int)y
             };
         }
 

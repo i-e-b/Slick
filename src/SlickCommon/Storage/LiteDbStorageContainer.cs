@@ -133,7 +133,12 @@ namespace SlickCommon.Storage
                         {
                             id = $"{path}/{type}/{i}";
                             if (!_db.FileStorage.Exists(id)) break;
-                            _db.FileStorage.Delete(id);
+                            try {
+                                _db.FileStorage.Delete(id);
+                            } catch {
+                                // Error internal to LiteDB
+                                break;
+                            }
                         }
                     }
 
@@ -237,7 +242,12 @@ namespace SlickCommon.Storage
                             {
                                 var id = $"{path}/{type}/{i}";
                                 if (!_db.FileStorage.Exists(id)) break;
-                                _db.FileStorage.Delete(id);
+                                try {
+                                    _db.FileStorage.Delete(id);
+                                } catch {
+                                    // Error internal to LiteDB
+                                    break;
+                                }
                             }
                             nodes.Delete(node.Id); // delete meta data
                         }
@@ -265,6 +275,7 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public void Dispose()
         {
+            _db.Dispose();
             _pageFile.Dispose();
         }
     }

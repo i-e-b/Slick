@@ -5,6 +5,7 @@ using Windows.Foundation;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI.Core;
+using Windows.UI.Core.Preview;
 using Windows.UI.Input.Inking;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -48,8 +49,18 @@ namespace SlickUWP
         public MainPage()
         {
             InitializeComponent();
+
+            var view = SystemNavigationManagerPreview.GetForCurrentView();
+            if (view != null) view.CloseRequested += OnCloseRequest;
         }
 
+        private void OnCloseRequest(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
+        {
+            if (_tileStore == null) return;
+
+            _tileStore.Dispose();
+            _tileStore = null;
+        }
 
         /// <summary>
         /// Start the canvas up with the default document
@@ -101,12 +112,15 @@ namespace SlickUWP
         /// </summary>
         [NotNull]private IStorageContainer LoadTileStore([NotNull]string path)
         {
-            //var path = @"C:\Users\IainBallard\Documents\Slick\test.slick"; // TODO: proper picker
             var file = Sync.Run(()=>StorageFile.GetFileFromPathAsync(path));
             
             if (file == null || !file.IsAvailable) { throw new Exception("Failed to load Slick file"); }
 
             
+            if (_tileStore != null) {
+                _tileStore.Dispose();
+                _tileStore = null;
+            }
             var accessStream = Sync.Run(() => file.OpenAsync(FileAccessMode.ReadWrite));
             var wrapper = new StreamWrapper(accessStream);
             var store = new LiteDbStorageContainer(wrapper);

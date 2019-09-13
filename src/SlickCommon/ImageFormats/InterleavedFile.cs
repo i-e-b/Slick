@@ -163,9 +163,10 @@ namespace SlickCommon.ImageFormats
             if (cquant.Count < 1) cquant.AddRange(OldCQuants);
 
             // Each plane can have a different byte size
-            ReadU8(input, out var planesLength);
+            ReadU8(input, out var planeCount);
 
-            var result = new InterleavedFile(width, height, depth, planesLength);
+            if (planeCount < 1 || planeCount > 6) throw new Exception($"Plane count does not make sense (expected 1..6, got {planeCount})");
+            var result = new InterleavedFile(width, height, depth, planeCount);
             if (result.Planes == null) throw new Exception("Interleaved file did not have a planes container");
 
             result.Version = version;
@@ -174,7 +175,7 @@ namespace SlickCommon.ImageFormats
 
             // allocate the buffers
             long i;
-            for (i = 0; i < planesLength; i++)
+            for (i = 0; i < planeCount; i++)
             {
                 var ok = ReadU64(input, out var psize);
                 if (!ok || psize > 10_000_000) throw new Exception("Plane data was outside of expected bounds (this is a safety check)");
@@ -187,7 +188,7 @@ namespace SlickCommon.ImageFormats
             while (true) {
                 var anything = false;
 
-                for (int p = 0; p < planesLength; p++)
+                for (int p = 0; p < planeCount; p++)
                 {
                     if (result.Planes[p] == null) throw new Exception("Invalid planar data buffer when reading planar data");
 

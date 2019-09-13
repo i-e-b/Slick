@@ -68,5 +68,6 @@
     <uap:Capability Name="removableStorage"/>
     <uap:Capability Name="documentsLibrary"/>
     <rescap:Capability Name="broadFileSystemAccess" />
+    <rescap:Capability Name="confirmAppClose"/> 
   </Capabilities>
 </Package>
