@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -90,6 +89,7 @@ namespace SlickUWP.Canvas
         private void ResetCache() {
             var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
             foreach (var tile in toDetach) { tile.Detach(); }
+            Win2dCanvasPool.Sanitise();
             _tileCache.Clear();
             _lastChangedTiles.Clear();
 
@@ -144,10 +144,10 @@ namespace SlickUWP.Canvas
             {
                 var pos = VisualRectangle(kvp.Key);
                 kvp.Value?.MoveTo(pos.X, pos.Y);
-
-                kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
+                kvp.Value?.SetSelected(_selectedTiles.Contains(kvp.Key));
             }
 
+            Win2dCanvasPool.Sanitise();
             _inReflow = false;
         }
 
@@ -341,9 +341,9 @@ namespace SlickUWP.Canvas
         {
             if (key == null || tile == null) return;
 
-            if (!_tileCache.ContainsKey(key)) { //???
-                return; // has been unloaded while queued
-            }
+            //if (!_tileCache.ContainsKey(key)) {
+            //    return; // has been unloaded while queued
+            //}
 
             var name = key.ToString();
             var res = _tileStore.Exists(name);
@@ -362,11 +362,13 @@ namespace SlickUWP.Canvas
                 return;
             }
 
-            InterleavedFile fileData = null;
+            InterleavedFile fileData;
             try
             {
                 fileData = InterleavedFile.ReadFromStream(img.ResultData);
-            } catch {
+            }
+            catch
+            {
                 tile.State = TileState.Corrupted;
                 return;
             }
@@ -527,23 +529,6 @@ namespace SlickUWP.Canvas
             var ay = qy - (ty * TileImageSize);
             if (ax < 0) ax += TileImageSize;
             if (ay < 0) ay += TileImageSize;
-
-/*
-            var sx = x / _viewScale;// * invScale;
-            var sy = y / _viewScale;// * invScale;
-
-            var ox = X * _viewScale;// * dss;
-            var oy = Y * _viewScale;// * dss;
-
-            var tx = Math.Floor((sx + ox) / TileImageSize);
-            var ty = Math.Floor((sy + oy) / TileImageSize);
-
-            var ax = (ox - (tx * TileImageSize) + sx) * _viewScale;// * invScale;
-            var ay = (oy - (ty * TileImageSize) + sy) * _viewScale;// * invScale;
-            
-            if (ax < 0) ax += TileImageSize;
-            if (ay < 0) ay += TileImageSize;
-            */
 
             return new CanvasPixelPosition{
                 TilePosition = new PositionKey(tx,ty),

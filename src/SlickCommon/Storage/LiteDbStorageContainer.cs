@@ -20,10 +20,12 @@ namespace SlickCommon.Storage
         private static readonly Exception NoDb = new Exception("Could not connect to DB");
 
         private volatile bool _writeLock = false;
+        private volatile bool _disposed;
 
         public LiteDbStorageContainer([NotNull]IStreamProvider pageFile)
         {
             _pageFile = pageFile;
+            _disposed = false;
 
             _db = new LiteDatabase(_pageFile.Open());
             var nodes = _db.GetCollection<StorageNode>("map");
@@ -34,6 +36,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<StorageNode> Exists(string path)
         {
+            if (_disposed) return Result<StorageNode>.Failure(NoDb);
+
             var nodes = _db.GetCollection<StorageNode>("map");
             var node = nodes?.FindById(path);
 
@@ -45,6 +49,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<Stream> Read(string path, string type, int version)
         {
+            if (_disposed) return Result<Stream>.Failure(NoDb);
+
             var id = $"{path}/{type}/{version}";
 
             while (_writeLock) { Thread.Sleep(50); }
@@ -71,6 +77,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<Nothing> UpdateNode(string path, StorageNode node)
         {
+            if (_disposed) return Result<Nothing>.Failure(NoDb);
+
             lock (_storageLock)
             {
                 try
@@ -91,6 +99,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<StorageNode> Store(string path, string type, Stream data)
         {
+            if (_disposed) return Result<StorageNode>.Failure(NoDb);
+
             lock (_storageLock)
                 try
                 {
@@ -153,6 +163,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<InfoPin> SetPin(string path, string description)
         {
+            if (_disposed) return Result<InfoPin>.Failure(NoDb);
+
             lock (_storageLock)
             {
                 try
@@ -174,6 +186,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<InfoPin> GetPin(string path)
         {
+            if (_disposed) return Result<InfoPin>.Failure(NoDb);
+
             while (_writeLock) { Thread.Sleep(50); }
 
             var pins = _db.GetCollection<InfoPin>("pins");
@@ -187,6 +201,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public void RemovePin(string id)
         {
+            if (_disposed) return;
+
             lock (_storageLock)
             {
                 try
@@ -205,6 +221,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<InfoPin[]> ReadAllPins()
         {
+            if (_disposed) return Result<InfoPin[]>.Failure(NoDb);
+
             while (_writeLock) { Thread.Sleep(50); }
             var pins = _db.GetCollection<InfoPin>("pins");
             var allPins = pins?.FindAll()?.ToArray();
@@ -217,6 +235,8 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public Result<Nothing> Delete(string path, string type)
         {
+            if (_disposed) return Result<Nothing>.Failure(NoDb);
+
             // Plan:
             // 1. Delete any currently marked tiles
             // 2. Write the deleted flag for this one
@@ -275,6 +295,9 @@ namespace SlickCommon.Storage
         /// <inheritdoc />
         public void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+
             lock (_storageLock)
             {
                 _db.Dispose();

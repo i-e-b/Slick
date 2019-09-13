@@ -41,8 +41,6 @@ namespace SlickUWP.Canvas
         /// Get an available canvas control.
         /// Should be returned to the pool with `Retire`
         /// </summary>
-        /// <param name="container"></param>
-        /// <param name="cachedTile"></param>
         [NotNull]
         public static CanvasControl Employ([NotNull] Panel container, [NotNull]CachedTile cachedTile)
         {
@@ -56,6 +54,7 @@ namespace SlickUWP.Canvas
                         result.Tag = cachedTile;
                         result.Invalidate();
                         result.Visibility = Visibility.Visible;
+                        result.Opacity = 1;
                     });
                     return result;
                 }
@@ -75,30 +74,53 @@ namespace SlickUWP.Canvas
 
 
             ctrl.Draw += _drawHub.Draw;
-            ctrl.Invalidate();
 
             dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => { 
                 container.Children?.Add(ctrl);
                 ctrl.Tag = cachedTile;
+                ctrl.Invalidate();
             });
 
             return ctrl;
         }
 
+        /// <summary>
+        /// Remove a control from display and return it to the pool
+        /// </summary>
         public static void Retire(CanvasControl ctrl){
             if (ctrl == null) return;
             var dispatcher = ctrl.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
 
+            ctrl.Opacity = 0;
             lock (_lock)
             {
                 _pool.Enqueue(ctrl);
             }
 
-            dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                ctrl.Tag = null;
                 ctrl.Visibility = Visibility.Collapsed;
+                ctrl.Tag = null;
             });
+        }
+
+        /// <summary>
+        /// Call this once your changes are stable, to ensure UWP doesn't screw up your visibility states.
+        /// </summary>
+        public static void Sanitise() {
+
+            lock (_lock)
+            {
+                var retired = _pool.ToArray();
+                foreach (var control in retired)
+                {
+                    control.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
+                    {
+                        control.Visibility = Visibility.Collapsed;
+                        control.Tag = null;
+                    });
+                }
+            }
         }
 
     }
