@@ -1,0 +1,11 @@
+New-SelfSignedCertificate -Type Custom -Subject "CN=SlickSideload, O=SlickSideload, C=US" -KeyUsage DigitalSignature -FriendlyName "This is the side-loading certificate for Slick UWP" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+
+# If you lose the thumbprint, you can find it again with this:
+#Set-Location Cert:\CurrentUser\My
+#Get-ChildItem | Format-Table Subject, FriendlyName, Thumbprint
+
+
+
+$pwd = ConvertTo-SecureString -String "SlickSideload" -Force -AsPlainText
+Export-PfxCertificate -cert "Cert:\CurrentUser\My\<COPY THUMBPRINT AS OUTPUT BY FIRST COMMAND>" -FilePath SlickSideload.pfx -Password $pwd
+

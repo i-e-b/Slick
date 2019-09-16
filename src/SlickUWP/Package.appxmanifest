@@ -10,7 +10,7 @@
 
   <Identity
     Name="IEB-Slick-UWP"
-    Publisher="CN=IainBallard"
+    Publisher="CN=SlickSideload, O=SlickSideload, C=US"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="65645e67-5f9a-4221-ba55-a551ca6cc65a" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
