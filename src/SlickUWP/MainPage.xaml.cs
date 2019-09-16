@@ -45,7 +45,9 @@ namespace SlickUWP
         private WetInkCanvas _wetInk;
         
         Point _lastPoint;
-        InteractionMode _mode = InteractionMode.None;
+        ulong _lastPressTimestamp = 0;
+        InteractionMode _interactionMode = InteractionMode.None;
+        PenMode _penMode = PenMode.Ink;
 
         public bool PaletteVisible { get { return paletteView?.Opacity > 0.5; } }
         public bool PinsVisible { get { return pinsView?.Opacity > 0.5; } }
@@ -153,79 +155,94 @@ namespace SlickUWP
             _tileCanvas?.Invalidate();
         }
 
-        ulong lastStamp = 0;
         private void UnprocessedInput_PointerPressed(InkUnprocessedInput sender, PointerEventArgs args)
         {
             if (args?.CurrentPoint == null || paletteView == null || _wetInk == null || _tileCanvas == null) return;
             var thisPoint = args.CurrentPoint;
 
             args.Handled = true;
+            var isTouch = thisPoint.PointerDevice?.PointerDeviceType == PointerDeviceType.Touch;
+            var shiftPressed = args.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
 
             // need to detect double-taps for centre-and-zoom etc.
-            var diff = thisPoint.Timestamp - lastStamp;
-            lastStamp = thisPoint.Timestamp;
+            var diff = thisPoint.Timestamp - _lastPressTimestamp;
+            _lastPressTimestamp = thisPoint.Timestamp;
             var tapTime = TimeSpan.FromMilliseconds(diff / 1000.0); // by guesswork
+            var isDoubleTap = IsDoubleTap(args, tapTime, _lastPoint);
 
             //var appView = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
             //appView.Title = tapTime.TotalSeconds + " seconds";
 
             // Check for palette
             if (PaletteVisible) {
-                _mode = InteractionMode.PalettePicker;
-                if (paletteView.IsHit(args))
+                _interactionMode = InteractionMode.PalettePicker;
+                if (!paletteView.IsHit(args)) return;
+
+                // set pointer to ink...
+                _wetInk.SetPenColor(thisPoint, paletteView.LastColor);
+                _wetInk.SetPenSize(thisPoint, paletteView.LastSize);
+                paletteView.Opacity = 0.0;
+                return;
+            }
+
+            _lastPoint = thisPoint.Position;
+
+            // if in selection mode, don't change
+            if (_penMode == PenMode.Select)
+            {
+                if (shiftPressed || isTouch)
                 {
-                    // set pointer to ink...
-                    _wetInk.SetPenColor(thisPoint, paletteView.LastColor);
-                    _wetInk.SetPenSize(thisPoint, paletteView.LastSize);
-                    paletteView.Opacity = 0.0;
+                    _interactionMode = InteractionMode.Move;
+                }
+                else
+                {
+                    _interactionMode = InteractionMode.SelectTiles;
                 }
                 return;
             }
 
-            // if in selection mode, don't change
-            if (_mode == InteractionMode.SelectTiles) return;
-
             // Don't allow drawing when zoomed out
             if (_tileCanvas.CurrentZoom() != 1) {
-                if (IsDoubleTap(args, tapTime)) {
+                if (isDoubleTap) {
                     _tileCanvas?.CentreAndZoom(thisPoint.Position.X, thisPoint.Position.Y);
                     SetCorrectZoomControlText();
                 }
 
                 SetCursor(moveCurs);
-                _lastPoint = thisPoint.Position;
-                _mode = InteractionMode.Move;
+                _interactionMode = InteractionMode.Move;
                 return;
             }
 
-            _mode = InteractionMode.None;
-            _lastPoint = thisPoint.Position;
+            _interactionMode = InteractionMode.None;
 
             // Finally, set the interaction mode
-            if (args.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift))
+            if (shiftPressed)
             {
                 SetCursor(moveCurs);
-                _mode = InteractionMode.Move;
-            }
-            else if (thisPoint.PointerDevice?.PointerDeviceType == PointerDeviceType.Touch)
-            {
-                SetCursor(moveCurs);
-                _mode = InteractionMode.Move;
+                _interactionMode = InteractionMode.Move;
             }
             else
             {
-                SetCursor(drawCurs);
-                _mode = InteractionMode.Draw;
-                _wetInk?.StartStroke(sender, args);
+                if (isTouch)
+                {
+                    SetCursor(moveCurs);
+                    _interactionMode = InteractionMode.Move;
+                }
+                else
+                {
+                    SetCursor(drawCurs);
+                    _interactionMode = InteractionMode.Draw;
+                    _wetInk?.StartStroke(sender, args);
+                }
             }
         }
 
 
         private void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
         {
-            if (args == null) return;
+            if (args?.CurrentPoint == null) return;
 
-            switch (_mode) {
+            switch (_interactionMode) {
                 case InteractionMode.Move:
                     SetCursor(moveCurs);
                     MoveCanvas(args);
@@ -348,28 +365,30 @@ namespace SlickUWP
 
         private void SelectTilesButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_tileCanvas == null) return;
+            if (_tileCanvas == null || selectTilesButton == null || pickPageButton == null) return;
 
-            if (_mode == InteractionMode.SelectTiles) {
+            if (_penMode == PenMode.Select) {
                 // Toggle OFF
-                _mode = InteractionMode.None;
+                _interactionMode = InteractionMode.None;
+                _penMode = PenMode.Ink;
                 selectTilesButton.Background = pickPageButton.Background;
                 _tileCanvas?.ClearSelection();
             }
             else {
                 // Toggle ON
-                _mode = InteractionMode.SelectTiles;
+                _interactionMode = InteractionMode.None;
+                _penMode = PenMode.Select;
                 selectTilesButton.Background = new SolidColorBrush(Colors.CadetBlue);
             }
         }
         
-        private bool IsDoubleTap(PointerEventArgs args, TimeSpan tapTime)
+        private static bool IsDoubleTap(PointerEventArgs args, TimeSpan tapTime, Point prevPoint)
         {
             if (args?.CurrentPoint == null) return false;
-            return tapTime.TotalSeconds > 0 && tapTime.TotalSeconds < 0.6 && Distance(_lastPoint, args.CurrentPoint.Position) < 32;
+            return tapTime.TotalSeconds > 0 && tapTime.TotalSeconds < 0.6 && Distance(prevPoint, args.CurrentPoint.Position) < 32;
         }
 
-        private double Distance(Point a, Point b)
+        private static double Distance(Point a, Point b)
         {
             return Math.Sqrt(
                 Math.Pow(a.X - b.X, 2)
