@@ -140,6 +140,9 @@
     <Compile Include="Gui\CornerPalette.xaml.cs">
       <DependentUpon>CornerPalette.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Gui\ImportFloater.xaml.cs">
+      <DependentUpon>ImportFloater.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Gui\PinsOverlay.xaml.cs">
       <DependentUpon>PinsOverlay.xaml</DependentUpon>
     </Compile>
@@ -172,6 +175,10 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Page Include="Gui\CornerPalette.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Gui\ImportFloater.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
