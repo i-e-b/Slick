@@ -2,7 +2,7 @@
 using Windows.Foundation;
 using JetBrains.Annotations;
 
-namespace SlickUWP
+namespace SlickUWP.CrossCutting
 {
     public static class AsyncOperationExtension {
         [NotNull]public static IAsyncOperation<T> NotNull<T>([CanBeNull]this IAsyncOperation<T> op) {

@@ -4,6 +4,7 @@ using Windows.ApplicationModel.Activation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Navigation;
+using SlickUWP.CrossCutting;
 
 namespace SlickUWP
 {
@@ -20,12 +21,14 @@ namespace SlickUWP
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
-            UnhandledException += App_UnhandledException ;
+            UnhandledException += App_UnhandledException;
         }
 
         private void App_UnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
         {
-            Console.WriteLine(e?.Exception?.ToString() ?? "Invalid exception in backstop handler");
+            // define DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
+            // to turn off the default debugger break
+            Logging.WriteLogMessage(e?.Exception?.ToString() ?? "Invalid exception in backstop handler");
         }
 
         /// <summary>

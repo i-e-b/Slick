@@ -1,4 +1,4 @@
-﻿namespace SlickUWP
+﻿namespace SlickUWP.Canvas
 {
     public enum PenMode
     {

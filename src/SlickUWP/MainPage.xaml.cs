@@ -18,6 +18,7 @@ using JetBrains.Annotations;
 using SlickCommon.Storage;
 using SlickUWP.Adaptors;
 using SlickUWP.Canvas;
+using SlickUWP.CrossCutting;
 
 /*
 
@@ -366,12 +367,13 @@ namespace SlickUWP
 
         private void SelectTilesButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_tileCanvas == null || selectTilesButton == null || pickPageButton == null) return;
+            if (_tileCanvas == null || selectTilesButton == null || pickPageButton == null || exportTilesButton == null) return;
 
             if (_penMode == PenMode.Select) {
                 // Toggle OFF
                 _interactionMode = InteractionMode.None;
                 _penMode = PenMode.Ink;
+                exportTilesButton.Visibility = Visibility.Collapsed;
                 selectTilesButton.Background = pickPageButton.Background;
                 _tileCanvas?.ClearSelection();
             }
@@ -379,6 +381,7 @@ namespace SlickUWP
                 // Toggle ON
                 _interactionMode = InteractionMode.None;
                 _penMode = PenMode.Select;
+                exportTilesButton.Visibility = Visibility.Visible;
                 selectTilesButton.Background = new SolidColorBrush(Colors.CadetBlue);
             }
         }
@@ -405,7 +408,7 @@ namespace SlickUWP
             // Read selected tiles
             var rawImage = _tileCanvas.ExportBytes(_tileCanvas.SelectedTiles());
             if (rawImage == null) {
-                // TODO: show an error
+                Logging.WriteLogMessage("ExportTilesButton_Click -> Failed to read tile data");
                 return;
             }
 
@@ -415,7 +418,10 @@ namespace SlickUWP
             picker.FileTypeChoices?.Add("PNG image", new[] { ".png" });
 
             var file = await picker.PickSaveFileAsync().AsTask().NotNull();
-            if (file == null || !file.IsAvailable) return;
+            if (file == null || !file.IsAvailable) {
+                Logging.WriteLogMessage("ExportTilesButton_Click -> Failed to get output path");
+                return;
+            }
 
             // Save raw image as a PNG file
             using (var fileStream = await file.OpenAsync(FileAccessMode.ReadWrite).NotNull()) 

@@ -3,6 +3,7 @@ using System.IO;
 using Windows.Storage.Streams;
 using JetBrains.Annotations;
 using SlickCommon.Storage;
+using SlickUWP.CrossCutting;
 
 namespace SlickUWP.Adaptors
 {
@@ -25,7 +26,7 @@ namespace SlickUWP.Adaptors
                 _openStream = null;
                 _source.Dispose();
             } catch (Exception ex) {
-                Console.WriteLine(ex);
+                Logging.WriteLogMessage(ex.ToString());
             }
         }
 

@@ -14,6 +14,7 @@ using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
+using SlickUWP.CrossCutting;
 
 namespace SlickUWP.Canvas
 {
@@ -78,7 +79,7 @@ namespace SlickUWP.Canvas
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Logging.WriteLogMessage(ex.ToString());
             }
         }
 
@@ -144,7 +145,7 @@ namespace SlickUWP.Canvas
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Logging.WriteLogMessage(ex.ToString());
             }
         }
 
@@ -171,7 +172,7 @@ namespace SlickUWP.Canvas
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Logging.WriteLogMessage(ex.ToString());
             }
         }
 
@@ -221,7 +222,7 @@ namespace SlickUWP.Canvas
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Logging.WriteLogMessage(ex.ToString());
             }
 
             return coverage;
