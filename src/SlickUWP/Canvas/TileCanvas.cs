@@ -337,13 +337,92 @@ namespace SlickUWP.Canvas
             }
         }
 
-        private void LoadTileDataSync(PositionKey key, CachedTile tile)
+        /// <summary>
+        /// Read the canvas (including backing store where required) to generate a single image.
+        /// The tiles selected do not need to be contiguous.
+        /// </summary>
+        /// <param name="tiles">Tiles to render</param>
+        public RawImageInterleaved_UInt8 ExportBytes(List<PositionKey> tiles)
+        {
+            if (tiles == null) return null;
+
+            // Find boundaries of the tiles
+            int top = int.MaxValue, left = int.MaxValue,
+                right = int.MinValue, bottom = int.MinValue;
+
+            foreach (var key in tiles)
+            {
+                if (key == null) continue;
+                top = Math.Min(top, key.Y * TileImageSize);
+                left = Math.Min(left, key.X * TileImageSize);
+                bottom = Math.Max(bottom, (key.Y + 1) * TileImageSize);
+                right = Math.Max(right, (key.X + 1) * TileImageSize);
+            }
+            if (top >= bottom || left >= right) return null;
+            
+            // allocate bytes
+            var width = right - left;
+            var height = bottom - top;
+            var raw = new byte[width * height * 4];
+
+            // clear the raw array to White
+            for (int i = 0; i < raw.Length; i++) { raw[i] = 255; }
+
+            // render tiles
+            ICachedTile temp = new OffscreenTile();
+            foreach (var key in tiles)
+            {
+                if (key == null) continue;
+                byte[] tileData;
+                if (_tileCache.TryGetValue(key, out var cached))
+                {
+                    tileData = cached.GetTileData();
+                }
+                else
+                {
+                    LoadTileDataSync(key, temp);
+                    tileData = temp.GetTileData();
+                }
+                var tileLeft = (key.X * TileImageSize) - left;
+                var tileTop = (key.Y * TileImageSize) - top;
+                CopyTileToImage(tileData, raw, tileLeft, tileTop, width, height);
+            }
+
+            // return image
+            return new RawImageInterleaved_UInt8{
+                Height = height,
+                Width = width,
+                Data = raw
+            };
+        }
+
+        private void CopyTileToImage(byte[] src, byte[] dst, int left, int top, int dstWidth, int dstHeight)
+        {
+            if (src == null || dst == null) return;
+            var xb = left * 4;
+
+            // scan through src, place it in dst
+            for (int y = 0; y < TileImageSize; y++)
+            {
+                if (top + y > dstHeight) break;
+                var dyo = (top + y) * (dstWidth * 4);
+                var syo = y * TileImageSize * 4;
+
+                for (int x = 0; x < TileImageSize; x++)
+                {
+                    if (x + left > dstWidth) break;
+                    var xo = x*4;
+                    dst[dyo + xb + xo + 0] = src[syo + xo + 0];
+                    dst[dyo + xb + xo + 1] = src[syo + xo + 1];
+                    dst[dyo + xb + xo + 2] = src[syo + xo + 2];
+                    dst[dyo + xb + xo + 3] = src[syo + xo + 3];
+                }
+            }
+        }
+
+        private void LoadTileDataSync(PositionKey key, ICachedTile tile)
         {
             if (key == null || tile == null) return;
-
-            //if (!_tileCache.ContainsKey(key)) {
-            //    return; // has been unloaded while queued
-            //}
 
             var name = key.ToString();
             var res = _tileStore.Exists(name);
@@ -369,7 +448,7 @@ namespace SlickUWP.Canvas
             }
             catch
             {
-                tile.State = TileState.Corrupted;
+                tile.MarkCorrupted();
                 return;
             }
 
@@ -644,6 +723,11 @@ namespace SlickUWP.Canvas
         {
             _selectedTiles.Clear();
             Invalidate();
+        }
+
+        public List<PositionKey> SelectedTiles()
+        {
+            return _selectedTiles.ToList();
         }
     }
 }

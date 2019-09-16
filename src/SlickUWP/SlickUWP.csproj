@@ -122,6 +122,8 @@
     </Compile>
     <Compile Include="AsyncOperationExtension.cs" />
     <Compile Include="Canvas\CachedTile.cs" />
+    <Compile Include="Canvas\ICachedTile.cs" />
+    <Compile Include="Canvas\OffscreenTile.cs" />
     <Compile Include="Canvas\TileCanvas.cs" />
     <Compile Include="Canvas\TileState.cs" />
     <Compile Include="Canvas\WetInkCanvas.cs" />

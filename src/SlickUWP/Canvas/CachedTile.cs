@@ -2,7 +2,6 @@
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.UI;
-using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -14,7 +13,7 @@ namespace SlickUWP.Canvas
     /// <summary>
     /// Looks after UI elements of a tile
     /// </summary>
-    public class CachedTile
+    public class CachedTile : ICachedTile
     {
         [NotNull] private readonly CanvasControl UiCanvas;
 
@@ -131,6 +130,12 @@ namespace SlickUWP.Canvas
         {
             State = state;
             UiCanvas.Invalidate();
+        }
+
+        /// <inheritdoc />
+        public void MarkCorrupted()
+        {
+            State = TileState.Corrupted;
         }
 
         /// <summary>

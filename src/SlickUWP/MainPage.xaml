@@ -59,6 +59,11 @@
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
+        <Button x:Name="exportTilesButton" Content="Export..." Margin="0,0,10,80" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Click="ExportTilesButton_Click">
+            <Button.BorderBrush>
+                <SolidColorBrush Color="#FF747474" Opacity="1"/>
+            </Button.BorderBrush>
+        </Button>
 
 
 

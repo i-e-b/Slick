@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Windows.Devices.Input;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
@@ -397,5 +398,37 @@ namespace SlickUWP
             );
         }
 
+        private async void ExportTilesButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_tileCanvas == null) return;
+
+            // Read selected tiles
+            var rawImage = _tileCanvas.ExportBytes(_tileCanvas.SelectedTiles());
+            if (rawImage == null) {
+                // TODO: show an error
+                return;
+            }
+
+            // Select output path
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop;
+            picker.FileTypeChoices?.Add("PNG image", new[] { ".png" });
+
+            var file = await picker.PickSaveFileAsync().AsTask().NotNull();
+            if (file == null || !file.IsAvailable) return;
+
+            // Save raw image as a PNG file
+            using (var fileStream = await file.OpenAsync(FileAccessMode.ReadWrite).NotNull()) 
+            { 
+                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, fileStream).NotNull(); 
+                encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore, 
+                    (uint)rawImage.Width, 
+                    (uint)rawImage.Height,
+                    96.0, 
+                    96.0, 
+                    rawImage.Data); 
+                await encoder.FlushAsync().NotNull(); 
+            } 
+        }
     }
 }
