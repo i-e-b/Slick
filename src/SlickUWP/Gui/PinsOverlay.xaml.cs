@@ -7,6 +7,7 @@ using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
 using SlickCommon.Storage;
 using SlickUWP.Canvas;
+using SlickUWP.CrossCutting;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
@@ -159,6 +160,15 @@ namespace SlickUWP.Gui
 
             var pos = PositionKey.Parse(pin.Id);
             _view.CentreOn(pos);
+        }
+
+        /// <summary>
+        /// Show error log in default text editor.
+        /// This is tucked away here for simplicity
+        /// </summary>
+        private void ErrorLogButton_Click(object sender, RoutedEventArgs e)
+        {
+            Logging.LaunchLogInEditor();
         }
     }
 }

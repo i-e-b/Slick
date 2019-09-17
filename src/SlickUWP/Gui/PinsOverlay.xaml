@@ -16,6 +16,7 @@
         <Button x:Name="viewSelectedPinButton" Content="View" Margin="257,0,0,10" VerticalAlignment="Bottom" Width="72" Click="ViewSelectedPinButton_Click" IsEnabled="False"/>
         <TextBox x:Name="newPinNameBox" Text="" TextWrapping="Wrap" Margin="100,0,100,57" Height="32" VerticalAlignment="Bottom" PlaceholderText="New pin name" Background="White" TextChanged="NewPinNameBox_TextChanged"/>
         <ListView x:Name="existingPinList" Margin="100,10,100,99" Background="#BFFFFFFF"/>
+        <Button x:Name="errorLogButton" Content="Show Error Log" Margin="0,64,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" FontSize="8" Click="ErrorLogButton_Click" Background="#33FFFFFF" FocusVisualSecondaryBrush="#99000000"/>
 
     </Grid>
 </UserControl>

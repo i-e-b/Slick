@@ -356,6 +356,7 @@ namespace SlickUWP
             if (pinsView == null || paletteView == null) return;
             paletteView.Opacity = 0.0;
             pinsView.Opacity = pinsView.Opacity >= 0.5 ? 0.0 : 1.0;
+            pinsView.Visibility = (pinsView.Opacity >= 0.5) ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void ShowPaletteButton_Click(object sender, RoutedEventArgs e)

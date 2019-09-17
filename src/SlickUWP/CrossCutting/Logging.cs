@@ -29,11 +29,24 @@ namespace SlickUWP.CrossCutting
                 stream.Seek(0, SeekOrigin.End);
                 stream.WriteByte(0x0d); // CR
                 stream.WriteByte(0x0a); // LF
-                var bytes = Encoding.UTF8?.GetBytes(message);
+                var bytes = Encoding.UTF8?.GetBytes(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") + message);
                 if (bytes != null) stream.Write(bytes, 0, bytes.Length);
                 stream.Flush();
             }
 
+        }
+
+        public static void LaunchLogInEditor() {
+            var basePath = ApplicationData.Current?.LocalCacheFolder?.Path;
+            if (basePath == null) return;
+
+            var folder = Sync.Run(()=> StorageFolder.GetFolderFromPathAsync(basePath));
+            if (folder == null) { throw new Exception("Path to log file is not available"); }
+
+            var file = Sync.Run(()=> folder.CreateFileAsync("log.txt", CreationCollisionOption.OpenIfExists));
+            if (file == null || !file.IsAvailable) { throw new Exception("Failed to open log file"); }
+
+            Sync.Run(() => Windows.System.Launcher.LaunchFileAsync(file));
         }
 
 

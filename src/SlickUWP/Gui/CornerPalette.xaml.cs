@@ -4,6 +4,7 @@ using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Shapes;
+using SlickUWP.CrossCutting;
 
 namespace SlickUWP.Gui
 {
@@ -54,5 +55,6 @@ namespace SlickUWP.Gui
             var b = buttonWidth / 16.0;
             return Math.Pow(b, 3);
         }
+
     }
 }
