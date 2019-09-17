@@ -23,10 +23,10 @@
 
         <!-- The ink canvas records input, and sits over all canvas controls -->
         <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="None" IsDoubleTapEnabled="False" IsHoldingEnabled="False" IsRightTapEnabled="False" IsTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" d:IsLocked="True"/>
-        
+
         <!-- The Pins overlay is for managing hot-spots on the canvas. It sits over the ink layer and uses normal XAML input -->
         <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch" d:IsLocked="True"/>
-        
+
         <!-- The import floater is shown to position and import images onto the canvas. It acts a lot like the wet ink canvas. -->
         <Custom1:ImportFloater x:Name="ImageImportFloater" HorizontalAlignment="Left" Height="163" Margin="177,101,0,0" VerticalAlignment="Top" Width="260"/>
 
@@ -61,7 +61,12 @@
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="exportTilesButton" Content="Export..." Margin="0,0,10,80" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Click="ExportTilesButton_Click" Visibility="Collapsed" d:IsLocked="True">
+        <Button x:Name="exportTilesButton" Content="Export..." Margin="0,0,10,80" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Click="ExportTilesButton_Click" Visibility="Visible">
+            <Button.BorderBrush>
+                <SolidColorBrush Color="#FF747474" Opacity="1"/>
+            </Button.BorderBrush>
+        </Button>
+        <Button x:Name="importImageButton" Content="Import..." Margin="0,0,10,115" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Visibility="Visible" Click="ImportImageButton_Click">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>

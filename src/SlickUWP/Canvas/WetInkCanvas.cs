@@ -91,7 +91,12 @@ namespace SlickUWP.Canvas
                 
                 // Try to get a waiting stroke (peek, so we can draw the waiting stroke)
                 if (!_dryingInk.TryPeek(out var strokeToRender)) return;
+                if (strokeToRender.Length < 1) {
+                    _dryingInk.TryDequeue(out _);
+                    return;
+                }
 
+                // TODO: minimise the size of the target here (currently full-screen)
                 using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
                 {
                     using (var ds = offscreen.CreateDrawingSession())
@@ -108,7 +113,7 @@ namespace SlickUWP.Canvas
                     Data = bytes,
                     Width = width,
                     Height = height
-                }, coverage.X, coverage.Y, coverage.Width, coverage.Height, 0, 0);
+                }, coverage.X, coverage.Y, coverage.Width, coverage.Height, coverage.X, coverage.Y);
 
                 _renderTarget.Invalidate();
                 _dryingInk.TryDequeue(out _); // pull it off the queue (don't do this if a tile was locked)

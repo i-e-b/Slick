@@ -240,8 +240,6 @@ namespace SlickUWP.Canvas
         /// Centre on the given point, and set scale as 1:1
         /// </summary>
         public void CentreAndZoom(double wX, double wY){
-            // TODO: centre at this zoom level
-
             // w[XY] are in screen co-ords at 100%
             // centre at 100%:
             var cx = _displayContainer.ActualWidth / 2;
@@ -280,23 +278,29 @@ namespace SlickUWP.Canvas
         /// Draw an image into the tile canvas (committing to storage).
         /// The base position is the visible area of the Display Container.
         /// </summary>
+        /// <param name="img">Image to import</param>
+        /// <param name="targetLeft">Position on the canvas to import (screen coords)</param>
+        /// <param name="targetTop">Position on the canvas to import (screen coords)</param>
+        /// <param name="targetWidth">Width of the target image</param>
+        /// <param name="targetHeight">Height of the target image</param>
+        /// <param name="sourceLeft">Offset into the source image to copy from</param>
+        /// <param name="sourceTop">Offset into the source image to copy from</param>
         public void ImportBytes(RawImageInterleaved_UInt8 img, int targetLeft, int targetTop, int targetWidth, int targetHeight, int sourceLeft, int sourceTop)
         {
             if (img == null) return;
 
-            // Cases:
-            // 1) tile is loaded and empty -- create storage, write, commit to backing
-            // 2) tile is locked -- abort
-            // 3) tile is ready -- merge onto array, commit to backing
+            // Process:
+            // We get the set of tiles that the bitmap covers
+            // For each tile, we copy over a chunk of the source image into the tile data
 
             var positionKeys = VisibleTiles(targetLeft, targetTop, targetWidth, targetHeight);
+
             _lastChangedTiles.Clear(); // last set of tiles are now forever. For multi undo, we could push a stack here
 
             foreach (var key in positionKeys)
             {
                 var rect = VisualRectangle(key);
                 if (!_tileCache.ContainsKey(key)) {
-                    // TODO: pull out to function
                     var newTile = new CachedTile(_displayContainer);
                     _tileCache.Add(key, newTile);
                 }
@@ -304,11 +308,16 @@ namespace SlickUWP.Canvas
                 var tile = _tileCache[key];
                 if (tile == null) continue; // should never happen
 
+                // Cases:
+                // 1) tile is loaded and empty -- create storage, write, commit to backing
+                // 2) tile is locked -- abort
+                // 3) tile is ready -- merge onto array, commit to backing
+
                 switch (tile.State) {
                     case TileState.Empty:
                         // allocate and write
                         tile.AllocateEmptyImage();
-                        var really = AlphaMapImageToTile(img, rect, tile, sourceLeft, sourceTop);
+                        var really = AlphaMapImageToTile(img, rect, tile, targetLeft, targetTop, sourceLeft, sourceTop);
                         if (!really) {
                             tile.Deallocate();
                         }
@@ -326,7 +335,7 @@ namespace SlickUWP.Canvas
                         continue;
 
                     case TileState.Ready:
-                        var changed = AlphaMapImageToTile(img, rect, tile, sourceLeft, sourceTop);
+                        var changed = AlphaMapImageToTile(img, rect, tile, targetLeft, targetTop, sourceLeft, sourceTop);
                         tile.Invalidate();
                         if (changed) { 
                             _lastChangedTiles.Add(key);
@@ -335,6 +344,63 @@ namespace SlickUWP.Canvas
                         break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns true if any pixels were changed
+        /// </summary>
+        private static bool AlphaMapImageToTile(RawImageInterleaved_UInt8 img, Quad rect, CachedTile tile, int imgDx, int imgDy, int srcX, int srcY)
+        {
+            // This needs to be improved
+            var dst = tile?.GetTileData();
+            var src = img?.Data;
+            if (src == null || dst == null || rect == null) return false;
+
+            bool changed = false;
+
+            int left = rect.X - imgDx + srcX; 
+            int top = rect.Y - imgDy + srcY;
+
+            // start and end limits
+            int x0 = Math.Max(-left, 0);
+            int x1 = Math.Min(img.Width - left, 256);
+            int y0 = Math.Max(-top, 0);
+            int y1 = Math.Min(img.Height - top, 256);
+
+            for (int y = y0; y < y1; y++)
+            {
+                for (int x = x0; x < x1; x++)
+                {
+                    var src_i = ((y + top) * img.Width * 4) + ((x + left) * 4); // offset into source raw image
+                    var dst_i = y * (256 * 4) + (x * 4); // offset into tile data
+
+                    if (dst_i < 0) continue;
+                    if (src_i < 0) continue;
+                    if (dst_i >= dst.Length) continue;//return changed;
+                    if (src_i >= src.Length) continue;//return changed;
+
+                    var srcAlpha = src[src_i + 3];
+                    if (srcAlpha < 5) continue;
+
+                    var newAlpha = srcAlpha / 255.0f;
+                    var oldAlpha = 1.0f - newAlpha;
+
+                    // Alpha blend over existing color
+                    // This for plain alpha:
+                    //dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0] * newAlpha));
+                    //dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1] * newAlpha));
+                    //dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2] * newAlpha));
+
+                    // This for pre-multiplied alpha
+                    dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0]));
+                    dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1]));
+                    dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2]));
+                    dst[dst_i + 3] = 255;
+
+                    changed = true;
+                }
+            }
+            return changed;
         }
 
         /// <summary>
@@ -483,7 +549,6 @@ namespace SlickUWP.Canvas
         {
             if (key == null) return;
 
-            //if (!_tileCache.TryGetValue(key, out var tile)) return;
             if (tile == null) return;
             if (tile.State == TileState.Locked) return;
 
@@ -524,55 +589,6 @@ namespace SlickUWP.Canvas
             }
         }
         
-        /// <summary>
-        /// Returns true if any pixels were changed
-        /// </summary>
-        private static bool AlphaMapImageToTile(RawImageInterleaved_UInt8 img, Quad rect, CachedTile tile, int imgDx, int imgDy)
-        {
-            var dst = tile?.GetTileData();
-            var src = img?.Data;
-            if (src == null || dst == null || rect == null) return false;
-
-            bool changed = false;
-
-            int left = rect.X - imgDx;
-            int top = rect.Y - imgDy;
-
-            for (int y = 0; y < 256; y++)
-            {
-                for (int x = 0; x < 256; x++)
-                {
-                    var src_i = ((y + top) * img.Width * 4) + ((x + left) * 4);
-                    var dst_i = y * (256 * 4) + (x * 4);
-
-                    if (dst_i < 0) break;
-                    if (src_i < 0) break;
-                    if (dst_i >= dst.Length) return changed;
-                    if (src_i >= src.Length) return changed;
-
-                    var srcAlpha = src[src_i + 3];
-                    if (srcAlpha < 5) continue;
-
-                    var newAlpha = srcAlpha / 255.0f;
-                    var oldAlpha = 1.0f - newAlpha;
-
-                    // Alpha blend over existing color
-                    // This for plain alpha:
-                    //dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0] * newAlpha));
-                    //dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1] * newAlpha));
-                    //dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2] * newAlpha));
-
-                    // This for pre-multiplied alpha
-                    dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0]));
-                    dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1]));
-                    dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2]));
-                    dst[dst_i + 3] = 255;
-
-                    changed = true;
-                }
-            }
-            return changed;
-        }
 
         private static byte Clip(float value)
         {

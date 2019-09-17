@@ -60,6 +60,9 @@ namespace SlickUWP
 
             var view = SystemNavigationManagerPreview.GetForCurrentView();
             if (view != null) view.CloseRequested += OnCloseRequest;
+
+            if (exportTilesButton != null) exportTilesButton.Visibility = Visibility.Collapsed;
+            if (importImageButton != null) importImageButton.Visibility = Visibility.Collapsed;
         }
 
         private void OnCloseRequest(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
@@ -110,6 +113,7 @@ namespace SlickUWP
 
             _tileCanvas = new TileCanvas(renderLayer, _tileStore);
             pinsView?.SetConnections(_tileCanvas, _tileStore);
+            ImageImportFloater?.SetCanvasTarget(_tileCanvas);
 
             _wetInk = new WetInkCanvas(wetInkCanvas ?? throw new Exception("Invalid page structure (2)"));
 
@@ -144,7 +148,10 @@ namespace SlickUWP
             var wrapper = new StreamWrapper(accessStream);
             var store = new LiteDbStorageContainer(wrapper);
 
-            if (_tileCanvas != null) pinsView?.SetConnections(_tileCanvas, store);
+            if (_tileCanvas != null) {
+                pinsView?.SetConnections(_tileCanvas, store);
+                ImageImportFloater?.SetCanvasTarget(_tileCanvas);
+            }
 
             return store;
         }
@@ -287,15 +294,27 @@ namespace SlickUWP
             if (pinsView != null) pinsView.Opacity = 0.0;
             if (paletteView != null) paletteView.Opacity = 0.0;
 
-            var picker = new Windows.Storage.Pickers.FileOpenPicker();
-            picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
-            //picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-            picker.FileTypeFilter?.Add(".slick");
+            // Open picker doesn't let you add new files
+            /*var picker2 = new Windows.Storage.Pickers.FileOpenPicker();
+            picker2.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
+            picker2.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
+            picker2.FileTypeFilter?.Add(".slick");
+            */
+
+            // Save picker won't pick existing files without prompting for overwrite
+            var picker = new Windows.Storage.Pickers.FileSavePicker();
+            picker.CommitButtonText = "Select";
+            picker.FileTypeChoices?.Add("Slick files", new[] { ".slick" });
+
+
+            // TODO: How do we stop the 'replace' message?
+            // TODO: how do we ignore selecting the currently open file?
+            // I think I need to make my own file picker :-(
 
             //NEVER DO THIS: var file = Sync.Run(() => picker.PickSingleFileAsync()); // doing anything synchronous here causes a deadlock.
 
             // ReSharper disable once PossibleNullReferenceException
-            var file = await picker.PickSingleFileAsync().AsTask();
+            var file = await picker.PickSaveFileAsync().AsTask();
             if (file == null || !file.IsAvailable) return;
 
             var newStore = await LoadTileStore(file.Path);
@@ -367,13 +386,14 @@ namespace SlickUWP
 
         private void SelectTilesButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_tileCanvas == null || selectTilesButton == null || pickPageButton == null || exportTilesButton == null) return;
+            if (_tileCanvas == null || selectTilesButton == null || pickPageButton == null || exportTilesButton == null || importImageButton == null) return;
 
             if (_penMode == PenMode.Select) {
                 // Toggle OFF
                 _interactionMode = InteractionMode.None;
                 _penMode = PenMode.Ink;
                 exportTilesButton.Visibility = Visibility.Collapsed;
+                importImageButton.Visibility = Visibility.Collapsed;
                 selectTilesButton.Background = pickPageButton.Background;
                 _tileCanvas?.ClearSelection();
             }
@@ -382,6 +402,7 @@ namespace SlickUWP
                 _interactionMode = InteractionMode.None;
                 _penMode = PenMode.Select;
                 exportTilesButton.Visibility = Visibility.Visible;
+                importImageButton.Visibility = Visibility.Visible;
                 selectTilesButton.Background = new SolidColorBrush(Colors.CadetBlue);
             }
         }
@@ -435,6 +456,13 @@ namespace SlickUWP
                     rawImage.Data); 
                 await encoder.FlushAsync().NotNull(); 
             } 
+        }
+
+        private void ImportImageButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (ImageImportFloater == null) return;
+            ImageImportFloater.Margin = new Thickness(128, 128, 0, 0);
+            ImageImportFloater.Visibility = Visibility.Visible;
         }
     }
 }
