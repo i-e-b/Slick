@@ -159,7 +159,7 @@ namespace SlickUWP.Gui
             if (!(item.Tag is InfoPin pin)) return;
 
             var pos = PositionKey.Parse(pin.Id);
-            _view.CentreOn(pos);
+            _view?.CentreOn(pos);
         }
 
         /// <summary>

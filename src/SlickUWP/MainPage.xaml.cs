@@ -107,7 +107,9 @@ namespace SlickUWP
             paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
             pinsView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
 
-            _tileStore = Sync.Run(() => LoadTileStore(@"C:\Users\IainBallard\Documents\Slick\test.slick")); // TODO: less hard-coded path
+            var defaultFile = Path.Combine(ApplicationData.Current?.RoamingFolder?.Path, "default.slick");
+            if (defaultFile == null) throw new Exception("Failed to pick an initial page path");
+            _tileStore = Sync.Run(() => LoadTileStore(defaultFile));
             if (_tileStore == null) throw new Exception("Failed to load initial page");
             if (renderLayer == null) throw new Exception("Invalid page structure (1)");
 
