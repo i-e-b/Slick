@@ -140,6 +140,7 @@ namespace SlickUWP.Canvas
 
                 var x = penEvent.CurrentPoint.Position.X;
                 var y = penEvent.CurrentPoint.Position.Y;
+                var isEraser = penEvent.CurrentPoint.Properties.IsEraser || penEvent.CurrentPoint.Properties.IsRightButtonPressed; // treat right-click as erase
 
                 if (penEvent.KeyModifiers.HasFlag(VirtualKeyModifiers.Control)) {
                     // hacky straight line tool:
@@ -158,7 +159,7 @@ namespace SlickUWP.Canvas
                     Y = y,
                     StylusId = GuessPointerId(penEvent.CurrentPoint),
                     Pressure = penEvent.CurrentPoint.Properties.Pressure,
-                    IsErase = penEvent.CurrentPoint.Properties.IsEraser
+                    IsErase = isEraser
                 });
 
                 _renderTarget.Invalidate();
@@ -211,7 +212,7 @@ namespace SlickUWP.Canvas
 
                 // get size and color from dictionary, or set default
                 if (!_penColors.TryGetValue(pts[0].StylusId, out var color)) { color = pts[0].IsErase ? Colors.White : Colors.BlueViolet; }
-                if (!_penSizes.TryGetValue(pts[0].StylusId, out var size)) { size = 2; }
+                if (!_penSizes.TryGetValue(pts[0].StylusId, out var size)) { size = pts[0].IsErase ? 6.5 : 2.5; }
 
                 var attr = new InkDrawingAttributes{
                     Size = new Size(size,size),
