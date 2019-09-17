@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.Foundation;
+using Windows.Storage;
+using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
@@ -151,5 +154,16 @@ namespace SlickUWP.Gui
             Margin = new Thickness(Margin.Left + dx, Margin.Top + dy, 0, 0);
         }
 
+        public async Task LoadFile(StorageFile file)
+        {
+            if (file == null || ImageToImport == null) return;
+
+            var bitmapImage = new BitmapImage();
+            using (var stream = (FileRandomAccessStream)await file.OpenAsync(FileAccessMode.Read).NotNull())
+            {
+                await bitmapImage.SetSourceAsync(stream).NotNull();
+            }
+            ImageToImport.Source = bitmapImage;
+        }
     }
 }

@@ -28,7 +28,7 @@
         <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch" d:IsLocked="True"/>
 
         <!-- The import floater is shown to position and import images onto the canvas. It acts a lot like the wet ink canvas. -->
-        <Custom1:ImportFloater x:Name="ImageImportFloater" HorizontalAlignment="Left" Height="163" Margin="177,101,0,0" VerticalAlignment="Top" Width="260"/>
+        <Custom1:ImportFloater x:Name="ImageImportFloater" HorizontalAlignment="Left" Height="163" Margin="177,101,0,0" VerticalAlignment="Top" Width="260" Visibility="Collapsed"/>
 
         <!-- Mode switch buttons -->
         <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" Click="PickPageButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">

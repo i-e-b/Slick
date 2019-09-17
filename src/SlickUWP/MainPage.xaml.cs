@@ -458,9 +458,26 @@ namespace SlickUWP
             } 
         }
 
-        private void ImportImageButton_Click(object sender, RoutedEventArgs e)
+        private async void ImportImageButton_Click(object sender, RoutedEventArgs e)
         {
             if (ImageImportFloater == null) return;
+
+            // Pick an image file
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.Thumbnail;
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter?.Add(".png");
+            picker.FileTypeFilter?.Add(".jpg");
+            picker.FileTypeFilter?.Add(".jpeg");
+            picker.FileTypeFilter?.Add(".bmp");
+
+            var result = await picker.PickSingleFileAsync().NotNull();
+            if (result?.IsAvailable != true) return;
+
+            // load image into importer
+            await ImageImportFloater.LoadFile(result);
+
+            // Show the floating importer
             ImageImportFloater.Margin = new Thickness(128, 128, 0, 0);
             ImageImportFloater.Visibility = Visibility.Visible;
         }
