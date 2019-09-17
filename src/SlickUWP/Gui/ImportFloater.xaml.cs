@@ -51,9 +51,10 @@ namespace SlickUWP.Gui
         {
             if (_canvas == null) return;
 
-            // TODO: scale target based on canvas zoom
-            var expectedWidth = (int)ActualWidth;// * 2;
-            var expectedHeight = (int)ActualHeight;// * 2;
+            // scale target based on canvas zoom
+            var zoom = _canvas.CurrentZoom();
+            var expectedWidth = (int)ActualWidth * zoom;
+            var expectedHeight = (int)ActualHeight * zoom;
 
             // render to image
             var rtb = new RenderTargetBitmap();
@@ -71,6 +72,12 @@ namespace SlickUWP.Gui
             int left = (int)Margin.Left;
             int top = (int)Margin.Top;
             _canvas.ImportBytes(rawImage, left, top, rawImage.Width, rawImage.Height, 0, 0);
+
+            // ReSharper disable RedundantAssignment
+            pixelBuffer = null;
+            rtb = null;
+            GC.Collect();
+            // ReSharper restore RedundantAssignment
 
             // make ourself invisible
             Visibility = Visibility.Collapsed;

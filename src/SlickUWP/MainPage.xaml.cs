@@ -217,7 +217,6 @@ namespace SlickUWP
                     SetCorrectZoomControlText();
                 }
 
-                SetCursor(moveCurs);
                 _interactionMode = InteractionMode.Move;
                 return;
             }
@@ -227,19 +226,16 @@ namespace SlickUWP
             // Finally, set the interaction mode
             if (shiftPressed)
             {
-                SetCursor(moveCurs);
                 _interactionMode = InteractionMode.Move;
             }
             else
             {
                 if (isTouch)
                 {
-                    SetCursor(moveCurs);
                     _interactionMode = InteractionMode.Move;
                 }
                 else
                 {
-                    SetCursor(drawCurs);
                     _interactionMode = InteractionMode.Draw;
                     _wetInk?.StartStroke(sender, args);
                 }
@@ -253,12 +249,10 @@ namespace SlickUWP
 
             switch (_interactionMode) {
                 case InteractionMode.Move:
-                    SetCursor(moveCurs);
                     MoveCanvas(args);
                     return;
 
                 case InteractionMode.Draw:
-                    SetCursor(drawCurs);
                     _wetInk?.Stroke(args);
                     return;
 
@@ -343,14 +337,10 @@ namespace SlickUWP
             _tileCanvas?.Undo();
         }
 
-        private static readonly CoreCursor drawCurs =  new CoreCursor(CoreCursorType.Cross, 0);
-        private static readonly CoreCursor moveCurs =  new CoreCursor(CoreCursorType.SizeAll, 0);
-
         private void Page_PreviewKeyDown(object sender, [NotNull]Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
             //  https://blogs.msdn.microsoft.com/devfish/2012/08/01/customcursors-in-windows-8-csharp-metro-applications/
             if (e.Key == VirtualKey.Shift) {
-                SetCursor(moveCurs);
             }
         }
 
@@ -358,16 +348,7 @@ namespace SlickUWP
         {
             if (e.Key == VirtualKey.Shift)
             {
-                SetCursor(drawCurs);
             }
-        }
-
-        private void SetCursor(CoreCursor cursor)
-        {
-            var win = Window.Current?.CoreWindow;
-            if (win == null) return;
-
-            win.PointerCursor = cursor;
         }
 
         private void PinsButton_Click(object sender, RoutedEventArgs e)
