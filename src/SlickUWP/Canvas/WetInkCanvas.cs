@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Threading;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
+using Windows.System;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Input;
@@ -137,10 +138,24 @@ namespace SlickUWP.Canvas
             {
                 if (penEvent?.CurrentPoint?.Properties == null) return;
 
+                var x = penEvent.CurrentPoint.Position.X;
+                var y = penEvent.CurrentPoint.Position.Y;
+
+                if (penEvent.KeyModifiers.HasFlag(VirtualKeyModifiers.Control)) {
+                    // hacky straight line tool:
+                    if (_stroke.Count > 1) _stroke.RemoveAt(_stroke.Count - 1); // replace last point instead of adding a new one
+                }
+
+                if (penEvent.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu)) { // this is actually *ALT*
+                    // lock to grid:
+                    x = Math.Round(x / 20) * 20;
+                    y = Math.Round(y / 20) * 20;
+                }
+
                 _stroke.Add(new DPoint
                 {
-                    X = penEvent.CurrentPoint.Position.X,
-                    Y = penEvent.CurrentPoint.Position.Y,
+                    X = x,
+                    Y = y,
                     StylusId = GuessPointerId(penEvent.CurrentPoint),
                     Pressure = penEvent.CurrentPoint.Properties.Pressure,
                     IsErase = penEvent.CurrentPoint.Properties.IsEraser
