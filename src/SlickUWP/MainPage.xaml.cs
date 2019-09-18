@@ -255,7 +255,7 @@ namespace SlickUWP
                     return;
 
                 case InteractionMode.Draw:
-                    _wetInk?.Stroke(args);
+                    _wetInk?.Stroke(args, _tileCanvas.X, _tileCanvas.Y);
                     return;
 
                 case InteractionMode.SelectTiles:

@@ -52,7 +52,7 @@ namespace SlickUWP.Canvas
             return RawImageData;
         }
 
-        public void DrawToSession([NotNull]CanvasControl sender, [NotNull]CanvasDrawingSession g)
+        public void DrawToSession([NotNull]CanvasControl sender, [NotNull]CanvasDrawingSession g, bool drawGrid = false)
         {
             switch (State)
             {
@@ -66,6 +66,7 @@ namespace SlickUWP.Canvas
 
                 case TileState.Empty:
                     g.Clear(Colors.White);
+                    if (drawGrid) DrawGrid(g);
                     return;
 
                 case TileState.Ready:
@@ -82,9 +83,12 @@ namespace SlickUWP.Canvas
                             DirectXPixelFormat.B8G8R8A8UIntNormalized, 96, CanvasAlphaMode.Premultiplied))
                         {
                             g.DrawImage(bmp, new Rect(0, 0, 256, 256));
-                            g.Flush(); // you'll get "Exception thrown at 0x12F9AF43 (Microsoft.Graphics.Canvas.dll) in SlickUWP.exe: 0xC0000005: Access violation reading location 0x1B2EEF78. occurred"
+                            g.Flush();
+                            // you'll get "Exception thrown at 0x12F9AF43 (Microsoft.Graphics.Canvas.dll) in SlickUWP.exe: 0xC0000005: Access violation reading location 0x1B2EEF78. occurred"
                             // if you fail to flush before disposing of the bmp
                         }
+
+                        if (drawGrid) DrawGrid(g);
                     }
                     catch
                     {
@@ -97,6 +101,20 @@ namespace SlickUWP.Canvas
                     g.Clear(Colors.MediumTurquoise);
                     return;
                 //throw new Exception("Non exhaustive switch in Tile_Draw");
+            }
+        }
+
+        private void DrawGrid([NotNull]CanvasDrawingSession g)
+        {
+            var gridSize = TileCanvas.GridSize;
+            var centre = gridSize / 2;
+
+            for (int y = centre; y < TileCanvas.TileImageSize; y += gridSize)
+            {
+                for (int x = centre; x < TileCanvas.TileImageSize; x += gridSize)
+                {
+                    g.FillRectangle(new Rect(x, y, 2, 2), Colors.Gainsboro);
+                }
             }
         }
 

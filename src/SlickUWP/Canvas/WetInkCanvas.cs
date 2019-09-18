@@ -118,6 +118,11 @@ namespace SlickUWP.Canvas
 
                 _renderTarget.Invalidate();
                 _dryingInk.TryDequeue(out _); // pull it off the queue (don't do this if a tile was locked)
+
+                // safety check -- if there are still strokes waiting, spawn more threads
+                if (_dryingInk.Count > 0) {
+                    ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas, width, height));
+                }
             };
         }
 
@@ -132,7 +137,7 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Continue a pen stroke
         /// </summary>
-        public void Stroke(PointerEventArgs penEvent)
+        public void Stroke(PointerEventArgs penEvent, double globalX, double globalY)
         {
             try
             {
@@ -147,10 +152,9 @@ namespace SlickUWP.Canvas
                     if (_stroke.Count > 1) _stroke.RemoveAt(_stroke.Count - 1); // replace last point instead of adding a new one
                 }
 
-                if (penEvent.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu)) { // this is actually *ALT*
-                    // lock to grid:
-                    x = Math.Round(x / 20) * 20;
-                    y = Math.Round(y / 20) * 20;
+                if (penEvent.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu))// this is actually *ALT*
+                {
+                    LockToGrid(globalX, globalY, ref x, ref y);
                 }
 
                 _stroke.Add(new DPoint
@@ -168,6 +172,27 @@ namespace SlickUWP.Canvas
             {
                 Logging.WriteLogMessage(ex.ToString());
             }
+        }
+
+        private static void LockToGrid(double globalX, double globalY, ref double x, ref double y)
+        {
+            double grid = TileCanvas.GridSize;
+            double halfGrid = grid / 2.0;
+            double qtrGrid = grid / 4.0;
+
+            if (globalX + x < 0) x -= qtrGrid;
+            if (globalY + y < 0) y -= qtrGrid;
+
+            // lock to grid:
+            x = Math.Round(x / grid) * grid;
+            y = Math.Round(y / grid) * grid;
+
+            // (x,y) in screen-space, not canvas space; we add from the global offset to adjust.
+            if (globalX > 0) x += halfGrid - (Math.Abs(globalX) % grid);
+            else x -= halfGrid - (Math.Abs(globalX) % grid);
+
+            if (globalY > 0) y += halfGrid - (Math.Abs(globalY) % grid);
+            else y -= halfGrid - (Math.Abs(globalY) % grid);
         }
 
 

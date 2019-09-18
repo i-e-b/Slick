@@ -17,6 +17,9 @@ namespace SlickUWP.Canvas
     /// </summary>
     public class TileCanvas
     {
+        public const int TileImageSize = 256;
+        public const int GridSize = 32; // must be a factor of TileImageSize
+
         // tiles, cache, display
         [NotNull] private readonly Grid _displayContainer;
         [NotNull] private IStorageContainer _tileStore;
@@ -33,8 +36,8 @@ namespace SlickUWP.Canvas
 
         private double _viewScale = 1.0;
 
-        public const int TileImageSize = 256;
         private volatile bool _inReflow = false;
+        
 
         /// <summary>
         /// Start rendering tiles into a display container. Always starts at 0,0

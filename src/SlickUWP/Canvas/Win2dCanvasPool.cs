@@ -27,7 +27,7 @@ namespace SlickUWP.Canvas
                 return;
             }
 
-            tile.DrawToSession(sender, g);
+            tile.DrawToSession(sender, g, true);
         }
     }
 
