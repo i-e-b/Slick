@@ -137,7 +137,7 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Continue a pen stroke
         /// </summary>
-        public void Stroke(PointerEventArgs penEvent, double globalX, double globalY)
+        public void Stroke(PointerEventArgs penEvent, CanvasPixelPosition canvasPos)
         {
             try
             {
@@ -154,7 +154,7 @@ namespace SlickUWP.Canvas
 
                 if (penEvent.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu))// this is actually *ALT*
                 {
-                    LockToGrid(globalX, globalY, ref x, ref y);
+                    LockToGrid(canvasPos, ref x, ref y);
                 }
 
                 _stroke.Add(new DPoint
@@ -174,14 +174,27 @@ namespace SlickUWP.Canvas
             }
         }
 
-        private static void LockToGrid(double globalX, double globalY, ref double x, ref double y)
+        private static void LockToGrid(CanvasPixelPosition canvasPos, ref double x, ref double y)
         {
+            if (canvasPos == null) return;
+
+            double grid = TileCanvas.GridSize;
+
+            var x1 = Math.Round(canvasPos.X / grid) * grid;
+            x += x1 - canvasPos.X;
+
+            var y1 = Math.Round(canvasPos.Y / grid) * grid;
+            y += y1 - canvasPos.Y;
+
+
+            /*
+            // TODO: I'm not happy with the feel of this. Change it.
             double grid = TileCanvas.GridSize;
             double halfGrid = grid / 2.0;
             double qtrGrid = grid / 4.0;
 
-            if (globalX + x < 0) x -= qtrGrid;
-            if (globalY + y < 0) y -= qtrGrid;
+            if (globalX + x < 0) { x -= qtrGrid; } else { x += halfGrid; }
+            if (globalY + y < 0) { y -= qtrGrid; } else { y += halfGrid; }
 
             // lock to grid:
             x = Math.Round(x / grid) * grid;
@@ -192,7 +205,7 @@ namespace SlickUWP.Canvas
             else x -= halfGrid - (Math.Abs(globalX) % grid);
 
             if (globalY > 0) y += halfGrid - (Math.Abs(globalY) % grid);
-            else y -= halfGrid - (Math.Abs(globalY) % grid);
+            else y -= halfGrid - (Math.Abs(globalY) % grid);*/
         }
 
 

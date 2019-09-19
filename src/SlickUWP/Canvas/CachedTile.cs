@@ -18,6 +18,7 @@ namespace SlickUWP.Canvas
         [NotNull] private readonly CanvasControl UiCanvas;
 
         public TileState State;
+        public bool IsSelected = false;
 
         private byte[] RawImageData;
         private float _x, _y;
@@ -66,7 +67,8 @@ namespace SlickUWP.Canvas
 
                 case TileState.Empty:
                     g.Clear(Colors.White);
-                    if (drawGrid) DrawGrid(g);
+                    if (drawGrid) DrawGrid(g, Color.FromArgb(100, 155, 155, 155));
+                    if (IsSelected) DrawSelection(g);
                     return;
 
                 case TileState.Ready:
@@ -77,6 +79,7 @@ namespace SlickUWP.Canvas
                         return;
                     }
 
+                    g.Clear(Colors.White);
                     try
                     {
                         using (var bmp = CanvasBitmap.CreateFromBytes(sender, RawImageData, 256, 256, // these two should be doubled if we interpolate
@@ -87,33 +90,41 @@ namespace SlickUWP.Canvas
                             // you'll get "Exception thrown at 0x12F9AF43 (Microsoft.Graphics.Canvas.dll) in SlickUWP.exe: 0xC0000005: Access violation reading location 0x1B2EEF78. occurred"
                             // if you fail to flush before disposing of the bmp
                         }
-
-                        if (drawGrid) DrawGrid(g);
                     }
                     catch
                     {
                         g.Clear(Colors.DarkOrange);
                     }
 
+                    if (drawGrid) DrawGrid(g, Color.FromArgb(100, 155, 155, 155));
+                    if (IsSelected) DrawSelection(g);
+                    g.Flush();
+
                     return;
 
                 default:
-                    g.Clear(Colors.MediumTurquoise);
-                    return;
-                //throw new Exception("Non exhaustive switch in Tile_Draw");
+                    //g.Clear(Colors.MediumTurquoise);
+                    //return;
+                    throw new Exception("Non exhaustive switch in Tile_Draw");
             }
         }
 
-        private void DrawGrid([NotNull]CanvasDrawingSession g)
+        private void DrawSelection(CanvasDrawingSession g)
+        {
+            g.Blend = CanvasBlend.SourceOver;
+            g.FillRectangle(-1,-1, Width+2, Height+2, Color.FromArgb(127, 127, 127, 127));
+        }
+
+        private void DrawGrid([NotNull]CanvasDrawingSession g, Color c)
         {
             var gridSize = TileCanvas.GridSize;
-            var centre = gridSize / 2;
+            var centre = 0;
 
             for (int y = centre; y < TileCanvas.TileImageSize; y += gridSize)
             {
                 for (int x = centre; x < TileCanvas.TileImageSize; x += gridSize)
                 {
-                    g.FillRectangle(new Rect(x, y, 2, 2), Colors.Gainsboro);
+                    g.FillRectangle(new Rect(x, y, 2, 2), c);
                 }
             }
         }
@@ -184,7 +195,6 @@ namespace SlickUWP.Canvas
 
         public void Invalidate()
         {
-            //UiCanvas.Draw += Tile_Draw;
             UiCanvas.Invalidate();
         }
 
@@ -200,7 +210,10 @@ namespace SlickUWP.Canvas
         public void SetSelected(bool isSelected)
         {
             // relies on the background being a different color
-            UiCanvas.Opacity = isSelected ? 0.5 : 1.0;
+            //UiCanvas.Opacity = isSelected ? 0.5 : 1.0;
+
+            IsSelected = isSelected;
+            Invalidate();
         }
     }
 }

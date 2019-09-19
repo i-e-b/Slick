@@ -255,7 +255,8 @@ namespace SlickUWP
                     return;
 
                 case InteractionMode.Draw:
-                    _wetInk?.Stroke(args, _tileCanvas.X, _tileCanvas.Y);
+                    var canvasPoint = _tileCanvas?.ScreenToCanvas(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
+                    _wetInk?.Stroke(args, canvasPoint);
                     return;
 
                 case InteractionMode.SelectTiles:
