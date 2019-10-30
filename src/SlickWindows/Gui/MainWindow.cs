@@ -37,7 +37,8 @@ namespace SlickWindows.Gui
             VerticalScroll.Enabled = false;
             HorizontalScroll.Enabled = false;
 
-            DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
+            //DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
+            DefaultLocation = "C:\\Temp"; // For testing
             PanScrollReceiver.Initialise(this);
 
             RescaleScreen(); // get a reliable DPI figure (DeviceDpi is nonsense)

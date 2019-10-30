@@ -10,4 +10,10 @@
     <PackageReference Include="MiniResharperAnnotations" Version="1.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="StreamDb">
+      <HintPath>..\..\bin\StreamDb.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

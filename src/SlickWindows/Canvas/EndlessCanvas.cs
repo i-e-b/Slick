@@ -1,4 +1,8 @@
-﻿using System;
+﻿
+#define USE_STREAM_DB
+// There is another switch in MainPage.xaml.cs
+
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -9,6 +13,7 @@ using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
 
+
 namespace SlickWindows.Canvas
 {
     /// <summary>
@@ -17,7 +22,6 @@ namespace SlickWindows.Canvas
     public class EndlessCanvas : IEndlessCanvas
     {
         // For tile cache
-        [NotNull] private static readonly object _storageLock = new object();
         [NotNull] private static readonly object _dataQueueLock = new object();
         [NotNull] private readonly HashSet<PositionKey> _changedTiles;
         [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
@@ -192,7 +196,6 @@ namespace SlickWindows.Canvas
                         // load any new tiles
                         var visibleTiles = VisibleTiles(Width, Height);
 
-                        lock (_storageLock) // prevent conflict with changing page
                         {
                             foreach (var tile in visibleTiles)
                             {
@@ -313,7 +316,6 @@ namespace SlickWindows.Canvas
 
                         if (tile.ImageIsBlank())
                         {
-                            lock (_storageLock)
                             {
                                 _storage.Delete(name, "img");
                                 _canvasTiles.Remove(key);
@@ -325,7 +327,6 @@ namespace SlickWindows.Canvas
                             {
                                 WaveletCompress.Compress(tile.Red, tile.Green, tile.Blue, tile.Width, tile.Height).WriteToStream(ms);
                                 ms.Seek(0, SeekOrigin.Begin);
-                                lock (_storageLock)
                                 {
                                     var ok = _storage.Store(name, "img", ms);
                                     if (ok.IsFailure) {
@@ -662,7 +663,6 @@ namespace SlickWindows.Canvas
         [NotNull]
         private List<PositionKey> InkPoint(InkSettings ink, DPoint pt, out double radius)
         {
-            lock (_storageLock)
             {
                 radius = pt.Pressure * ink.PenSize;
                 var changed = new List<PositionKey>(4);
@@ -739,7 +739,7 @@ namespace SlickWindows.Canvas
         {
             if (string.IsNullOrWhiteSpace(newPath)) return;
             _okToDraw = false;
-            lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
+            lock (_dataQueueLock) lock (_canvasTiles)
             {
                 // wipe state
                 _imageQueue.Clear();
@@ -750,7 +750,12 @@ namespace SlickWindows.Canvas
                 // change storage
                 _storage?.Dispose();
                 Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
+
+#if USE_STREAM_DB
+                _storage = new StreamDbStorageContainer(new SystemIoFile(newPath));
+#else
                 _storage = new LiteDbStorageContainer(new SystemIoFile(newPath));
+#endif
                 _storagePath = newPath;
 
                 // re-centre
@@ -758,9 +763,9 @@ namespace SlickWindows.Canvas
                 _yOffset = 0;
             }
             _updateTileCache.Set();
-            _invalidateAction?.Invoke(new Rectangle(0,0,0,0));
+            _invalidateAction?.Invoke(new Rectangle(0, 0, 0, 0));
         }
-        
+
 
         public string FileName()
         {
@@ -773,7 +778,7 @@ namespace SlickWindows.Canvas
         public void ResetTileCache()
         {
             _okToDraw = false;
-            lock (_storageLock) lock (_dataQueueLock) lock (_canvasTiles)
+            lock (_dataQueueLock) lock (_canvasTiles)
                     {
                         // clear the caches and start processing
                         _imageQueue.Clear();
@@ -869,7 +874,6 @@ namespace SlickWindows.Canvas
         {
             if (_storage == null) return new InfoPin[0];
 
-            lock (_storageLock)
             {
                 var result = _storage.ReadAllPins();
                 if (result.IsFailure || result.ResultData == null) return new InfoPin[0];
@@ -880,7 +884,6 @@ namespace SlickWindows.Canvas
 
         public void WritePinAtCurrentOffset(string text)
         {
-            lock (_storageLock)
             {
                 // tile location for middle of screen
                 var x = (Width / 2);
@@ -910,7 +913,6 @@ namespace SlickWindows.Canvas
         {
             if (_storage == null || pin == null) return;
 
-            lock (_storageLock)
             {
                 _storage.RemovePin(pin.Id);
             }

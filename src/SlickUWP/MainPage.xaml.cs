@@ -1,4 +1,8 @@
-﻿using System;
+﻿
+//#define USE_STREAM_DB
+// There is another switch in EndlessCanvas.cs
+
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -19,6 +23,7 @@ using SlickCommon.Storage;
 using SlickUWP.Adaptors;
 using SlickUWP.Canvas;
 using SlickUWP.CrossCutting;
+
 
 /*
 
@@ -148,7 +153,11 @@ namespace SlickUWP
 
             var accessStream = await file.OpenAsync(FileAccessMode.ReadWrite).NotNull();
             var wrapper = new StreamWrapper(accessStream);
+#if USE_STREAM_DB
+            var store = new StreamDbStorageContainer(wrapper);
+#else
             var store = new LiteDbStorageContainer(wrapper);
+#endif
 
             if (_tileCanvas != null) {
                 pinsView?.SetConnections(_tileCanvas, store);
