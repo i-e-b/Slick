@@ -84,8 +84,8 @@ namespace SlickUWP.Gui
             };
 
             // render to canvas
-            int left = (int)(Margin.Left);
-            int top = (int)(Margin.Top);
+            int left = (int)(Margin.Left / zoom);
+            int top = (int)(Margin.Top / zoom);
             _canvas.ImportBytes(rawImage, left, top, expectedWidth, expectedHeight, 0, 0);
 
             // ReSharper disable RedundantAssignment
