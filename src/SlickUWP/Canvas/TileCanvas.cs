@@ -338,7 +338,6 @@ namespace SlickUWP.Canvas
                             tile.SetState(TileState.Ready);
                             
                             _lastChangedTiles.Add(key);
-                            //ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
                             ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
                         }
                         continue;
@@ -353,7 +352,6 @@ namespace SlickUWP.Canvas
                         tile.Invalidate();
                         if (changed) { 
                             _lastChangedTiles.Add(key);
-                            //ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
                             ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
                         }
                         break;
