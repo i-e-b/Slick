@@ -8,7 +8,7 @@
     xmlns:Custom1="using:SlickUWP.Gui"
     x:Class="SlickUWP.MainPage"
     mc:Ignorable="d"
-     Background="#FF477D97" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded" PreviewKeyDown="Page_PreviewKeyDown" PreviewKeyUp="Page_PreviewKeyUp">
+     Background="#FFffffff" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded" PreviewKeyDown="Page_PreviewKeyDown" PreviewKeyUp="Page_PreviewKeyUp">
 
     <Grid x:Name="windowGrid">
 

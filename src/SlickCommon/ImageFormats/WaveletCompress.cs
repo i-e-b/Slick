@@ -151,7 +151,12 @@ namespace SlickCommon.ImageFormats
             var yQuants = container.QuantiserSettings_Y ?? StandardYQuants;
             var cQuants = container.QuantiserSettings_C ?? StandardCQuants;
 
-            if (Ybytes == null || Ubytes == null || Vbytes == null) throw new NullReferenceException("Planes were not read from image correctly");
+            if (Ybytes == null || Ubytes == null || Vbytes == null) {
+                Y = new float[0];
+                U = new float[0];
+                V = new float[0];
+                return 0;//throw new NullReferenceException("Planes were not read from image correctly");
+            }
 
             int imgWidth = container.Width;
             int imgHeight = container.Height;

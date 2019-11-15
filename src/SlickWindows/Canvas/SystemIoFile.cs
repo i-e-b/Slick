@@ -9,7 +9,7 @@ namespace SlickWindows.Canvas
     {
         [NotNull] private static readonly object _lock = new object();
         [NotNull] private readonly string _path;
-        [CanBeNull] private Stream _openStream;
+        [CanBeNull] private FileStream _openStream;
 
 
         public SystemIoFile([NotNull]string path)
@@ -34,7 +34,13 @@ namespace SlickWindows.Canvas
 
         private void EnsureStream() {
                 if (_openStream == null) {
-                    _openStream = File.Open(_path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+                
+                    _openStream = new FileStream(_path,
+                        FileMode.OpenOrCreate,
+                        FileAccess.ReadWrite,
+                        FileShare.None,
+                        0x10000,
+                        FileOptions.WriteThrough | FileOptions.RandomAccess);
                 }
         }
 

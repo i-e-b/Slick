@@ -51,6 +51,13 @@ namespace SlickUWP.Gui
         {
             if (_canvas == null) return;
 
+            //######################################################
+            // These measurements are coming out all over the place.
+            // Needs a more-or-less complete re-working. The wet ink
+            // is functioning much better -- try using that?
+            //######################################################
+
+
             // scale target based on canvas zoom
             var zoom = _canvas.CurrentZoom();
             var expectedWidth = (int)ActualWidth * zoom;
@@ -59,6 +66,14 @@ namespace SlickUWP.Gui
             // render to image
             var rtb = new RenderTargetBitmap();
             await rtb.RenderAsync(ImageToImport, expectedWidth, expectedHeight).NotNull(); // Render control to RenderTargetBitmap
+
+            // DPI mismatch -- use first attempt to calculate the real scale and render again.
+            var scaleW = expectedWidth / (float)rtb.PixelWidth;
+            var scaleH = expectedHeight / (float)rtb.PixelHeight;
+
+            // render to image
+            rtb = new RenderTargetBitmap();
+            await rtb.RenderAsync(ImageToImport, (int)(expectedWidth * scaleW), (int)(expectedHeight * scaleH)).NotNull(); // Render control to RenderTargetBitmap
 
             // get pixels from RTB
             var pixelBuffer = await rtb.GetPixelsAsync().NotNull(); // BGRA 8888 format
@@ -69,9 +84,9 @@ namespace SlickUWP.Gui
             };
 
             // render to canvas
-            int left = (int)Margin.Left;
-            int top = (int)Margin.Top;
-            _canvas.ImportBytes(rawImage, left, top, rawImage.Width, rawImage.Height, 0, 0);
+            int left = (int)(Margin.Left / zoom);
+            int top = (int)(Margin.Top / zoom);
+            _canvas.ImportBytes(rawImage, left, top, expectedWidth, expectedHeight, 0, 0);
 
             // ReSharper disable RedundantAssignment
             pixelBuffer = null;

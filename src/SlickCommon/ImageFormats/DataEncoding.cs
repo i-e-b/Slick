@@ -39,7 +39,7 @@ namespace SlickCommon.ImageFormats
                             // convert back to signed, add to list
                             if (accum > 0) {
                                 long n = accum - 1L;
-                                if ((n % 2) == 0) output[outidx++] = ((int)(n >> 1));
+                                if ((n & 1) == 0) output[outidx++] = ((int)(n >> 1));
                                 else output[outidx++] = ((int)(((n + 1) >> 1) * -1));
                             } // else damaged data
                             // `b11`; reset, move to next number

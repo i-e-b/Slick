@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -59,8 +60,8 @@ namespace SlickUWP.Canvas
             X = 0.0;
             Y = 0.0;
 
-            ThreadPool.SetMinThreads(2, 2);
-            ThreadPool.SetMaxThreads(10, 10);
+            ThreadPool.SetMinThreads(4, 1);
+            ThreadPool.SetMaxThreads(4, 1);
             Invalidate();
         }
 
@@ -113,7 +114,10 @@ namespace SlickUWP.Canvas
             if (_inReflow) return;
             _inReflow = true;
 
-            var required = VisibleTiles(0, 0, (int)_displayContainer.ActualWidth, (int)_displayContainer.ActualHeight);
+            var width = (int)_displayContainer.ActualWidth;
+            var height = (int)_displayContainer.ActualHeight;
+
+            var required = VisibleTiles(0, 0, width, height);
             var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
             var toAdd = new HashSet<PositionKey>();
 
@@ -127,7 +131,8 @@ namespace SlickUWP.Canvas
             // remove any extra
             foreach (var key in toRemove)
             {
-                if (!_tileCache.TryGetValue(key, out var container)) {
+                if (!_tileCache.TryGetValue(key, out var container))
+                {
                     continue;
                     //throw new Exception("Lost container!");
                 }
@@ -146,8 +151,9 @@ namespace SlickUWP.Canvas
             foreach (var kvp in _tileCache)
             {
                 var pos = VisualRectangle(kvp.Key);
-                kvp.Value?.MoveTo(pos.X, pos.Y);
-                kvp.Value?.SetSelected(_selectedTiles.Contains(kvp.Key));
+                if (kvp.Value == null) continue;
+                kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
+                kvp.Value.MoveTo(pos.X, pos.Y);
             }
 
             Win2dCanvasPool.Sanitise();
@@ -173,7 +179,8 @@ namespace SlickUWP.Canvas
 
             // Read the db and set tile state in the background
             var xkey = key;
-            ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(xkey, tile); });
+            //ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(xkey, tile); });
+            ThreadPool.UnsafeQueueUserWorkItem(x => { LoadTileDataSync((PositionKey)x, tile); }, xkey);
         }
 
         [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
@@ -274,7 +281,10 @@ namespace SlickUWP.Canvas
         /// Call when page is being switched.
         /// </summary>
         public void Close() {
-            _displayContainer.Children?.Clear();
+            _displayContainer.Dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            {
+                _displayContainer.Children?.Clear();
+            });
         }
 
         /// <summary>
@@ -328,7 +338,7 @@ namespace SlickUWP.Canvas
                             tile.SetState(TileState.Ready);
                             
                             _lastChangedTiles.Add(key);
-                            ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
+                            ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
                         }
                         continue;
 
@@ -342,7 +352,7 @@ namespace SlickUWP.Canvas
                         tile.Invalidate();
                         if (changed) { 
                             _lastChangedTiles.Add(key);
-                            ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
+                            ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
                         }
                         break;
                 }
@@ -592,7 +602,6 @@ namespace SlickUWP.Canvas
             }
         }
         
-
         private static byte Clip(float value)
         {
             if (value >= 255) return 255;

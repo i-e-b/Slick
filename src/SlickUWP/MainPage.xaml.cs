@@ -1,4 +1,8 @@
-﻿using System;
+﻿
+//#define USE_STREAM_DB
+// There is another switch in EndlessCanvas.cs
+
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
@@ -19,6 +23,7 @@ using SlickCommon.Storage;
 using SlickUWP.Adaptors;
 using SlickUWP.Canvas;
 using SlickUWP.CrossCutting;
+
 
 /*
 
@@ -148,7 +153,11 @@ namespace SlickUWP
 
             var accessStream = await file.OpenAsync(FileAccessMode.ReadWrite).NotNull();
             var wrapper = new StreamWrapper(accessStream);
+#if USE_STREAM_DB
+            var store = new StreamDbStorageContainer(wrapper);
+#else
             var store = new LiteDbStorageContainer(wrapper);
+#endif
 
             if (_tileCanvas != null) {
                 pinsView?.SetConnections(_tileCanvas, store);
@@ -245,42 +254,54 @@ namespace SlickUWP
         }
 
 
-        private void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
+        private async void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
         {
             if (args?.CurrentPoint == null) return;
 
-            switch (_interactionMode) {
-                case InteractionMode.Move:
-                    MoveCanvas(args);
-                    return;
+            if (_midMove) return;
+            try
+            {
+                _midMove = true;
 
-                case InteractionMode.Draw:
-                    var canvasPoint = _tileCanvas?.ScreenToCanvas(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
-                    _wetInk?.Stroke(args, canvasPoint);
-                    return;
+                switch (_interactionMode)
+                {
+                    case InteractionMode.Move:
+                        MoveCanvas(args);
+                        return;
 
-                case InteractionMode.SelectTiles:
-                    _tileCanvas?.AddSelection(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
-                    return;
+                    case InteractionMode.Draw:
+                        var canvasPoint = _tileCanvas?.ScreenToCanvas(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
+                        _wetInk?.Stroke(args, canvasPoint);
+                        return;
 
-                default: return;
+                    case InteractionMode.SelectTiles:
+                        _tileCanvas?.AddSelection(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
+                        return;
+
+                    default: return;
+                }
+            }
+            finally
+            {
+                _midMove = false;
             }
         }
 
         /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
         [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
+        private volatile bool _midMove = false;
 
         private void MoveCanvas([NotNull]PointerEventArgs args)
         {
             var thisPoint = args.CurrentPoint;
             if (thisPoint == null) return;
 
-            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 33) return;
-            moveSw.Restart();
-
             var dx = _lastPoint.X - thisPoint.Position.X;
             var dy = _lastPoint.Y - thisPoint.Position.Y;
-            if (Math.Abs(dx) < 2 && Math.Abs(dy) < 2) return;
+            if (Math.Abs(dx) < 1 && Math.Abs(dy) < 1) return;
+
+            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 16) return;
+            moveSw.Restart();
 
             _tileCanvas?.Scroll(dx, dy);
             _lastPoint = thisPoint.Position;

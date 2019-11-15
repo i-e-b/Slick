@@ -1,40 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Numerics;
-using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 
 namespace SlickUWP.Canvas
 {
-    /// <summary>
-    /// A single hook point for drawing onto tiles
-    /// </summary>
-    public class DrawingHub {
-        public void Draw(CanvasControl sender, CanvasDrawEventArgs args)
-        {
-            var g = args?.DrawingSession;
-            if (sender == null || g == null) return;
-
-            var tile = sender.Tag as CachedTile; // this is set in CachedTile
-
-            if (tile == null) { // this shouldn't ever be visible
-                g.DrawCircle(new Vector2(10, 10), 8, Colors.Blue);
-                g.Flush();
-                return;
-            }
-
-            tile.DrawToSession(sender, g, true);
-        }
-    }
-
-
     public static class Win2dCanvasPool {
         [NotNull] private static readonly object _lock = new object();
-        [NotNull] private static readonly Queue<CanvasControl> _pool = new Queue<CanvasControl>();
+        [NotNull] private static readonly Queue<CanvasControlAsyncProxy> _pool = new Queue<CanvasControlAsyncProxy>();
         [NotNull] private static readonly DrawingHub _drawHub = new DrawingHub();
 
         /// <summary>
@@ -42,66 +19,73 @@ namespace SlickUWP.Canvas
         /// Should be returned to the pool with `Retire`
         /// </summary>
         [NotNull]
-        public static CanvasControl Employ([NotNull] Panel container, [NotNull]CachedTile cachedTile)
+        public static CanvasControlAsyncProxy Employ([NotNull] Panel container, [NotNull]CachedTile cachedTile)
         {
             var dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
-
+            
             lock (_lock)
             {
-                if (_pool.TryDequeue(out var result)) {
-                    dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                if (_pool.TryDequeue(out var result))
+                {
+                    result.QueueAction(canv =>
                     {
-                        result.Tag = cachedTile;
-                        result.Invalidate();
-                        result.Visibility = Visibility.Visible;
-                        result.Opacity = 1;
+                        canv.Tag = cachedTile;
+                        canv.Visibility = Visibility.Visible;
+                        canv.Opacity = 1;
+                        canv.Invalidate();
+                        canv.Draw += _drawHub.Draw;
                     });
+                    result.AttachToContainer(container);
                     return result;
                 }
             }
 
             // Need a new canvas
-            var ctrl = new CanvasControl
+            var proxy = new CanvasControlAsyncProxy(container);
+            var tileToUse = cachedTile;
+            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                UseSharedDevice = true,
-                Margin = new Thickness(0.0),
-                Height = 256,
-                Width = 256,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
-                // We have a single common 'Draw' event hook and use context data to pump in image & state
-            };
+                var ctrl = new CanvasControl
+                {
+                    //UseSharedDevice = true,
+                    //CacheMode = new BitmapCache(),
+                    Margin = new Thickness(0.0),
+                    Height = 256,
+                    Width = 256,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Tag = tileToUse
+                    // We have a single common 'Draw' event hook and use context data to pump in image & state
+                };
 
+                ctrl.Draw += _drawHub.Draw;
 
-            ctrl.Draw += _drawHub.Draw;
-
-            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => { 
-                container.Children?.Add(ctrl);
-                ctrl.Tag = cachedTile;
+                proxy.Set(ctrl);
+                proxy.AttachToContainer(container);
                 ctrl.Invalidate();
             });
 
-            return ctrl;
+            return proxy;
         }
 
         /// <summary>
         /// Remove a control from display and return it to the pool
         /// </summary>
-        public static void Retire(CanvasControl ctrl){
+        public static void Retire(CanvasControlAsyncProxy ctrl)
+        {
             if (ctrl == null) return;
-            var dispatcher = ctrl.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
-
-            ctrl.Opacity = 0;
             lock (_lock)
             {
                 _pool.Enqueue(ctrl);
             }
-
-            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            ctrl.QueueAction(canv =>
             {
-                ctrl.Visibility = Visibility.Collapsed;
-                ctrl.Tag = null;
+                canv.Draw -= _drawHub.Draw;
+                canv.Visibility = Visibility.Collapsed;
+                canv.Opacity = 0.0;
+                canv.Tag = null;
             });
+            ctrl.RemoveFromContainer();
         }
 
         /// <summary>
@@ -114,10 +98,11 @@ namespace SlickUWP.Canvas
                 var retired = _pool.ToArray();
                 foreach (var control in retired)
                 {
-                    control.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
+                    control.QueueAction(canv =>
                     {
-                        control.Visibility = Visibility.Collapsed;
-                        control.Tag = null;
+                        canv.Visibility = Visibility.Collapsed;
+                        canv.Tag = null;
+                        canv.Invalidate();
                     });
                 }
             }

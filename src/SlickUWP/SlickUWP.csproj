@@ -25,6 +25,7 @@
     <AppxBundlePlatforms>x86</AppxBundlePlatforms>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
     <PackageCertificateThumbprint>AB181178E18424D8E8600F6F9B92788B04B2C4E4</PackageCertificateThumbprint>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>
@@ -127,6 +128,8 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Canvas\CanvasControlAsyncProxy.cs" />
+    <Compile Include="Canvas\DrawingHub.cs" />
     <Compile Include="CrossCutting\AsyncOperationExtension.cs" />
     <Compile Include="Canvas\CachedTile.cs" />
     <Compile Include="Canvas\ICachedTile.cs" />
@@ -214,7 +217,11 @@
       <Name>SlickCommon</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Reference Include="StreamDb">
+      <HintPath>..\..\bin\StreamDb.dll</HintPath>
+    </Reference>
+  </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
   </PropertyGroup>
