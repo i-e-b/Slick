@@ -48,7 +48,7 @@ namespace SlickUWP.Canvas
                 var ctrl = new CanvasControl
                 {
                     //UseSharedDevice = true,
-                    CacheMode = new BitmapCache(),
+                    //CacheMode = new BitmapCache(),
                     Margin = new Thickness(0.0),
                     Height = 256,
                     Width = 256,
@@ -83,7 +83,7 @@ namespace SlickUWP.Canvas
                 canv.Draw -= _drawHub.Draw;
                 canv.Visibility = Visibility.Collapsed;
                 canv.Opacity = 0.0;
-                //canv.Tag = null;
+                canv.Tag = null;
             });
             ctrl.RemoveFromContainer();
         }
@@ -101,7 +101,7 @@ namespace SlickUWP.Canvas
                     control.QueueAction(canv =>
                     {
                         canv.Visibility = Visibility.Collapsed;
-                        //canv.Tag = null;
+                        canv.Tag = null;
                         canv.Invalidate();
                     });
                 }

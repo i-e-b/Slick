@@ -60,8 +60,8 @@ namespace SlickUWP.Canvas
             X = 0.0;
             Y = 0.0;
 
-            ThreadPool.SetMinThreads(2, 2);
-            ThreadPool.SetMaxThreads(4, 2);
+            ThreadPool.SetMinThreads(4, 1);
+            ThreadPool.SetMaxThreads(4, 1);
             Invalidate();
         }
 
@@ -114,53 +114,50 @@ namespace SlickUWP.Canvas
             if (_inReflow) return;
             _inReflow = true;
 
-            var width =  (int)_displayContainer.ActualWidth;
-            var height =  (int)_displayContainer.ActualHeight;
+            var width = (int)_displayContainer.ActualWidth;
+            var height = (int)_displayContainer.ActualHeight;
 
-            ThreadPool.QueueUserWorkItem(x =>
+            var required = VisibleTiles(0, 0, width, height);
+            var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
+            var toAdd = new HashSet<PositionKey>();
+
+            // add any missing
+            foreach (var key in required)
             {
-                var required = VisibleTiles(0, 0, width, height);
-                var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
-                var toAdd = new HashSet<PositionKey>();
+                toRemove.Remove(key);
+                if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
+            }
 
-                // add any missing
-                foreach (var key in required)
+            // remove any extra
+            foreach (var key in toRemove)
+            {
+                if (!_tileCache.TryGetValue(key, out var container))
                 {
-                    toRemove.Remove(key);
-                    if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
+                    continue;
+                    //throw new Exception("Lost container!");
                 }
 
-                // remove any extra
-                foreach (var key in toRemove)
-                {
-                    if (!_tileCache.TryGetValue(key, out var container))
-                    {
-                        continue;
-                        //throw new Exception("Lost container!");
-                    }
+                container.Detach();
+                _tileCache.Remove(key);
+            }
 
-                    container.Detach();
-                    _tileCache.Remove(key);
-                }
+            // add any missing (we do this after remove to use the canvas pool effectively)
+            foreach (var key in toAdd)
+            {
+                if (!_tileCache.ContainsKey(key)) AddToCache(key);
+            }
 
-                // add any missing (we do this after remove to use the canvas pool effectively)
-                foreach (var key in toAdd)
-                {
-                    if (!_tileCache.ContainsKey(key)) AddToCache(key);
-                }
+            // re-align what's left
+            foreach (var kvp in _tileCache)
+            {
+                var pos = VisualRectangle(kvp.Key);
+                if (kvp.Value == null) continue;
+                kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
+                kvp.Value.MoveTo(pos.X, pos.Y);
+            }
 
-                // re-align what's left
-                foreach (var kvp in _tileCache)
-                {
-                    var pos = VisualRectangle(kvp.Key);
-                    if (kvp.Value == null) continue;
-                    kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
-                    kvp.Value.MoveTo(pos.X, pos.Y);
-                }
-
-                Win2dCanvasPool.Sanitise();
-                _inReflow = false;
-            });
+            Win2dCanvasPool.Sanitise();
+            _inReflow = false;
         }
 
         /// <summary>
@@ -182,7 +179,8 @@ namespace SlickUWP.Canvas
 
             // Read the db and set tile state in the background
             var xkey = key;
-            ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(xkey, tile); });
+            //ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(xkey, tile); });
+            ThreadPool.UnsafeQueueUserWorkItem(x => { LoadTileDataSync((PositionKey)x, tile); }, xkey);
         }
 
         [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
@@ -340,14 +338,14 @@ namespace SlickUWP.Canvas
                             tile.SetState(TileState.Ready);
                             
                             _lastChangedTiles.Add(key);
-                            ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
+                            //ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
+                            ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
                         }
                         continue;
 
                     case TileState.Locked:
                         // Can't safely write at the moment.
                         // TODO: can we push back and keep the ink wet?
-                        throw new Exception("Lockout tile");
                         continue;
 
                     case TileState.Ready:
@@ -355,7 +353,8 @@ namespace SlickUWP.Canvas
                         tile.Invalidate();
                         if (changed) { 
                             _lastChangedTiles.Add(key);
-                            ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
+                            //ThreadPool.QueueUserWorkItem(x => { WriteTileToBackingStoreSync(key, tile); });
+                            ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
                         }
                         break;
                 }
