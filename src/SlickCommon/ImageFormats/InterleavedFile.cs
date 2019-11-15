@@ -165,7 +165,7 @@ namespace SlickCommon.ImageFormats
             // Each plane can have a different byte size
             ReadU8(input, out var planeCount);
 
-            if (planeCount < 1 || planeCount > 6) throw new Exception($"Plane count does not make sense (expected 1..6, got {planeCount})");
+            if (planeCount < 1 || planeCount > 6) planeCount = 3;//throw new Exception($"Plane count does not make sense (expected 1..6, got {planeCount})");
             var result = new InterleavedFile(width, height, depth, planeCount);
             if (result.Planes == null) throw new Exception("Interleaved file did not have a planes container");
 
@@ -178,7 +178,7 @@ namespace SlickCommon.ImageFormats
             for (i = 0; i < planeCount; i++)
             {
                 var ok = ReadU64(input, out var psize);
-                if (!ok || psize > 10_000_000) throw new Exception("Plane data was outside of expected bounds (this is a safety check)");
+                if (!ok || psize > 10_000_000) return result;//throw new Exception("Plane data was outside of expected bounds (this is a safety check)");
                 result.Planes[i] = new byte[psize];
             }
 

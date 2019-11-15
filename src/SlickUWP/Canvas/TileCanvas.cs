@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
@@ -60,7 +61,7 @@ namespace SlickUWP.Canvas
             Y = 0.0;
 
             ThreadPool.SetMinThreads(2, 2);
-            ThreadPool.SetMaxThreads(10, 10);
+            ThreadPool.SetMaxThreads(4, 2);
             Invalidate();
         }
 
@@ -113,45 +114,53 @@ namespace SlickUWP.Canvas
             if (_inReflow) return;
             _inReflow = true;
 
-            var required = VisibleTiles(0, 0, (int)_displayContainer.ActualWidth, (int)_displayContainer.ActualHeight);
-            var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
-            var toAdd = new HashSet<PositionKey>();
+            var width =  (int)_displayContainer.ActualWidth;
+            var height =  (int)_displayContainer.ActualHeight;
 
-            // add any missing
-            foreach (var key in required)
+            ThreadPool.QueueUserWorkItem(x =>
             {
-                toRemove.Remove(key);
-                if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
-            }
+                var required = VisibleTiles(0, 0, width, height);
+                var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
+                var toAdd = new HashSet<PositionKey>();
 
-            // remove any extra
-            foreach (var key in toRemove)
-            {
-                if (!_tileCache.TryGetValue(key, out var container)) {
-                    continue;
-                    //throw new Exception("Lost container!");
+                // add any missing
+                foreach (var key in required)
+                {
+                    toRemove.Remove(key);
+                    if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
                 }
 
-                container.Detach();
-                _tileCache.Remove(key);
-            }
+                // remove any extra
+                foreach (var key in toRemove)
+                {
+                    if (!_tileCache.TryGetValue(key, out var container))
+                    {
+                        continue;
+                        //throw new Exception("Lost container!");
+                    }
 
-            // add any missing (we do this after remove to use the canvas pool effectively)
-            foreach (var key in toAdd)
-            {
-                if (!_tileCache.ContainsKey(key)) AddToCache(key);
-            }
+                    container.Detach();
+                    _tileCache.Remove(key);
+                }
 
-            // re-align what's left
-            foreach (var kvp in _tileCache)
-            {
-                var pos = VisualRectangle(kvp.Key);
-                kvp.Value?.MoveTo(pos.X, pos.Y);
-                kvp.Value?.SetSelected(_selectedTiles.Contains(kvp.Key));
-            }
+                // add any missing (we do this after remove to use the canvas pool effectively)
+                foreach (var key in toAdd)
+                {
+                    if (!_tileCache.ContainsKey(key)) AddToCache(key);
+                }
 
-            Win2dCanvasPool.Sanitise();
-            _inReflow = false;
+                // re-align what's left
+                foreach (var kvp in _tileCache)
+                {
+                    var pos = VisualRectangle(kvp.Key);
+                    if (kvp.Value == null) continue;
+                    kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
+                    kvp.Value.MoveTo(pos.X, pos.Y);
+                }
+
+                Win2dCanvasPool.Sanitise();
+                _inReflow = false;
+            });
         }
 
         /// <summary>
@@ -274,7 +283,10 @@ namespace SlickUWP.Canvas
         /// Call when page is being switched.
         /// </summary>
         public void Close() {
-            _displayContainer.Children?.Clear();
+            _displayContainer.Dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            {
+                _displayContainer.Children?.Clear();
+            });
         }
 
         /// <summary>
@@ -335,6 +347,7 @@ namespace SlickUWP.Canvas
                     case TileState.Locked:
                         // Can't safely write at the moment.
                         // TODO: can we push back and keep the ink wet?
+                        throw new Exception("Lockout tile");
                         continue;
 
                     case TileState.Ready:
@@ -592,7 +605,6 @@ namespace SlickUWP.Canvas
             }
         }
         
-
         private static byte Clip(float value)
         {
             if (value >= 255) return 255;

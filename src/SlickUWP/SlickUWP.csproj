@@ -127,6 +127,8 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Canvas\CanvasControlAsyncProxy.cs" />
+    <Compile Include="Canvas\DrawingHub.cs" />
     <Compile Include="CrossCutting\AsyncOperationExtension.cs" />
     <Compile Include="Canvas\CachedTile.cs" />
     <Compile Include="Canvas\ICachedTile.cs" />

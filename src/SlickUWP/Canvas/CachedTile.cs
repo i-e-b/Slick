@@ -15,7 +15,7 @@ namespace SlickUWP.Canvas
     /// </summary>
     public class CachedTile : ICachedTile
     {
-        [NotNull] private readonly CanvasControl UiCanvas;
+        [NotNull] private readonly CanvasControlAsyncProxy UiCanvas;
 
         public TileState State;
         public bool IsSelected = false;
@@ -32,9 +32,11 @@ namespace SlickUWP.Canvas
         {
             State = TileState.Locked;
             UiCanvas = Win2dCanvasPool.Employ(container, this);
-            UiCanvas.RenderTransform = new TranslateTransform { X = _x, Y = _y };
-
-            UiCanvas.Invalidate();
+            UiCanvas.QueueAction(canv =>
+            {
+                canv.RenderTransform = new TranslateTransform { X = _x, Y = _y };
+                //canv.Invalidate();
+            });
         }
 
         ~CachedTile() {
@@ -45,7 +47,7 @@ namespace SlickUWP.Canvas
 
         public void SetTileData(byte[] rawData) {
             RawImageData = rawData;
-            UiCanvas.Invalidate();
+            UiCanvas.QueueAction(canv => canv?.Invalidate());
         }
 
         public byte[] GetTileData()
@@ -58,7 +60,14 @@ namespace SlickUWP.Canvas
             switch (State)
             {
                 case TileState.Locked:
-                    g.Clear(Colors.DarkGray); // which is lighter than 'Gray'
+                    if (RawImageData != null)
+                    {
+                        g.Clear(Colors.DarkKhaki); // wrong state
+                    }
+                    else
+                    {
+                        g.Clear(Colors.DarkGray); // which is lighter than 'Gray'
+                    }
                     return;
                     
                 case TileState.Corrupted:
@@ -134,13 +143,18 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void MoveTo(float x, float y)
         {
+            if ((int)_x == (int)x && (int)_y == (int)y) return;
             _x = x;
             _y = y;
-            UiCanvas.RenderTransform = new TranslateTransform
+            UiCanvas.QueueAction(canv =>
             {
-                X = (int)x,
-                Y = (int)y
-            };
+                canv.RenderTransform = new TranslateTransform
+                {
+                    X = (int)_x,
+                    Y = (int)_y
+                };
+                canv.Invalidate();
+            });
         }
 
         /// <summary>
@@ -158,7 +172,7 @@ namespace SlickUWP.Canvas
         public void SetState(TileState state)
         {
             State = state;
-            UiCanvas.Invalidate();
+            UiCanvas.QueueAction(canv => canv?.Invalidate());
         }
 
         /// <inheritdoc />
@@ -195,7 +209,7 @@ namespace SlickUWP.Canvas
 
         public void Invalidate()
         {
-            UiCanvas.Invalidate();
+            UiCanvas.QueueAction(canv => canv?.Invalidate());
         }
 
         /// <summary>
