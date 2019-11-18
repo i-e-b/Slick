@@ -1,9 +1,11 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading;
 using Windows.Devices.Input;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Containers;
 using JetBrains.Annotations;
 using SlickCommon.Storage;
 using SlickUWP.Canvas;
@@ -13,6 +15,7 @@ using SlickUWP.CrossCutting;
 
 namespace SlickUWP.Gui
 {
+    // ReSharper disable once RedundantExtendsListEntry
     public sealed partial class PinsOverlay : UserControl
     {
         int deselect = 0;
@@ -22,6 +25,7 @@ namespace SlickUWP.Gui
         public PinsOverlay()
         {
             InitializeComponent();
+            if (existingPinList?.Items == null) return;
 
             existingPinList.Items.Add(new ListViewItem
             {
@@ -51,7 +55,25 @@ namespace SlickUWP.Gui
         {
             if (existingPinList?.Items == null || _storage == null) return;
 
-            var pinResult = _storage.ReadAllPins();
+            Result<InfoPin[]> pinResult;
+            try
+            {
+                pinResult = _storage.ReadAllPins();
+            }
+            catch (Exception ex)
+            {
+                existingPinList.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    existingPinList.Items.Clear();
+                    existingPinList.Items.Add(new ListViewItem
+                    {
+                        Tag = null,
+                        Content = "Loading pins from DB failed: " + ex.Message
+                    });
+                });
+                return;
+            }
+
             if (pinResult.IsFailure) return;
             var pins = pinResult.ResultData?.OrderBy(p => p?.Description);
             if (pins == null) return;
@@ -77,18 +99,20 @@ namespace SlickUWP.Gui
             });
         }
 
-        private void ExistingPinList_DoubleTapped(object sender, Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        private void ExistingPinList_DoubleTapped(object sender, [NotNull]Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
         {
             CentreOnPin(existingPinList?.SelectedItem);
 
             deselect = (e.PointerDeviceType == PointerDeviceType.Touch) ? 1 : 2;
-            existingPinList.SelectedIndex = -1;
+            if (existingPinList != null) existingPinList.SelectedIndex = -1;
 
             HidePinsOverlay();
         }
 
         private void ExistingPinList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (existingPinList?.SelectedItems == null || viewSelectedPinButton == null || deleteSelectedPinButton == null) return;
+
             // enable or disable the view and delete buttons
             if (deselect > 0)
             {
@@ -142,7 +166,7 @@ namespace SlickUWP.Gui
 
             // centre the canvas on the selected pin location, then close the overlay
             deselect = 0;
-            existingPinList.SelectedIndex = -1;
+            if (existingPinList != null) existingPinList.SelectedIndex = -1;
 
             HidePinsOverlay();
         }

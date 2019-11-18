@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 
 namespace SlickUWP.Canvas
 {
+    /// <summary>
+    /// Manages a pool of CanvasControls
+    /// </summary>
     public static class Win2dCanvasPool {
         [NotNull] private static readonly object _lock = new object();
         [NotNull] private static readonly Queue<CanvasControlAsyncProxy> _pool = new Queue<CanvasControlAsyncProxy>();
@@ -21,49 +23,40 @@ namespace SlickUWP.Canvas
         [NotNull]
         public static CanvasControlAsyncProxy Employ([NotNull] Panel container, [NotNull]CachedTile cachedTile)
         {
-            var dispatcher = container.Dispatcher ?? throw new Exception("Container panel had no valid dispatcher");
-            
             lock (_lock)
             {
                 if (_pool.TryDequeue(out var result))
                 {
                     result.QueueAction(canv =>
                     {
-                        canv.Tag = cachedTile;
                         canv.Visibility = Visibility.Visible;
                         canv.Opacity = 1;
                         canv.Invalidate();
                         canv.Draw += _drawHub.Draw;
                     });
-                    result.AttachToContainer(container);
+                    result.AttachToContainer(null, container, cachedTile);
                     return result;
                 }
             }
 
             // Need a new canvas
             var proxy = new CanvasControlAsyncProxy(container);
-            var tileToUse = cachedTile;
-            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            var ctrl = new CanvasControl
             {
-                var ctrl = new CanvasControl
-                {
-                    //UseSharedDevice = true,
-                    //CacheMode = new BitmapCache(),
-                    Margin = new Thickness(0.0),
-                    Height = 256,
-                    Width = 256,
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Tag = tileToUse
-                    // We have a single common 'Draw' event hook and use context data to pump in image & state
-                };
+                Margin = new Thickness(0.0),
+                Height = 256,
+                Width = 256,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+            };
 
-                ctrl.Draw += _drawHub.Draw;
-
-                proxy.Set(ctrl);
-                proxy.AttachToContainer(container);
-                ctrl.Invalidate();
+            proxy.QueueAction(canv =>
+            {
+                // We have a single common 'Draw' event hook and use context data to pump in image & state
+                canv.Draw += _drawHub.Draw;
+                canv.Invalidate();
             });
+            proxy.AttachToContainer(ctrl, container, cachedTile);
 
             return proxy;
         }

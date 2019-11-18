@@ -30,6 +30,11 @@ namespace SlickUWP.Canvas
         // History
         [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
 
+        // Working buffers (they *MUST* be ThreadStatic)
+        [ThreadStatic]private static byte[] Red;
+        [ThreadStatic]private static byte[] Green;
+        [ThreadStatic]private static byte[] Blue;
+
         public double X;
         public double Y;
         private double _cx;
@@ -281,7 +286,7 @@ namespace SlickUWP.Canvas
         /// Call when page is being switched.
         /// </summary>
         public void Close() {
-            _displayContainer.Dispatcher.RunAsync(CoreDispatcherPriority.High, () =>
+            _displayContainer.Dispatcher?.RunAsync(CoreDispatcherPriority.High, () =>
             {
                 _displayContainer.Children?.Clear();
             });
@@ -501,65 +506,66 @@ namespace SlickUWP.Canvas
 
         private void LoadTileDataSync(PositionKey key, ICachedTile tile)
         {
-            if (key == null || tile == null) return;
-
-            var name = key.ToString();
-            var res = _tileStore.Exists(name);
-            if (res.IsFailure)
-            {
-                tile.SetState(TileState.Empty);
-                return;
-            }
-
-            var version = res.ResultData?.CurrentVersion ?? 1;
-            var img = _tileStore.Read(name, "img", version);
-
-            if (img.IsFailure || img.ResultData == null)
-            {
-                tile.SetState(TileState.Empty);
-                return;
-            }
-
-            InterleavedFile fileData;
+            if (Red == null) Red = new byte[65536];
+            if (Green == null) Green = new byte[65536];
+            if (Blue == null) Blue = new byte[65536];
             try
             {
-                fileData = InterleavedFile.ReadFromStream(img.ResultData);
+                if (key == null || tile == null) return;
+
+                var name = key.ToString();
+                var res = _tileStore.Exists(name);
+                if (res.IsFailure)
+                {
+                    tile.SetState(TileState.Empty);
+                    return;
+                }
+
+                var version = res.ResultData?.CurrentVersion ?? 1;
+                var img = _tileStore.Read(name, "img", version);
+
+                if (img.IsFailure || img.ResultData == null)
+                {
+                    tile.SetState(TileState.Empty);
+                    return;
+                }
+
+                var fileData = InterleavedFile.ReadFromStream(img.ResultData);
+                if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
+
+                var packed = new byte[CachedTile.ByteSize];
+
+                for (int i = 0; i < Red.Length; i++)
+                {
+                    packed[4 * i + 0] = Blue[i];
+                    packed[4 * i + 1] = Green[i];
+                    packed[4 * i + 2] = Red[i];
+
+                    if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
+                    {
+                        packed[4 * i + 3] = 0;
+                    }
+                    else
+                    {
+                        packed[4 * i + 3] = 255;
+                    }
+                }
+
+                tile.SetTileData(packed);
+                tile.SetState(TileState.Ready);
             }
             catch
             {
-                tile.MarkCorrupted();
-                return;
+                tile?.MarkCorrupted();
             }
-
-            var Red = new byte[65536];
-            var Green = new byte[65536];
-            var Blue = new byte[65536];
-            if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
-
-            var packed = new byte[CachedTile.ByteSize];
-
-            for (int i = 0; i < Red.Length; i++)
-            {
-                packed[4 * i + 0] = Blue[i];
-                packed[4 * i + 1] = Green[i];
-                packed[4 * i + 2] = Red[i];
-
-                if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
-                {
-                    packed[4 * i + 3] = 0;
-                }
-                else
-                {
-                    packed[4 * i + 3] = 255;
-                }
-            }
-
-            tile.SetTileData(packed);
-            tile.SetState(TileState.Ready);
         }
 
         private void WriteTileToBackingStoreSync(PositionKey key, CachedTile tile)
         {
+            if (Red == null) Red = new byte[65536];
+            if (Green == null) Green = new byte[65536];
+            if (Blue == null) Blue = new byte[65536];
+
             if (key == null) return;
 
             if (tile == null) return;
@@ -576,10 +582,6 @@ namespace SlickUWP.Canvas
             {
                 var packed = tile.GetTileData();
                 if (packed == null) return;
-
-                var Red = new byte[packed.Length / 4];
-                var Green = new byte[packed.Length / 4];
-                var Blue = new byte[packed.Length / 4];
 
                 for (int i = 0; i < Red.Length; i++)
                 {

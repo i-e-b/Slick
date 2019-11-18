@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
@@ -11,32 +10,35 @@ namespace SlickUWP.Canvas
     /// Class that works around threading/async issues in UWP
     /// </summary>
     public class CanvasControlAsyncProxy {
+        public delegate void QueueActionDelegate([NotNull]CanvasControl str);
+
         private Panel _container;
         [CanBeNull] private volatile CanvasControl _ctrl;
-        [NotNull]   private readonly Queue<Action<CanvasControl>> _commandQueue;
+        [NotNull]   private readonly Queue<QueueActionDelegate> _commandQueue;
 
         public CanvasControlAsyncProxy(Panel container)
         {
             _container = container;
-            _commandQueue = new Queue<Action<CanvasControl>>();
+            _commandQueue = new Queue<QueueActionDelegate>();
         }
 
-        public void AttachToContainer(Panel container)
+        public void AttachToContainer(CanvasControl result, Panel container, object tag)
         {
             _container = container;
+            if (result != null) _ctrl = result;
+
             // ReSharper disable InconsistentlySynchronizedField
-            _container?.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
+            _container?.Dispatcher?.RunAsync(CoreDispatcherPriority.Low, () =>
             {
+                if (_ctrl == null) return;
+                _ctrl.Tag = tag;
+
                 if (_container?.Children?.Contains(_ctrl) == true) return;
                 _container?.Children?.Add(_ctrl);
+                RunWaitingCommands();
             });
+            
             // ReSharper restore InconsistentlySynchronizedField
-        }
-
-        public void Set(CanvasControl result)
-        {
-            _ctrl = result;
-            RunWaitingCommands();
         }
 
         private void RunWaitingCommands()
@@ -57,7 +59,8 @@ namespace SlickUWP.Canvas
             }
         }
 
-        public void QueueAction(Action<CanvasControl> action)
+
+        public void QueueAction(QueueActionDelegate action)
         {
             lock (_commandQueue)
             {
