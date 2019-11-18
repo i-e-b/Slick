@@ -15,8 +15,8 @@ namespace SlickUWP.Canvas
 
             var tile = sender.Tag as CachedTile; // this is set in CachedTile
 
-            if (tile == null) { // this shouldn't ever be visible
-                g.DrawCircle(new Vector2(10, 10), 8, Colors.Blue);
+            if (tile == null) { // this shows while the UWP is waiting to do async calls
+                g.DrawCircle(new Vector2(128, 128), 24, Colors.Gray);
                 g.Flush();
                 return;
             }

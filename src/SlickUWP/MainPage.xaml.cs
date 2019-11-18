@@ -124,7 +124,6 @@ namespace SlickUWP
 
             _wetInk = new WetInkCanvas(wetInkCanvas ?? throw new Exception("Invalid page structure (2)"));
 
-
             _tileCanvas?.Invalidate();
         }
 
@@ -253,20 +252,20 @@ namespace SlickUWP
             }
         }
 
-
         private async void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
         {
             if (args?.CurrentPoint == null) return;
 
-            if (_midMove) return;
+
+            if (_processingPointer) return;
             try
             {
-                _midMove = true;
+                _processingPointer = true;
 
                 switch (_interactionMode)
                 {
                     case InteractionMode.Move:
-                        MoveCanvas(args);
+                        await MoveCanvas(args);
                         return;
 
                     case InteractionMode.Draw:
@@ -283,28 +282,33 @@ namespace SlickUWP
             }
             finally
             {
-                _midMove = false;
+                _processingPointer = false;
             }
         }
 
         /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
         [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
-        private volatile bool _midMove = false;
+        private volatile bool _processingPointer = false;
 
-        private void MoveCanvas([NotNull]PointerEventArgs args)
+        private async Task MoveCanvas([NotNull]PointerEventArgs args)
         {
             var thisPoint = args.CurrentPoint;
             if (thisPoint == null) return;
 
+            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 10) return;
+            moveSw.Restart();
+
+            var thresh = _tileCanvas.CurrentZoom();
             var dx = _lastPoint.X - thisPoint.Position.X;
             var dy = _lastPoint.Y - thisPoint.Position.Y;
-            if (Math.Abs(dx) < 1 && Math.Abs(dy) < 1) return;
-
-            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 16) return;
-            moveSw.Restart();
+            if (Math.Abs(dx) < thresh && Math.Abs(dy) < thresh) return;
 
             _tileCanvas?.Scroll(dx, dy);
             _lastPoint = thisPoint.Position;
+
+            var timediff = (int)Math.Max(10, 30 - moveSw.ElapsedMilliseconds);
+            // ReSharper disable once PossibleNullReferenceException
+            await Task.Delay(timediff);
         }
 
         private async void PickPageButton_Click(object sender, RoutedEventArgs e)

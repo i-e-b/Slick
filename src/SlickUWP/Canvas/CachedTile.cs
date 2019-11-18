@@ -112,13 +112,11 @@ namespace SlickUWP.Canvas
                     return;
 
                 default:
-                    //g.Clear(Colors.MediumTurquoise);
-                    //return;
                     throw new Exception("Non exhaustive switch in Tile_Draw");
             }
         }
 
-        private void DrawSelection(CanvasDrawingSession g)
+        private void DrawSelection([NotNull]CanvasDrawingSession g)
         {
             g.Blend = CanvasBlend.SourceOver;
             g.FillRectangle(-1,-1, Width+2, Height+2, Color.FromArgb(127, 127, 127, 127));
@@ -148,12 +146,12 @@ namespace SlickUWP.Canvas
             _y = y;
             UiCanvas.QueueAction(canv =>
             {
+                if (canv == null) return;
                 canv.RenderTransform = new TranslateTransform
                 {
                     X = (int)_x,
                     Y = (int)_y
                 };
-                canv.Invalidate();
             });
         }
 

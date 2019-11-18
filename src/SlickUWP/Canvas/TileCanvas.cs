@@ -218,6 +218,11 @@ namespace SlickUWP.Canvas
             X += dx / _viewScale;
             Y += dy / _viewScale;
 
+            // lock to approximate visual pixels
+            var z = CurrentZoom();
+            X -= X % z;
+            Y -= Y % z;
+
             Invalidate();
         }
 

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Windows.UI.Core;
+﻿using System.Collections.Generic;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
@@ -48,6 +46,7 @@ namespace SlickUWP.Canvas
                 Width = 256,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
+                UseLayoutRounding = true
             };
 
             proxy.QueueAction(canv =>
@@ -95,7 +94,7 @@ namespace SlickUWP.Canvas
                     {
                         canv.Visibility = Visibility.Collapsed;
                         canv.Tag = null;
-                        canv.Invalidate();
+                        //canv.Invalidate();
                     });
                 }
             }
