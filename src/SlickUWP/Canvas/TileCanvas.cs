@@ -35,9 +35,13 @@ namespace SlickUWP.Canvas
         [ThreadStatic]private static byte[] Green;
         [ThreadStatic]private static byte[] Blue;
 
+        /// <summary>Offset of canvas in real pixels</summary>
         public double X;
+        /// <summary>Offset of canvas in real pixels</summary>
         public double Y;
+        /// <summary>Centre of screen in real pixels</summary>
         private double _cx;
+        /// <summary>Centre of screen in real pixels</summary>
         private double _cy;
 
         private double _viewScale = 1.0;
@@ -155,7 +159,7 @@ namespace SlickUWP.Canvas
             // re-align what's left
             foreach (var kvp in _tileCache)
             {
-                var pos = VisualRectangle(kvp.Key);
+                var pos = VisualRectangleNative(kvp.Key);
                 if (kvp.Value == null) continue;
                 kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
                 kvp.Value.MoveTo(pos.X, pos.Y);
@@ -322,7 +326,8 @@ namespace SlickUWP.Canvas
 
             foreach (var key in positionKeys)
             {
-                var rect = VisualRectangle(key);
+                var rect = VisualRectangleNative(key);
+
                 if (!_tileCache.ContainsKey(key)) {
                     var newTile = new CachedTile(_displayContainer);
                     _tileCache.Add(key, newTile);
@@ -372,7 +377,7 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Returns true if any pixels were changed
         /// </summary>
-        private static bool AlphaMapImageToTile(RawImageInterleaved_UInt8 img, Quad rect, CachedTile tile, int imgDx, int imgDy, int srcX, int srcY)
+        private bool AlphaMapImageToTile(RawImageInterleaved_UInt8 img, Quad rect, ICachedTile tile, int imgDx, int imgDy, int srcX, int srcY)
         {
             // This needs to be improved
             var dst = tile?.GetTileData();
@@ -386,24 +391,24 @@ namespace SlickUWP.Canvas
 
             // start and end limits
             int x0 = Math.Max(-left, 0);
-            int x1 = Math.Min(img.Width - left, 256);
+            int x1 = Math.Min(img.Width - left, TileImageSize);
             int y0 = Math.Max(-top, 0);
-            int y1 = Math.Min(img.Height - top, 256);
+            int y1 = Math.Min(img.Height - top, TileImageSize);
 
             for (int y = y0; y < y1; y++)
             {
                 for (int x = x0; x < x1; x++)
                 {
                     var src_i = ((y + top) * img.Width * 4) + ((x + left) * 4); // offset into source raw image
-                    var dst_i = y * (256 * 4) + (x * 4); // offset into tile data
+                    var dst_i = y * (TileImageSize * 4) + (x * 4); // offset into tile data
 
                     if (dst_i < 0) continue;
                     if (src_i < 0) continue;
-                    if (dst_i >= dst.Length) continue;//return changed;
-                    if (src_i >= src.Length) continue;//return changed;
+                    if (dst_i >= dst.Length) continue;
+                    if (src_i >= src.Length) continue;
 
                     var srcAlpha = src[src_i + 3];
-                    if (srcAlpha < 5) continue;
+                    if (srcAlpha < 2) continue;
 
                     var newAlpha = srcAlpha / 255.0f;
                     var oldAlpha = 1.0f - newAlpha;
@@ -620,16 +625,13 @@ namespace SlickUWP.Canvas
         /// Convert a screen position to a canvas pixel
         /// </summary>
         [NotNull]public CanvasPixelPosition ScreenToCanvas(double x, double y) {
-            var cx = _cx;
-            var cy = _cy;
-            
             // distance from top-left at 100% zoom
             var dx = x / _viewScale;
             var dy = y / _viewScale;
 
             // extra offset due to zoom level
-            var ox = (cx / _viewScale) - cx;
-            var oy = (cy / _viewScale) - cy;
+            var ox = (_cx / _viewScale) - _cx;
+            var oy = (_cy / _viewScale) - _cy;
 
             // offset by current X,Y
             var qx = X + dx - ox;
@@ -639,6 +641,7 @@ namespace SlickUWP.Canvas
             var tx = Math.Floor(qx / TileImageSize);
             var ty = Math.Floor(qy / TileImageSize);
 
+            // Position inside the tile
             var ax = qx - (tx * TileImageSize);
             var ay = qy - (ty * TileImageSize);
             if (ax < 0) ax += TileImageSize;
@@ -650,6 +653,9 @@ namespace SlickUWP.Canvas
             };
         }
         
+        /// <summary>
+        /// Canvas to screen position. DOES NOT calculate for zoom
+        /// </summary>
         public void CanvasToScreen(PositionKey tilePos, out float x, out float y)
         {
             if (tilePos == null) {
@@ -657,19 +663,40 @@ namespace SlickUWP.Canvas
                 return;
             }
 
-            var displaySize = TileImageSize;
-            var offset_x = (int)X;// >> (_drawScale - 1);
-            var offset_y = (int)Y;// >> (_drawScale - 1);
-
-            x = (tilePos.X * displaySize) - offset_x;
-            y = (tilePos.Y * displaySize) - offset_y;
+            x = (tilePos.X * TileImageSize) - (int)X;
+            y = (tilePos.Y * TileImageSize) - (int)Y;
         }
 
+        /// <summary>
+        /// Calculate the visual rectange at native scale
+        /// </summary>
         [NotNull]
-        private Quad VisualRectangle(PositionKey tile)
+        private Quad VisualRectangleNative(PositionKey tile)
         {
             CanvasToScreen(tile, out var x, out var y);
             return new Quad((int)x, (int)y, TileImageSize, TileImageSize);
+        }
+
+        /// <summary>
+        /// Calculate the visual rectange at current zoom level
+        /// </summary>
+        [NotNull]
+        private Quad VisualRectangle([NotNull]PositionKey tile)
+        {
+            var x = (tile.X * TileImageSize) - (int)X;
+            var y = (tile.Y * TileImageSize) - (int)Y;
+
+            // distance from screen centre and scale
+            var dx = (x - _cx) * _viewScale;
+            var dy = (y - _cy) * _viewScale;
+
+            // recentre
+            x = (int) (_cx - dx);
+            y = (int) (_cy - dy);
+
+            var tis = (int)(TileImageSize * _viewScale);
+
+            return new Quad(x, y, tis, tis);
         }
 
         public int CurrentZoom()

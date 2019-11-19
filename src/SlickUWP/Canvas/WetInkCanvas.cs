@@ -98,7 +98,8 @@ namespace SlickUWP.Canvas
                 }
 
                 // TODO: minimise the size of the target here (currently full-screen)
-                using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), width, height, 96, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
+                using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), width, height, 96,
+                    DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
                 {
                     using (var ds = offscreen.CreateDrawingSession())
                     {

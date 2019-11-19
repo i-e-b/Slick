@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
@@ -39,24 +40,27 @@ namespace SlickUWP.Canvas
 
             // Need a new canvas
             var proxy = new CanvasControlAsyncProxy(container);
-            var ctrl = new CanvasControl
+            var targetTile = cachedTile;
+            container.Dispatcher?.RunAsync(CoreDispatcherPriority.High, () =>
             {
-                Margin = new Thickness(0.0),
-                Height = 256,
-                Width = 256,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
-                UseLayoutRounding = true
-            };
+                var ctrl = new CanvasControl
+                {
+                    Margin = new Thickness(0.0),
+                    Height = 256,
+                    Width = 256,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    UseLayoutRounding = true
+                };
 
-            proxy.QueueAction(canv =>
-            {
-                // We have a single common 'Draw' event hook and use context data to pump in image & state
-                canv.Draw += _drawHub.Draw;
-                canv.Invalidate();
+                proxy.QueueAction(canv =>
+                {
+                    // We have a single common 'Draw' event hook and use context data to pump in image & state
+                    canv.Draw += _drawHub.Draw;
+                    canv.Invalidate();
+                });
+                proxy.AttachToContainer(ctrl, container, targetTile);
             });
-            proxy.AttachToContainer(ctrl, container, cachedTile);
-
             return proxy;
         }
 
