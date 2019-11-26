@@ -86,11 +86,19 @@
         </Canvas>
 
         <!-- Grey -->
-        <Canvas HorizontalAlignment="Left" Height="144" Margin="488,80,0,0" VerticalAlignment="Top" Width="50">
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="543,80,0,0" VerticalAlignment="Top" Width="50">
             <Ellipse Height="18" Width="18" Fill="#FF9B9B9B" Stroke="White" Canvas.Left="16"/>
             <Ellipse Height="22" Width="22" Fill="#FF9B9B9B" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
             <Ellipse Height="30" Width="30" Fill="#FF9B9B9B" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
             <Ellipse Height="50" Width="50" Fill="#FF9B9B9B" Stroke="White" Canvas.Top="94"/>
+        </Canvas>
+
+        <!-- Deep blue -->
+        <Canvas HorizontalAlignment="Left" Height="144" Margin="598,80,0,0" VerticalAlignment="Top" Width="50">
+            <Ellipse Height="18" Width="18" Fill="#FF0000FF" Stroke="White" Canvas.Left="16"/>
+            <Ellipse Height="22" Width="22" Fill="#FF0000FF" Stroke="White" Canvas.Left="14" Canvas.Top="26"/>
+            <Ellipse Height="30" Width="30" Fill="#FF0000FF" Stroke="White" Canvas.Left="10" Canvas.Top="56"/>
+            <Ellipse Height="50" Width="50" Fill="#FF0000FF" Stroke="White" Canvas.Top="94"/>
         </Canvas>
 
 
