@@ -6,6 +6,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using Windows.ApplicationModel;
 using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
@@ -125,6 +126,8 @@ namespace SlickUWP
             _wetInk = new WetInkCanvas(wetInkCanvas ?? throw new Exception("Invalid page structure (2)"));
 
             _tileCanvas?.Invalidate();
+            
+            SetTitleBarString(Path.GetFileNameWithoutExtension(defaultFile));
         }
 
         /// <summary>
@@ -174,6 +177,7 @@ namespace SlickUWP
             _tileCanvas?.Invalidate();
         }
 
+
         private void UnprocessedInput_PointerPressed(InkUnprocessedInput sender, PointerEventArgs args)
         {
             if (args?.CurrentPoint == null || paletteView == null || _wetInk == null || _tileCanvas == null) return;
@@ -188,9 +192,6 @@ namespace SlickUWP
             _lastPressTimestamp = thisPoint.Timestamp;
             var tapTime = TimeSpan.FromMilliseconds(diff / 1000.0); // by guesswork
             var isDoubleTap = IsDoubleTap(args, tapTime, _lastPoint);
-
-            //var appView = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
-            //appView.Title = tapTime.TotalSeconds + " seconds";
 
             // Check for palette
             if (PaletteVisible) {
@@ -286,6 +287,29 @@ namespace SlickUWP
             }
         }
 
+        
+        private void SetTitleBarString(string text) {
+            try {
+                var appView = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
+                if (appView == null) return;
+                appView.Title = $"Slick {GetAppVersion()} - " + text;
+            }
+            catch {
+                // ignore
+            }
+        }
+
+        public static string GetAppVersion()
+        {
+            var package = Package.Current;
+            var packageId = package?.Id;
+            var version = packageId?.Version;
+
+            if (version == null) return "?";
+
+            return $"{version.Value.Major}.{version.Value.Minor}.{version.Value.Build}.{version.Value.Revision}";
+        }
+
         /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
         [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
         private volatile bool _processingPointer = false;
@@ -341,6 +365,7 @@ namespace SlickUWP
 
             var newStore = await LoadTileStore(file.Path);
             if (newStore == null) return;
+            SetTitleBarString(file.DisplayName);
 
             _tileStore?.Dispose();
             _tileStore = newStore;
