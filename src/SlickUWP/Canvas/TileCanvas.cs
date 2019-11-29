@@ -302,6 +302,172 @@ namespace SlickUWP.Canvas
         }
 
         /// <summary>
+        /// Draw an entire image onto the canvas, scaled to fit in the given rectangle.
+        /// Expects screen-space co-ordinates
+        /// </summary>
+        public void ImportBytesScaled(RawImageInterleaved_UInt8 img, int left, int top, int right, int bottom) {
+            if (img == null) return;
+            if (left >= right || top >= bottom) return;
+
+            var tl = ScreenToCanvas(left, top);
+            var br = ScreenToCanvas(right, bottom);
+
+            var tileLeft = tl.TilePosition?.X ?? throw new Exception("Invalid tile calculation");
+            var tileTop = tl.TilePosition.Y;
+            var tileRight = br.TilePosition?.X ?? throw new Exception("Invalid tile calculation");
+            var tileBottom = br.TilePosition.Y;
+
+            double targetNativeTop = ((double)tileTop * TileImageSize) + tl.Y;
+            double targetNativeBottom = ((double)tileBottom * TileImageSize) + br.Y;
+            double targetNativeLeft = ((double)tileLeft * TileImageSize) + tl.X;
+            double targetNativeRight = ((double)tileRight * TileImageSize) + br.X;
+
+            double scale_x = img.Width / (targetNativeRight - targetNativeLeft);
+            double scale_y = img.Height / (targetNativeBottom - targetNativeTop);
+
+            // scan through the tiles we cover, and scale segments to fit.
+            for (int ty = tileTop; ty <= tileBottom; ty++)
+            {
+                // see if we're at the top or bottom of the tiles covered
+                var localNativeTop = (double)ty*TileImageSize;
+                var localNativeBottom = ((double)ty + 1) * TileImageSize;
+                int tgtTop = (localNativeTop < targetNativeTop) ? (int)tl.Y : 0;
+                int tgtHeight = (localNativeBottom > targetNativeBottom) ? (int)br.Y : TileImageSize;
+                tgtHeight -= tgtTop;
+
+                for (int tx = tileLeft; tx <= tileRight; tx++)
+                {
+                    // see if we're at the left or right of the tiles covered
+                    var localNativeLeft = (double)tx * TileImageSize;
+                    var localNativeRight = ((double)tx + 1) * TileImageSize;
+                    int tgtLeft = (localNativeLeft < targetNativeLeft) ? (int)tl.X : 0;
+                    int tgtWidth = (localNativeRight > targetNativeRight) ? (int)br.X : TileImageSize;
+                    tgtWidth -= tgtLeft;
+
+                    // calculate what area of the image to use
+                    var imgLeft = (localNativeLeft - targetNativeLeft) * scale_x;
+                    var imgTop = (localNativeTop - targetNativeTop) * scale_y;
+                    if (imgLeft < 0) imgLeft = 0;
+                    if (imgTop < 0) imgTop = 0;
+
+                    // Ensure the tile is ready to be drawn on:
+                    var key = new PositionKey(tx, ty);
+                    var ok = PrepareTileForDraw(key, out var tile);
+                    if (!ok) continue;
+
+                    var changed = AlphaMapImageToTileScaled(img, tile,
+                            imageArea: new Quad(imgLeft, imgTop, tgtWidth * scale_x, tgtHeight * scale_y),
+                            tileArea: new Quad(tgtLeft, tgtTop, tgtWidth, tgtHeight)
+                        );
+
+                    if (changed) {
+                        _lastChangedTiles.Add(key);
+                        tile.Invalidate();
+                        tile.SetState(TileState.Ready);
+                        ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
+                    }
+                }
+            }
+        }
+
+        private bool PrepareTileForDraw([NotNull]PositionKey key, out CachedTile tile)
+        {
+            if (!_tileCache.ContainsKey(key))
+            {
+                var newTile = new CachedTile(_displayContainer);
+                newTile.AllocateEmptyImage();
+                _tileCache.Add(key, newTile);
+            }
+
+            tile = _tileCache[key];
+            if (tile == null) return false; // should never happen
+            if (tile.State == TileState.Locked) return false;
+
+            var dst = tile.GetTileData();
+            if (dst == null)
+            {
+                tile.AllocateEmptyImage();
+                dst = tile.GetTileData();
+            }
+
+            if (dst == null) throw new Exception("Tile data is missing, even after allocation");
+            return true;
+        }
+
+        /// <summary>
+        /// Write an image onto a tile, with transparency.
+        /// Returns true if any pixels were changed.
+        /// `tileArea` is in tile space. `imageArea` is in image space.
+        /// </summary>
+        private bool AlphaMapImageToTileScaled(RawImageInterleaved_UInt8 img, ICachedTile tile, Quad imageArea, Quad tileArea)
+        {
+            // This needs to be improved
+            var dst = tile?.GetTileData();
+            var src = img?.Data;
+            if (src == null || dst == null || imageArea == null || tileArea == null) return false;
+            if (img.Width < 1 || img.Height < 1) return false;
+
+            bool changed = false;
+
+            // start and end limits on tile
+            int x0 = Math.Max(tileArea.X, 0);
+            int x1 = Math.Min(tileArea.X + tileArea.Width, TileImageSize);
+            int y0 = Math.Max(tileArea.Y, 0);
+            int y1 = Math.Min(tileArea.Y + tileArea.Height, TileImageSize);
+
+            int dst_width = x1 - x0;
+            int dst_height = y1 - y0;
+            if (dst_width < 1 || dst_height < 1) return false;
+
+            double scale_x = imageArea.Width / (double)dst_width;
+            double scale_y = imageArea.Height / (double)dst_height;
+            var imgyo = imageArea.Y;
+            var imgxo = imageArea.X;
+
+            for (int y = y0; y < y1; y++)
+            {
+                var img_yi = y - y0;
+                var src_yi = (int)((img_yi + imgyo) * scale_y) * (img.Width * 4);
+
+                for (int x = x0; x < x1; x++)
+                {
+                    var img_xi = x - x0;
+                    var src_xi = (int)((img_xi + imgxo) * scale_x) * 4;
+
+                    var src_i = src_yi + src_xi; // offset into source raw image
+                    var dst_i = y * (TileImageSize * 4) + (x * 4); // offset into tile data
+
+                    if (dst_i < 0) continue;
+                    if (src_i < 0) continue;
+                    if (dst_i >= dst.Length) continue;
+                    if (src_i >= src.Length) continue;
+
+                    var srcAlpha = src[src_i + 3];
+                    if (srcAlpha < 2) continue; // threshold for alpha
+
+                    var newAlpha = srcAlpha / 255.0f;
+                    var oldAlpha = 1.0f - newAlpha;
+
+                    // Alpha blend over existing color
+                    // This for plain alpha:
+                    //dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0] * newAlpha));
+                    //dst[dst_i + 1] = Clip((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1] * newAlpha));
+                    //dst[dst_i + 2] = Clip((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2] * newAlpha));
+
+                    // This for pre-multiplied alpha
+                    dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + src[src_i + 0]);
+                    dst[dst_i + 1] = Clip((dst[dst_i + 1] * oldAlpha) + src[src_i + 1]);
+                    dst[dst_i + 2] = Clip((dst[dst_i + 2] * oldAlpha) + src[src_i + 2]);
+                    dst[dst_i + 3] = 255; // tile alpha is always 100%
+
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+
+
+        /// <summary>
         /// Draw an image into the tile canvas (committing to storage).
         /// The base position is the visible area of the Display Container.
         /// </summary>

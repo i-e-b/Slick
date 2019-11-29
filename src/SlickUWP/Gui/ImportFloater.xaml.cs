@@ -75,9 +75,6 @@ namespace SlickUWP.Gui
             rtb = new RenderTargetBitmap();
             await rtb.RenderAsync(ImageToImport, (int)(expectedWidth * scaleW), (int)(expectedHeight * scaleH)).NotNull(); // Render control to RenderTargetBitmap
 
-            expectedWidth = (int)(expectedWidth * scaleW);
-            expectedHeight = (int)(expectedHeight * scaleH);
-
             // get pixels from RTB
             var pixelBuffer = await rtb.GetPixelsAsync().NotNull(); // BGRA 8888 format
             var rawImage = new RawImageInterleaved_UInt8{
@@ -89,7 +86,9 @@ namespace SlickUWP.Gui
             // render to canvas
             int left = (int)(Margin.Left);
             int top = (int)(Margin.Top);
-            _canvas.ImportBytes(rawImage, left, top, expectedWidth, expectedHeight, 0, 0);
+            int right = left + (int)Width;
+            int bottom = top + (int)Height;
+            _canvas.ImportBytesScaled(rawImage, left, top, right, bottom);
 
             // ReSharper disable RedundantAssignment
             pixelBuffer = null;

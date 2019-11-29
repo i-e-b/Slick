@@ -34,8 +34,8 @@ namespace SlickUWP.Canvas
             UiCanvas = Win2dCanvasPool.Employ(container, this);
             UiCanvas.QueueAction(canv =>
             {
+                if (canv == null) return;
                 canv.RenderTransform = new TranslateTransform { X = _x, Y = _y };
-                //canv.Invalidate();
             });
         }
 

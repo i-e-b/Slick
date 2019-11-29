@@ -11,5 +11,10 @@
         public int Height;
 
         public Quad(int x, int y, int width, int height) { X = x; Y = y; Width = width; Height = height; }
+
+        /// <summary>
+        /// Precision loss from double to int
+        /// </summary>
+        public Quad(double x, double y, double width, double height) { X = (int)x; Y = (int)y; Width = (int)width; Height = (int)height; }
     }
 }
