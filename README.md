@@ -21,7 +21,7 @@ Immediate next steps:
 * [x] Select region and export
 * [x] Typing onto the canvas (floating tool & merge, like image import)
 * [x] Importing images onto the canvas
-  * [ ] Import on scaled canvas
+  * [x] Import on scaled canvas
 * [x] Fix the drawing-over-tile-edge issue
 * [ ] Hilighting ink
 * [ ] Separate log and DB writer thread (to eliminate pauses)

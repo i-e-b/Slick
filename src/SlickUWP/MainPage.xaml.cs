@@ -317,16 +317,16 @@ namespace SlickUWP
         private async Task MoveCanvas([NotNull]PointerEventArgs args)
         {
             var thisPoint = args.CurrentPoint;
-            if (thisPoint == null) return;
+            if (thisPoint == null || _tileCanvas == null) return;
 
             if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 10) return;
-            moveSw.Restart();
 
             var thresh = _tileCanvas.CurrentZoom();
             var dx = _lastPoint.X - thisPoint.Position.X;
             var dy = _lastPoint.Y - thisPoint.Position.Y;
             if (Math.Abs(dx) < thresh && Math.Abs(dy) < thresh) return;
 
+            moveSw.Restart();
             _tileCanvas?.Scroll(dx, dy);
             _lastPoint = thisPoint.Position;
 
@@ -340,16 +340,8 @@ namespace SlickUWP
             if (pinsView != null) pinsView.Opacity = 0.0;
             if (paletteView != null) paletteView.Opacity = 0.0;
 
-            // Open picker doesn't let you add new files
-            /*var picker2 = new Windows.Storage.Pickers.FileOpenPicker();
-            picker2.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
-            picker2.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
-            picker2.FileTypeFilter?.Add(".slick");
-            */
-
             // Save picker won't pick existing files without prompting for overwrite
-            var picker = new Windows.Storage.Pickers.FileSavePicker();
-            picker.CommitButtonText = "Select";
+            var picker = new Windows.Storage.Pickers.FileSavePicker {CommitButtonText = "Select"};
             picker.FileTypeChoices?.Add("Slick files", new[] { ".slick" });
 
 
