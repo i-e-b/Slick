@@ -44,7 +44,7 @@ namespace SlickUWP.Canvas
         /// <summary>Centre of screen in real pixels</summary>
         private double _cy;
 
-        private double _viewScale = 1.0;
+        private double _viewScale = 1.1;
 
         private volatile bool _inReflow = false;
         
@@ -201,6 +201,9 @@ namespace SlickUWP.Canvas
             var tlLoc = ScreenToCanvas(dx, dy);
             var brLoc = ScreenToCanvas(dx + width, dy + height);
 
+            if (double.IsNaN(tlLoc.X) || double.IsNaN(brLoc.X))
+                throw new Exception("ScreenToCanvas gave an invalid result");
+
             var result = new List<PositionKey>();
             var tlPos = tlLoc.TilePosition ?? throw new Exception("TL tile position lookup failed");
             var brPos = brLoc.TilePosition ?? throw new Exception("BR tile position lookup failed");
@@ -222,11 +225,6 @@ namespace SlickUWP.Canvas
             X += dx / _viewScale;
             Y += dy / _viewScale;
 
-            // lock to approximate visual pixels
-            var z = (int)CurrentZoom();
-            X -= X % z;
-            Y -= Y % z;
-
             Invalidate();
         }
 
@@ -244,21 +242,48 @@ namespace SlickUWP.Canvas
         /// Rotate through scaling options
         /// </summary>
         public int SwitchScale() {
-            //_viewScale /= 2;
-            _viewScale -= 0.1;
+            _viewScale /= 2;
+            //_viewScale -= 0.1;
             if (_viewScale < 0.249) _viewScale = 1.0;
 
-            _displayContainer.RenderTransform = new ScaleTransform
-            {
-                CenterX = (int)(_displayContainer.ActualWidth / 2),
-                CenterY = (int)(_displayContainer.ActualHeight / 2),
-                ScaleX = _viewScale,
-                ScaleY = _viewScale
-            };
+            UpdateViewScale();
 
             Invalidate();
 
             return (int)(1 / _viewScale);
+        }
+
+        private void UpdateViewScale()
+        {
+            _displayContainer.RenderTransform = new ScaleTransform
+            {
+                CenterX = (int) (_displayContainer.ActualWidth / 2),
+                CenterY = (int) (_displayContainer.ActualHeight / 2),
+                ScaleX = _viewScale,
+                ScaleY = _viewScale
+            };
+        }
+
+        private readonly object _scaleLock = new object();
+
+        /// <summary>
+        /// Change scale by a fractional amount.
+        /// This is restricted in range
+        /// </summary>
+        public void DeltaScale(double deltaScale)
+        {
+            lock (_scaleLock)
+            {
+                if (Math.Abs(1 - deltaScale) < 0.001) return;
+                var target = _viewScale;
+
+                target += deltaScale - 1.0f;
+                if (target > 2.0) target = 2.0;
+                if (target < 0.5) target = 0.5;
+
+                _viewScale = target;
+                UpdateViewScale();
+            }
         }
 
         /// <summary>
@@ -334,8 +359,8 @@ namespace SlickUWP.Canvas
                 // see if we're at the top or bottom of the tiles covered
                 var localNativeTop = (double)ty*TileImageSize;
                 var localNativeBottom = ((double)ty + 1) * TileImageSize;
-                int tgtTop = (localNativeTop < targetNativeTop) ? (int)tl.Y : 0;
-                int tgtHeight = (localNativeBottom > targetNativeBottom) ? (int)br.Y : TileImageSize;
+                var tgtTop = (localNativeTop < targetNativeTop) ? tl.Y : 0;
+                var tgtHeight = (localNativeBottom > targetNativeBottom) ? br.Y : TileImageSize;
                 tgtHeight -= tgtTop;
 
                 for (int tx = tileLeft; tx <= tileRight; tx++)
@@ -343,8 +368,8 @@ namespace SlickUWP.Canvas
                     // see if we're at the left or right of the tiles covered
                     var localNativeLeft = (double)tx * TileImageSize;
                     var localNativeRight = ((double)tx + 1) * TileImageSize;
-                    int tgtLeft = (localNativeLeft < targetNativeLeft) ? (int)tl.X : 0;
-                    int tgtWidth = (localNativeRight > targetNativeRight) ? (int)br.X : TileImageSize;
+                    var tgtLeft = (localNativeLeft < targetNativeLeft) ? tl.X : 0;
+                    var tgtWidth = (localNativeRight > targetNativeRight) ? br.X : TileImageSize;
                     tgtWidth -= tgtLeft;
 
                     // calculate what area of the image to use
@@ -427,40 +452,45 @@ namespace SlickUWP.Canvas
             double scale_x = imageArea.Width / dst_width;
             double scale_y = imageArea.Height / dst_height;
 
-            // minor scale pin
-            //if (Math.Abs(1.0 - scale_x) < 0.1) scale_x = 1;
-            //if (Math.Abs(1.0 - scale_y) < 0.1) scale_y = 1;
-
             var imgyo = imageArea.Y;
             var imgxo = imageArea.X;
 
             for (int y = y0; y < y1; y++)
             {
                 var img_yi = y - y0;
-                var src_yi_hi = (int)Math.Ceiling((img_yi + imgyo) * scale_y) * (img.Width * 4);
-                var src_yi_lo = (int)Math.Floor((img_yi + imgyo) * scale_y) * (img.Width * 4);
+                var src_yi = (int)Math.Round((img_yi + imgyo) * scale_y) * (img.Width * 4);
+
+                // TODO: pre-calc an AA line from two.
 
                 for (int x = x0; x < x1; x++)
                 {
                     var img_xi = x - x0;
-                    var src_xi_hi = (int)Math.Ceiling((img_xi + imgxo) * scale_x) * 4;
-                    var src_xi_lo = (int)Math.Floor((img_xi + imgxo) * scale_x) * 4;
 
-                    var src_i_1 = Range(0, src_yi_lo + src_xi_lo, src.Length - 4); // offset into source raw image
-                    var src_i_2 = Range(0, src_yi_lo + src_xi_hi, src.Length - 4); // takes a 4 sample antialias (very rough)
-                    var src_i_3 = Range(0, src_yi_hi + src_xi_lo, src.Length - 4);
-                    var src_i_4 = Range(0, src_yi_hi + src_xi_hi, src.Length - 4);
+                    // Measure AA
+                    var xoff_f = Range(0.0, (img_xi * scale_x) + imgxo, img.Width);
+                    var xoff = (int)xoff_f;
+                    int mul = 255;
+                    int imul = 0;
+                    if (Math.Abs(scale_x - 1) > 0.01) {
+                        double x_frac = xoff_f - xoff;
+                        imul = (int)(255 * x_frac);
+                        mul = 255 - mul;
+                    }
 
+                    var src_xi = xoff * 4;
+
+                    var src_i = Range(0, src_yi + src_xi, src.Length - 4); // offset into source raw image
+                    var src_i2 = Range(0, src_yi + src_xi + 4, src.Length - 4);
                     var dst_i = y * (TileImageSize * 4) + (x * 4); // offset into tile data
                     if (dst_i < 0) continue;
                     if (dst_i >= dst.Length) continue;
 
                     // Take source samples and do AA
-                    var srcAlpha = (src[src_i_1 + 3] + src[src_i_2 + 3] + src[src_i_3 + 3] + src[src_i_4 + 3]) >> 2;
+                    var srcAlpha = ((src[src_i + 3] * mul) + (src[src_i2 + 3] * imul)) >> 8;
                     if (srcAlpha < 2) continue; // threshold for alpha
-                    var srcB     = (src[src_i_1 + 0] + src[src_i_2 + 0] + src[src_i_3 + 0] + src[src_i_4 + 0]) >> 2;
-                    var srcG     = (src[src_i_1 + 1] + src[src_i_2 + 1] + src[src_i_3 + 1] + src[src_i_4 + 1]) >> 2;
-                    var srcR     = (src[src_i_1 + 2] + src[src_i_2 + 2] + src[src_i_3 + 2] + src[src_i_4 + 2]) >> 2;
+                    var srcB = ((src[src_i + 0] * mul) + (src[src_i2 + 0] * imul)) >> 8;
+                    var srcG = ((src[src_i + 1] * mul) + (src[src_i2 + 1] * imul)) >> 8;
+                    var srcR = ((src[src_i + 2] * mul) + (src[src_i2 + 2] * imul)) >> 8;
 
                     var newAlpha = srcAlpha / 255.0f;
                     var oldAlpha = 1.0f - newAlpha;
@@ -484,6 +514,12 @@ namespace SlickUWP.Canvas
         }
 
         private int Range(int low, int value, int high)
+        {
+            if (value > high) return high;
+            if (value < low) return low;
+            return value;
+        }
+        private double Range(double low, double value, double high)
         {
             if (value > high) return high;
             if (value < low) return low;
@@ -815,6 +851,9 @@ namespace SlickUWP.Canvas
         /// Convert a screen position to a canvas pixel
         /// </summary>
         [NotNull]public CanvasPixelPosition ScreenToCanvas(double x, double y) {
+            if (_viewScale < 0.01)
+                throw new Exception("Invalid view scale!");
+
             // distance from top-left at 100% zoom
             var dx = x / _viewScale;
             var dy = y / _viewScale;

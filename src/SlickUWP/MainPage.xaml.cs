@@ -107,7 +107,7 @@ namespace SlickUWP
             ip.InputConfiguration.IsEraserInputEnabled = true;
             ip.InputConfiguration.IsPrimaryBarrelButtonInputEnabled = true;
 
-            ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse | CoreInputDeviceTypes.Touch | CoreInputDeviceTypes.Pen;
+            ip.InputDeviceTypes = CoreInputDeviceTypes.Mouse /*| CoreInputDeviceTypes.Touch*/ | CoreInputDeviceTypes.Pen;
             ip.IsInputEnabled = true;
 
             paletteView.Opacity = 0.0; // 1.0 is 100%, 0.0 is 0%
@@ -507,6 +507,29 @@ namespace SlickUWP
             // Show the floating importer
             ImageImportFloater.Margin = new Thickness(128, 128, 0, 0);
             ImageImportFloater.Visibility = Visibility.Visible;
+        }
+
+        private void windowGrid_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
+        {
+            // do scaling here
+            /*if (e == null) return;
+            _tileCanvas.DeltaScale(e.Delta.Scale);
+            _tileCanvas.Invalidate();*/
+        }
+
+        private void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
+        {
+            //????
+            if (e == null || _tileCanvas == null) return;
+            _tileCanvas.DeltaScale(e.Delta.Scale);
+            _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
+            //e.Complete();
+            _tileCanvas.Invalidate();
+        }
+
+        private void baseInkCanvas_ManipulationCompleted(object sender, Windows.UI.Xaml.Input.ManipulationCompletedRoutedEventArgs e)
+        {
+            //?
         }
     }
 }

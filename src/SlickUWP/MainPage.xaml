@@ -10,7 +10,7 @@
     mc:Ignorable="d"
      Background="#FFffffff" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded" PreviewKeyDown="Page_PreviewKeyDown" PreviewKeyUp="Page_PreviewKeyUp">
 
-    <Grid x:Name="windowGrid">
+    <Grid x:Name="windowGrid" ManipulationMode="None">
 
         <!-- `renderLayer` holds the individual visible tiles to be composed. This is entirely handled in code. -->
         <Grid x:Name="renderLayer" d:IsLocked="True"/>
@@ -22,7 +22,7 @@
         <Custom1:CornerPalette x:Name="paletteView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0" d:IsLocked="True" />
 
         <!-- The ink canvas records input, and sits over all canvas controls -->
-        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="None" IsDoubleTapEnabled="False" IsHoldingEnabled="False" IsRightTapEnabled="False" IsTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" d:IsLocked="True"/>
+        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="All" IsDoubleTapEnabled="False" IsHoldingEnabled="False" IsRightTapEnabled="False" IsTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" ManipulationDelta="baseInkCanvas_ManipulationDelta" ManipulationCompleted="baseInkCanvas_ManipulationCompleted"/>
 
         <!-- The Pins overlay is for managing hot-spots on the canvas. It sits over the ink layer and uses normal XAML input -->
         <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch" Visibility="Collapsed"/>

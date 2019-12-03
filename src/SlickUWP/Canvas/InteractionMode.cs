@@ -23,6 +23,11 @@
         PalettePicker,
 
         /// <summary>
+        /// Input consists of multiple points, and should scale the canvas
+        /// </summary>
+        PinchScale,
+
+        /// <summary>
         /// Input should be used to select tiles
         /// </summary>
         SelectTiles

@@ -108,7 +108,7 @@ namespace SlickUWP.Canvas
                     using (var ds = offscreen.CreateDrawingSession())
                     {
                         ds?.Clear(Colors.Transparent);
-                        coverage = DrawToSession(ds, strokeToRender, clipRegion, tileCanvas.CurrentZoom());
+                        DrawToSession(ds, strokeToRender, clipRegion, tileCanvas.CurrentZoom());
                     }
                     bytes = offscreen.GetPixelBytes();
                 }
@@ -116,11 +116,18 @@ namespace SlickUWP.Canvas
                 // render into tile cache
                 // TEST: cropping and using the scaled write
                 var uncropped = new RawImageInterleaved_UInt8{
-                    Data = bytes, Height = (int)Math.Ceiling(clipRegion.Height), Width = (int)Math.Ceiling(clipRegion.Width)
+                    Data = bytes,
+                    Width = pixelWidth,
+                    Height = pixelHeight
                 };
-                var visualWidth = (int)(pixelWidth / tileCanvas.CurrentZoom());
-                var visualHeight = (int)(pixelHeight / tileCanvas.CurrentZoom());
-                var success = tileCanvas.ImportBytesScaled(uncropped, (int)clipRegion.X, (int)clipRegion.Y, (int) (clipRegion.X + visualWidth), (int) (clipRegion.Y + visualHeight));
+
+                var visualWidth = (int)Math.Ceiling(pixelWidth / tileCanvas.CurrentZoom());
+                var visualHeight = (int)Math.Ceiling(pixelHeight / tileCanvas.CurrentZoom());
+                var visualTop = (int)Math.Round(clipRegion.Y);
+                var visualLeft = (int)Math.Round(clipRegion.X);
+                var visualRight = visualLeft + visualWidth;
+                var visualBottom = visualTop + visualHeight;
+                var success = tileCanvas.ImportBytesScaled(uncropped, visualLeft, visualTop, visualRight, visualBottom);
 
                 
                 _renderTarget.Invalidate();
@@ -229,7 +236,6 @@ namespace SlickUWP.Canvas
             var clipRegion = new Quad(0,0,0,0);
             try
             {
-                // TODO: merge this with render to reduce duplication
                 var pts = strokeToRender;
                 if (pts == null || pts.Length < 1) return clipRegion;
 
@@ -261,10 +267,10 @@ namespace SlickUWP.Canvas
                 if (stroke == null) throw new Exception("Stroke creation failed");
 
                 var bounds = stroke.BoundingRect;
-                clipRegion.X = (int) minX;
-                clipRegion.Y = (int) minY;
-                clipRegion.Width = (int)(bounds.Width + (2 * size));
-                clipRegion.Height = (int)(bounds.Height + (2 * size));
+                clipRegion.X = (int)minX - (2 * size);
+                clipRegion.Y = (int)minY - (2 * size);
+                clipRegion.Width = (int)(bounds.Width + (4 * size));
+                clipRegion.Height = (int)(bounds.Height + (4 * size));
             }
             catch (Exception ex)
             {
@@ -274,16 +280,12 @@ namespace SlickUWP.Canvas
             return clipRegion;
         }
 
-
-        [NotNull]
-        private Quad DrawToSession(CanvasDrawingSession g, DPoint[] strokeToRender, [NotNull]Quad clipRegion, double zoom)
+        private void DrawToSession([CanBeNull]CanvasDrawingSession g, DPoint[] strokeToRender, [NotNull]Quad clipRegion, double zoom)
         {
-            var coverage = new Quad(0,0,0,0);
-            if (g == null) return coverage;
             try
             {
                 var pts = strokeToRender;
-                if (pts == null || pts.Length < 1) return coverage;
+                if (pts == null || pts.Length < 1) return;
 
                 // using the ink infrastructure for drawing...
                 var strokes = new List<InkStroke>();
@@ -310,21 +312,12 @@ namespace SlickUWP.Canvas
                 var stroke = s.CreateInkStroke();
                 if (stroke == null) throw new Exception("Stroke creation failed");
                 strokes.Add(stroke);
-
-                var bounds = stroke.BoundingRect;
-                coverage.X = (int)bounds.X - 1;
-                coverage.Y = (int)bounds.Y - 1;
-                coverage.Width = (int)bounds.Width + 2;
-                coverage.Height = (int)bounds.Height + 2;
-
-                g.DrawInk(strokes);
+                g?.DrawInk(strokes);
             }
             catch (Exception ex)
             {
                 Logging.WriteLogMessage(ex.ToString());
             }
-
-            return coverage;
         }
 
         public void SetPenSize(PointerPoint pointer, double size)
