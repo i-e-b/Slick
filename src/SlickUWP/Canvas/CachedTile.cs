@@ -21,7 +21,7 @@ namespace SlickUWP.Canvas
         public bool IsSelected = false;
 
         private byte[] RawImageData;
-        private float _x, _y;
+        private double _x, _y;
         private volatile bool _detached = false;
 
         public const int ByteSize = 256 * 256 * 4;
@@ -139,7 +139,7 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Position this tile (in viewport coordinates)
         /// </summary>
-        public void MoveTo(float x, float y)
+        public void MoveTo(double x, double y)
         {
             if ((int)_x == (int)x && (int)_y == (int)y) return;
             _x = x;

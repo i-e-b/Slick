@@ -222,7 +222,7 @@ namespace SlickUWP
             }
 
             // Don't allow drawing when zoomed out
-            if (_tileCanvas.CurrentZoom() != 1) {
+            if ((int)_tileCanvas.CurrentZoom() != 1) {
                 if (isDoubleTap) {
                     _tileCanvas?.CentreAndZoom(thisPoint.Position.X, thisPoint.Position.Y);
                     SetCorrectZoomControlText();
@@ -374,7 +374,7 @@ namespace SlickUWP
 
         private void SetCorrectZoomControlText()
         {
-            if (mapModeButton != null) mapModeButton.Content = (_tileCanvas?.CurrentZoom() == 4) ? "Canvas" : "Map";
+            if (mapModeButton != null) mapModeButton.Content = (_tileCanvas?.CurrentZoom() > 3) ? "Canvas" : "Map";
         }
 
         private void UndoButton_Click(object sender, RoutedEventArgs e)

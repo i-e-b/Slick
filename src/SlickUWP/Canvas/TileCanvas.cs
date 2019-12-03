@@ -223,7 +223,7 @@ namespace SlickUWP.Canvas
             Y += dy / _viewScale;
 
             // lock to approximate visual pixels
-            var z = CurrentZoom();
+            var z = (int)CurrentZoom();
             X -= X % z;
             Y -= Y % z;
 
@@ -244,7 +244,8 @@ namespace SlickUWP.Canvas
         /// Rotate through scaling options
         /// </summary>
         public int SwitchScale() {
-            _viewScale /= 2;
+            //_viewScale /= 2;
+            _viewScale -= 0.1;
             if (_viewScale < 0.249) _viewScale = 1.0;
 
             _displayContainer.RenderTransform = new ScaleTransform
@@ -303,11 +304,13 @@ namespace SlickUWP.Canvas
 
         /// <summary>
         /// Draw an entire image onto the canvas, scaled to fit in the given rectangle.
-        /// Expects screen-space co-ordinates
+        /// Expects screen-space co-ordinates.
+        /// <para></para>
+        /// Returns false if any of the tiles couldn't be written to
         /// </summary>
-        public void ImportBytesScaled(RawImageInterleaved_UInt8 img, int left, int top, int right, int bottom) {
-            if (img == null) return;
-            if (left >= right || top >= bottom) return;
+        public bool ImportBytesScaled(RawImageInterleaved_UInt8 img, int left, int top, int right, int bottom) {
+            if (img == null) return false;
+            if (left >= right || top >= bottom) return true;
 
             var tl = ScreenToCanvas(left, top);
             var br = ScreenToCanvas(right, bottom);
@@ -345,15 +348,15 @@ namespace SlickUWP.Canvas
                     tgtWidth -= tgtLeft;
 
                     // calculate what area of the image to use
-                    var imgLeft = (localNativeLeft - targetNativeLeft) * scale_x;
-                    var imgTop = (localNativeTop - targetNativeTop) * scale_y;
+                    var imgLeft = localNativeLeft - targetNativeLeft;
+                    var imgTop = localNativeTop - targetNativeTop;
                     if (imgLeft < 0) imgLeft = 0;
                     if (imgTop < 0) imgTop = 0;
 
                     // Ensure the tile is ready to be drawn on:
                     var key = new PositionKey(tx, ty);
                     var ok = PrepareTileForDraw(key, out var tile);
-                    if (!ok) continue;
+                    if (!ok) return false;
 
                     var changed = AlphaMapImageToTileScaled(img, tile,
                             imageArea: new Quad(imgLeft, imgTop, tgtWidth * scale_x, tgtHeight * scale_y),
@@ -368,6 +371,7 @@ namespace SlickUWP.Canvas
                     }
                 }
             }
+            return true;
         }
 
         private bool PrepareTileForDraw([NotNull]PositionKey key, out CachedTile tile)
@@ -399,6 +403,7 @@ namespace SlickUWP.Canvas
         /// Returns true if any pixels were changed.
         /// `tileArea` is in tile space. `imageArea` is in image space.
         /// </summary>
+        /// <remarks>The scaling here is really poor. It's much better to keep the image size correct</remarks>
         private bool AlphaMapImageToTileScaled(RawImageInterleaved_UInt8 img, ICachedTile tile, Quad imageArea, Quad tileArea)
         {
             // This needs to be improved
@@ -410,40 +415,52 @@ namespace SlickUWP.Canvas
             bool changed = false;
 
             // start and end limits on tile
-            int x0 = Math.Max(tileArea.X, 0);
-            int x1 = Math.Min(tileArea.X + tileArea.Width, TileImageSize);
-            int y0 = Math.Max(tileArea.Y, 0);
-            int y1 = Math.Min(tileArea.Y + tileArea.Height, TileImageSize);
+            int x0 = (int)Math.Max(tileArea.X, 0);
+            int x1 = (int)Math.Min(tileArea.X + tileArea.Width, TileImageSize);
+            int y0 = (int)Math.Max(tileArea.Y, 0);
+            int y1 = (int)Math.Min(tileArea.Y + tileArea.Height, TileImageSize);
 
             int dst_width = x1 - x0;
             int dst_height = y1 - y0;
             if (dst_width < 1 || dst_height < 1) return false;
 
-            double scale_x = imageArea.Width / (double)dst_width;
-            double scale_y = imageArea.Height / (double)dst_height;
+            double scale_x = imageArea.Width / dst_width;
+            double scale_y = imageArea.Height / dst_height;
+
+            // minor scale pin
+            //if (Math.Abs(1.0 - scale_x) < 0.1) scale_x = 1;
+            //if (Math.Abs(1.0 - scale_y) < 0.1) scale_y = 1;
+
             var imgyo = imageArea.Y;
             var imgxo = imageArea.X;
 
             for (int y = y0; y < y1; y++)
             {
                 var img_yi = y - y0;
-                var src_yi = (int)((img_yi + imgyo) * scale_y) * (img.Width * 4);
+                var src_yi_hi = (int)Math.Ceiling((img_yi + imgyo) * scale_y) * (img.Width * 4);
+                var src_yi_lo = (int)Math.Floor((img_yi + imgyo) * scale_y) * (img.Width * 4);
 
                 for (int x = x0; x < x1; x++)
                 {
                     var img_xi = x - x0;
-                    var src_xi = (int)((img_xi + imgxo) * scale_x) * 4;
+                    var src_xi_hi = (int)Math.Ceiling((img_xi + imgxo) * scale_x) * 4;
+                    var src_xi_lo = (int)Math.Floor((img_xi + imgxo) * scale_x) * 4;
 
-                    var src_i = src_yi + src_xi; // offset into source raw image
+                    var src_i_1 = Range(0, src_yi_lo + src_xi_lo, src.Length - 4); // offset into source raw image
+                    var src_i_2 = Range(0, src_yi_lo + src_xi_hi, src.Length - 4); // takes a 4 sample antialias (very rough)
+                    var src_i_3 = Range(0, src_yi_hi + src_xi_lo, src.Length - 4);
+                    var src_i_4 = Range(0, src_yi_hi + src_xi_hi, src.Length - 4);
+
                     var dst_i = y * (TileImageSize * 4) + (x * 4); // offset into tile data
-
                     if (dst_i < 0) continue;
-                    if (src_i < 0) continue;
                     if (dst_i >= dst.Length) continue;
-                    if (src_i >= src.Length) continue;
 
-                    var srcAlpha = src[src_i + 3];
+                    // Take source samples and do AA
+                    var srcAlpha = (src[src_i_1 + 3] + src[src_i_2 + 3] + src[src_i_3 + 3] + src[src_i_4 + 3]) >> 2;
                     if (srcAlpha < 2) continue; // threshold for alpha
+                    var srcB     = (src[src_i_1 + 0] + src[src_i_2 + 0] + src[src_i_3 + 0] + src[src_i_4 + 0]) >> 2;
+                    var srcG     = (src[src_i_1 + 1] + src[src_i_2 + 1] + src[src_i_3 + 1] + src[src_i_4 + 1]) >> 2;
+                    var srcR     = (src[src_i_1 + 2] + src[src_i_2 + 2] + src[src_i_3 + 2] + src[src_i_4 + 2]) >> 2;
 
                     var newAlpha = srcAlpha / 255.0f;
                     var oldAlpha = 1.0f - newAlpha;
@@ -455,15 +472,22 @@ namespace SlickUWP.Canvas
                     //dst[dst_i + 2] = Clip((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2] * newAlpha));
 
                     // This for pre-multiplied alpha
-                    dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + src[src_i + 0]);
-                    dst[dst_i + 1] = Clip((dst[dst_i + 1] * oldAlpha) + src[src_i + 1]);
-                    dst[dst_i + 2] = Clip((dst[dst_i + 2] * oldAlpha) + src[src_i + 2]);
+                    dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + srcB);
+                    dst[dst_i + 1] = Clip((dst[dst_i + 1] * oldAlpha) + srcG);
+                    dst[dst_i + 2] = Clip((dst[dst_i + 2] * oldAlpha) + srcR);
                     dst[dst_i + 3] = 255; // tile alpha is always 100%
 
                     changed = true;
                 }
             }
             return changed;
+        }
+
+        private int Range(int low, int value, int high)
+        {
+            if (value > high) return high;
+            if (value < low) return low;
+            return value;
         }
 
 
@@ -552,8 +576,8 @@ namespace SlickUWP.Canvas
 
             bool changed = false;
 
-            int left = rect.X - imgDx + srcX; 
-            int top = rect.Y - imgDy + srcY;
+            int left = (int)rect.X - imgDx + srcX; 
+            int top = (int)rect.Y - imgDy + srcY;
 
             // start and end limits
             int x0 = Math.Max(-left, 0);
@@ -843,31 +867,9 @@ namespace SlickUWP.Canvas
             return new Quad((int)x, (int)y, TileImageSize, TileImageSize);
         }
 
-        /// <summary>
-        /// Calculate the visual rectange at current zoom level
-        /// </summary>
-        [NotNull]
-        private Quad VisualRectangle([NotNull]PositionKey tile)
+        public double CurrentZoom()
         {
-            var x = (tile.X * TileImageSize) - (int)X;
-            var y = (tile.Y * TileImageSize) - (int)Y;
-
-            // distance from screen centre and scale
-            var dx = (x - _cx) * _viewScale;
-            var dy = (y - _cy) * _viewScale;
-
-            // recentre
-            x = (int) (_cx - dx);
-            y = (int) (_cy - dy);
-
-            var tis = (int)(TileImageSize * _viewScale);
-
-            return new Quad(x, y, tis, tis);
-        }
-
-        public int CurrentZoom()
-        {
-            return (int)Math.Round(1.0 / _viewScale);
+            return 1.0 / _viewScale;
         }
 
         /// <summary>

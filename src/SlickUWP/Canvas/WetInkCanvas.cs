@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Threading;
 using Windows.Foundation;
@@ -97,28 +98,33 @@ namespace SlickUWP.Canvas
                     return;
                 }
 
-                // TODO: minimise the size of the target here (currently full-screen)
-                using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), width, height, 96,
+                var clipRegion = MeasureDrawing(strokeToRender, tileCanvas.CurrentZoom());
+                var pixelWidth = (int)clipRegion.Width;
+                var pixelHeight = (int)clipRegion.Height;
+
+                using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), pixelWidth, pixelHeight, 96,
                     DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
                 {
                     using (var ds = offscreen.CreateDrawingSession())
                     {
                         ds?.Clear(Colors.Transparent);
-                        coverage = DrawToSession(ds, strokeToRender);
+                        coverage = DrawToSession(ds, strokeToRender, clipRegion, tileCanvas.CurrentZoom());
                     }
                     bytes = offscreen.GetPixelBytes();
                 }
 
                 // render into tile cache
-                // todo: handle the case where a tile is still locked
-                tileCanvas.ImportBytes(new RawImageInterleaved_UInt8{
-                    Data = bytes,
-                    Width = width,
-                    Height = height
-                }, coverage.X, coverage.Y, coverage.Width, coverage.Height, coverage.X, coverage.Y);
+                // TEST: cropping and using the scaled write
+                var uncropped = new RawImageInterleaved_UInt8{
+                    Data = bytes, Height = (int)Math.Ceiling(clipRegion.Height), Width = (int)Math.Ceiling(clipRegion.Width)
+                };
+                var visualWidth = (int)(pixelWidth / tileCanvas.CurrentZoom());
+                var visualHeight = (int)(pixelHeight / tileCanvas.CurrentZoom());
+                var success = tileCanvas.ImportBytesScaled(uncropped, (int)clipRegion.X, (int)clipRegion.Y, (int) (clipRegion.X + visualWidth), (int) (clipRegion.Y + visualHeight));
 
+                
                 _renderTarget.Invalidate();
-                _dryingInk.TryDequeue(out _); // pull it off the queue (don't do this if a tile was locked)
+                if (success) _dryingInk.TryDequeue(out _); // pull it off the queue (don't do this if a tile was locked)
 
                 // safety check -- if there are still strokes waiting, spawn more threads
                 if (_dryingInk.Count > 0) {
@@ -186,27 +192,6 @@ namespace SlickUWP.Canvas
 
             var y1 = Math.Round(canvasPos.Y / grid) * grid;
             y += y1 - canvasPos.Y;
-
-
-            /*
-            // TODO: I'm not happy with the feel of this. Change it.
-            double grid = TileCanvas.GridSize;
-            double halfGrid = grid / 2.0;
-            double qtrGrid = grid / 4.0;
-
-            if (globalX + x < 0) { x -= qtrGrid; } else { x += halfGrid; }
-            if (globalY + y < 0) { y -= qtrGrid; } else { y += halfGrid; }
-
-            // lock to grid:
-            x = Math.Round(x / grid) * grid;
-            y = Math.Round(y / grid) * grid;
-
-            // (x,y) in screen-space, not canvas space; we add from the global offset to adjust.
-            if (globalX > 0) x += halfGrid - (Math.Abs(globalX) % grid);
-            else x -= halfGrid - (Math.Abs(globalX) % grid);
-
-            if (globalY > 0) y += halfGrid - (Math.Abs(globalY) % grid);
-            else y -= halfGrid - (Math.Abs(globalY) % grid);*/
         }
 
 
@@ -219,15 +204,16 @@ namespace SlickUWP.Canvas
             {
                 var g = args?.DrawingSession;
                 if (g == null) return;
+                Quad screenQuad = new Quad(0, 0, sender?.ActualWidth ?? 0, sender?.ActualHeight ?? 0);
 
                 g.Clear(Colors.Transparent);
-                DrawToSession(g, _stroke.ToArray());
+                DrawToSession(g, _stroke.ToArray(), screenQuad, 1.0);
 
                 // Overdraw any ink that is still drying...
                 var drying = _dryingInk.ToArray();
                 foreach (var stroke in drying)
                 {
-                    DrawToSession(g, stroke);
+                    DrawToSession(g, stroke, screenQuad, 1.0);
                 }
             }
             catch (Exception ex)
@@ -235,9 +221,62 @@ namespace SlickUWP.Canvas
                 Logging.WriteLogMessage(ex.ToString());
             }
         }
+        
 
         [NotNull]
-        private Quad DrawToSession(CanvasDrawingSession g, DPoint[] strokeToRender)
+        private Quad MeasureDrawing(DPoint[] strokeToRender, double zoom)
+        {
+            var clipRegion = new Quad(0,0,0,0);
+            try
+            {
+                // TODO: merge this with render to reduce duplication
+                var pts = strokeToRender;
+                if (pts == null || pts.Length < 1) return clipRegion;
+
+                // get size and color from dictionary, or set default
+                if (!_penColors.TryGetValue(pts[0].StylusId, out var color)) { color = pts[0].IsErase ? Colors.White : Colors.BlueViolet; }
+                if (!_penSizes.TryGetValue(pts[0].StylusId, out var size)) { size = pts[0].IsErase ? 6.5 : 2.5; }
+
+                var attr = new InkDrawingAttributes{
+                    Size = new Size(size * zoom, size * zoom),
+                    Color = color,
+                    PenTip = PenTipShape.Circle
+                };
+                var s = new CoreIncrementalInkStroke(attr, Matrix3x2.Identity);
+
+                var minX = pts.Min(p=>p.X);
+                var minY = pts.Min(p=>p.Y);
+
+                for (int i = 0; i < pts.Length; i++)
+                {
+                    var current = pts[i];
+                    var zx = ((current.X - minX) * zoom) + minX;
+                    var zy = ((current.Y - minY) * zoom) + minY;
+                    s.AppendInkPoints(new[]{
+                        new InkPoint(new Point(zx, zy), (float) current.Pressure)
+                    });
+                }
+
+                var stroke = s.CreateInkStroke();
+                if (stroke == null) throw new Exception("Stroke creation failed");
+
+                var bounds = stroke.BoundingRect;
+                clipRegion.X = (int) minX;
+                clipRegion.Y = (int) minY;
+                clipRegion.Width = (int)(bounds.Width + (2 * size));
+                clipRegion.Height = (int)(bounds.Height + (2 * size));
+            }
+            catch (Exception ex)
+            {
+                Logging.WriteLogMessage(ex.ToString());
+            }
+
+            return clipRegion;
+        }
+
+
+        [NotNull]
+        private Quad DrawToSession(CanvasDrawingSession g, DPoint[] strokeToRender, [NotNull]Quad clipRegion, double zoom)
         {
             var coverage = new Quad(0,0,0,0);
             if (g == null) return coverage;
@@ -254,7 +293,7 @@ namespace SlickUWP.Canvas
                 if (!_penSizes.TryGetValue(pts[0].StylusId, out var size)) { size = pts[0].IsErase ? 6.5 : 2.5; }
 
                 var attr = new InkDrawingAttributes{
-                    Size = new Size(size,size),
+                    Size = new Size(size * zoom, size * zoom),
                     Color = color,
                     PenTip = PenTipShape.Circle
                 };
@@ -264,7 +303,7 @@ namespace SlickUWP.Canvas
                 {
                     var current = pts[i];
                     s.AppendInkPoints(new[]{
-                        new InkPoint(new Point(current.X, current.Y), (float) current.Pressure)
+                        new InkPoint(new Point((current.X - clipRegion.X) * zoom, (current.Y - clipRegion.Y) * zoom), (float) current.Pressure)
                     });
                 }
 

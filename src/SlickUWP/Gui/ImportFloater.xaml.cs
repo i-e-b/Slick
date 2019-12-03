@@ -60,8 +60,8 @@ namespace SlickUWP.Gui
 
             // scale target based on canvas zoom
             var zoom = _canvas.CurrentZoom();
-            var expectedWidth = (int)ActualWidth * zoom;
-            var expectedHeight = (int)ActualHeight * zoom;
+            int expectedWidth = (int)(ActualWidth * zoom);
+            int expectedHeight = (int)(ActualHeight * zoom);
 
             // render to image
             var rtb = new RenderTargetBitmap();
