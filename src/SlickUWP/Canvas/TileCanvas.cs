@@ -239,18 +239,13 @@ namespace SlickUWP.Canvas
         }
 
         /// <summary>
-        /// Rotate through scaling options
+        /// Set scale back to 1:1
         /// </summary>
-        public int SwitchScale() {
-            _viewScale /= 2;
-            //_viewScale -= 0.1;
-            if (_viewScale < 0.249) _viewScale = 1.0;
+        public void ResetScale() {
+            _viewScale = 1.0;
 
             UpdateViewScale();
-
             Invalidate();
-
-            return (int)(1 / _viewScale);
         }
 
         private void UpdateViewScale()

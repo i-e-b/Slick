@@ -10,7 +10,7 @@
     mc:Ignorable="d"
      Background="#FFffffff" d:DesignWidth="748" d:DesignHeight="392" Loaded="Page_Loaded" PreviewKeyDown="Page_PreviewKeyDown" PreviewKeyUp="Page_PreviewKeyUp">
 
-    <Grid x:Name="windowGrid" ManipulationMode="None">
+    <Grid x:Name="windowGrid" ManipulationMode="None" IsHoldingEnabled="False" IsRightTapEnabled="False">
 
         <!-- `renderLayer` holds the individual visible tiles to be composed. This is entirely handled in code. -->
         <Grid x:Name="renderLayer" d:IsLocked="True"/>
@@ -22,13 +22,13 @@
         <Custom1:CornerPalette x:Name="paletteView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0" d:IsLocked="True" />
 
         <!-- The ink canvas records input, and sits over all canvas controls -->
-        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="All" IsDoubleTapEnabled="False" IsHoldingEnabled="False" IsRightTapEnabled="False" IsTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" ManipulationDelta="baseInkCanvas_ManipulationDelta" ManipulationCompleted="baseInkCanvas_ManipulationCompleted"/>
+        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="All" IsHoldingEnabled="False" IsRightTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" ManipulationDelta="baseInkCanvas_ManipulationDelta" ManipulationCompleted="baseInkCanvas_ManipulationCompleted" DoubleTapped="baseInkCanvas_DoubleTapped" Tapped="baseInkCanvas_Tapped"/>
 
         <!-- The Pins overlay is for managing hot-spots on the canvas. It sits over the ink layer and uses normal XAML input -->
-        <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch" Visibility="Collapsed"/>
+        <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch" Visibility="Collapsed" d:IsLocked="True"/>
 
         <!-- The import floater is shown to position and import images onto the canvas. It acts a lot like the wet ink canvas. -->
-        <Custom1:ImportFloater x:Name="ImageImportFloater" HorizontalAlignment="Left" Height="163" Margin="177,101,0,0" VerticalAlignment="Top" Width="260" Visibility="Collapsed"/>
+        <Custom1:ImportFloater x:Name="ImageImportFloater" HorizontalAlignment="Left" Height="163" Margin="177,101,0,0" VerticalAlignment="Top" Width="260" Visibility="Collapsed" d:IsLocked="True"/>
 
         <!-- Mode switch buttons -->
         <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" Click="PickPageButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
@@ -41,7 +41,7 @@
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="mapModeButton" Content="Map" Margin="10,0,0,10" VerticalAlignment="Bottom" Background="#99FFFFFF" Click="MapModeButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
+        <Button x:Name="mapModeButton" Content="1:1" Margin="10,0,0,10" VerticalAlignment="Bottom" Background="#99FFFFFF" Click="MapModeButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>

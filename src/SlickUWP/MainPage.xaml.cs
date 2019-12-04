@@ -260,8 +260,8 @@ namespace SlickUWP
                         return;
 
                     case InteractionMode.Draw:
-                        var canvasPoint = _tileCanvas?.ScreenToCanvas(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
-                        _wetInk?.Stroke(args, canvasPoint);
+                        var canvasOffset = _tileCanvas?.ScreenToCanvas(0, 0);
+                        _wetInk?.Stroke(args, canvasOffset, _tileCanvas);
                         return;
 
                     case InteractionMode.SelectTiles:
@@ -352,19 +352,12 @@ namespace SlickUWP
             _tileStore?.Dispose();
             _tileStore = newStore;
             _tileCanvas?.ChangeStorage(_tileStore);
-            SetCorrectZoomControlText();
             // Application now has read/write access to the picked file
         }
 
         private void MapModeButton_Click(object sender, RoutedEventArgs e)
         {
-            _tileCanvas?.SwitchScale();
-            SetCorrectZoomControlText();
-        }
-
-        private void SetCorrectZoomControlText()
-        {
-            if (mapModeButton != null) mapModeButton.Content = (_tileCanvas?.CurrentZoom() > 3) ? "Canvas" : "Map";
+            _tileCanvas?.ResetScale();
         }
 
         private void UndoButton_Click(object sender, RoutedEventArgs e)
@@ -499,31 +492,40 @@ namespace SlickUWP
             ImageImportFloater.Visibility = Visibility.Visible;
         }
 
-        private  void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
+        private async  void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
         {
             if (e == null || _tileCanvas == null) return;
             if (e.IsInertial) return; // disable intertia
 
             var disp = Dispatcher;
 
-            ThreadPool.QueueUserWorkItem(state =>
+            if (disp == null) return;
+
+            await disp.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                var evt = state as Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs;
-                if (evt == null || disp == null) return;
-
-                disp.RunAsync(CoreDispatcherPriority.Normal, () =>
-                {
-                    _tileCanvas.DeltaScale(e.Delta.Scale);
-                    _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
-                    _tileCanvas.Invalidate();
-                });
-
-            }, e);
+                _tileCanvas.DeltaScale(e.Delta.Scale);
+                _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
+                _tileCanvas.Invalidate();
+            }).NotNull();
         }
 
         private void baseInkCanvas_ManipulationCompleted(object sender, Windows.UI.Xaml.Input.ManipulationCompletedRoutedEventArgs e)
         {
             //?
+        }
+
+        private void baseInkCanvas_DoubleTapped(object sender, Windows.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        {
+            if (e == null || _tileCanvas == null) return;
+
+            // centre and zoom
+            var pos = e.GetPosition(baseInkCanvas);
+            _tileCanvas.CentreAndZoom(pos.X, pos.Y);
+        }
+
+        private void baseInkCanvas_Tapped(object sender, Windows.UI.Xaml.Input.TappedRoutedEventArgs e)
+        {
+            //if (e == null || _tileCanvas == null) return;
         }
     }
 }

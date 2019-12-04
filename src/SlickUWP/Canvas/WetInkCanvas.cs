@@ -69,15 +69,11 @@ namespace SlickUWP.Canvas
 
             try
             {
-                int width = (int)_renderTarget.ActualWidth;
-                int height = (int)_renderTarget.ActualHeight;
-
                 _dryingInk.Enqueue(_stroke.ToArray());
                 _stroke.Clear(); // ready for next
 
                 // render and copy on a separate thread
                 ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas));
-
             }
             catch (Exception ex)
             {
@@ -151,7 +147,7 @@ namespace SlickUWP.Canvas
         /// <summary>
         /// Continue a pen stroke
         /// </summary>
-        public void Stroke(PointerEventArgs penEvent, CanvasPixelPosition canvasPos)
+        public void Stroke(PointerEventArgs penEvent, CanvasPixelPosition canvasOffset, [NotNull]TileCanvas target)
         {
             try
             {
@@ -168,7 +164,7 @@ namespace SlickUWP.Canvas
 
                 if (penEvent.KeyModifiers.HasFlag(VirtualKeyModifiers.Menu))// this is actually *ALT*
                 {
-                    LockToGrid(canvasPos, ref x, ref y);
+                    LockToGrid(canvasOffset, target, ref x, ref y);
                 }
 
                 _stroke.Add(new DPoint
@@ -188,17 +184,20 @@ namespace SlickUWP.Canvas
             }
         }
 
-        private static void LockToGrid(CanvasPixelPosition canvasPos, ref double x, ref double y)
+        private static void LockToGrid(CanvasPixelPosition canvasOffset, [NotNull]TileCanvas target, ref double x, ref double y)
         {
-            if (canvasPos == null) return;
+            if (canvasOffset == null) return;
 
-            double grid = TileCanvas.GridSize;
+            var scale = 1.0 / target.CurrentZoom();
+            double grid = TileCanvas.GridSize * scale;
 
-            var x1 = Math.Round(canvasPos.X / grid) * grid;
-            x += x1 - canvasPos.X;
+            var bias = grid / 3.0;
 
-            var y1 = Math.Round(canvasPos.Y / grid) * grid;
-            y += y1 - canvasPos.Y;
+            x = Math.Round((x+bias) / grid) * grid;
+            x -= (canvasOffset.X * scale) % grid;
+
+            y = Math.Round((y+bias) / grid) * grid;
+            y -= (canvasOffset.Y * scale) % grid;
         }
 
 
