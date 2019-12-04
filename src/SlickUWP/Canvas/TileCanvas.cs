@@ -44,7 +44,7 @@ namespace SlickUWP.Canvas
         /// <summary>Centre of screen in real pixels</summary>
         private double _cy;
 
-        private double _viewScale = 1.1;
+        private double _viewScale = 1.0;
 
         private volatile bool _inReflow = false;
         
@@ -264,26 +264,21 @@ namespace SlickUWP.Canvas
             };
         }
 
-        private readonly object _scaleLock = new object();
-
         /// <summary>
         /// Change scale by a fractional amount.
         /// This is restricted in range
         /// </summary>
         public void DeltaScale(double deltaScale)
         {
-            lock (_scaleLock)
-            {
-                if (Math.Abs(1 - deltaScale) < 0.001) return;
-                var target = _viewScale;
+            if (Math.Abs(1 - deltaScale) < 0.001) return;
+            var target = _viewScale;
 
-                target += deltaScale - 1.0f;
-                if (target > 2.0) target = 2.0;
-                if (target < 0.5) target = 0.5;
+            target += deltaScale - 1.0f;
+            if (target > 2.0) target = 2.0;
+            if (target < 0.25) target = 0.25;
 
-                _viewScale = target;
-                UpdateViewScale();
-            }
+            _viewScale = target;
+            UpdateViewScale();
         }
 
         /// <summary>

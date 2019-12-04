@@ -5,6 +5,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Devices.Input;
@@ -312,8 +313,6 @@ namespace SlickUWP
 
         /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
         [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
-        private volatile bool _processingPointer = false;
-
         private async Task MoveCanvas([NotNull]PointerEventArgs args)
         {
             var thisPoint = args.CurrentPoint;
@@ -334,6 +333,8 @@ namespace SlickUWP
             // ReSharper disable once PossibleNullReferenceException
             await Task.Delay(timediff);
         }
+
+        private volatile bool _processingPointer = false;
 
         private async void PickPageButton_Click(object sender, RoutedEventArgs e)
         {
@@ -509,22 +510,26 @@ namespace SlickUWP
             ImageImportFloater.Visibility = Visibility.Visible;
         }
 
-        private void windowGrid_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
+        private  void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
         {
-            // do scaling here
-            /*if (e == null) return;
-            _tileCanvas.DeltaScale(e.Delta.Scale);
-            _tileCanvas.Invalidate();*/
-        }
-
-        private void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
-        {
-            //????
             if (e == null || _tileCanvas == null) return;
-            _tileCanvas.DeltaScale(e.Delta.Scale);
-            _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
-            //e.Complete();
-            _tileCanvas.Invalidate();
+            if (e.IsInertial) return; // disable intertia
+
+            var disp = Dispatcher;
+
+            ThreadPool.QueueUserWorkItem(state =>
+            {
+                var evt = state as Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs;
+                if (evt == null || disp == null) return;
+
+                disp.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    _tileCanvas.DeltaScale(e.Delta.Scale);
+                    _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
+                    _tileCanvas.Invalidate();
+                });
+
+            }, e);
         }
 
         private void baseInkCanvas_ManipulationCompleted(object sender, Windows.UI.Xaml.Input.ManipulationCompletedRoutedEventArgs e)
