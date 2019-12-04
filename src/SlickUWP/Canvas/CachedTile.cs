@@ -31,7 +31,7 @@ namespace SlickUWP.Canvas
         public CachedTile([NotNull]Panel container)
         {
             State = TileState.Locked;
-            UiCanvas = Win2dCanvasPool.Employ(container, this);
+            UiCanvas = Win2dCanvasManager.Employ(container, this);
             UiCanvas.QueueAction(canv =>
             {
                 if (canv == null) return;
@@ -160,7 +160,7 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Detach()
         {
-            Win2dCanvasPool.Retire(UiCanvas);
+            Win2dCanvasManager.Retire(UiCanvas);
             _detached = true;
         }
 

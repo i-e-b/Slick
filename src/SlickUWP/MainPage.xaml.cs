@@ -5,7 +5,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Devices.Input;
@@ -54,7 +53,6 @@ namespace SlickUWP
         private WetInkCanvas _wetInk;
         
         Point _lastPoint;
-        ulong _lastPressTimestamp = 0;
         InteractionMode _interactionMode = InteractionMode.None;
         PenMode _penMode = PenMode.Ink;
 
@@ -188,12 +186,6 @@ namespace SlickUWP
             var isTouch = thisPoint.PointerDevice?.PointerDeviceType == PointerDeviceType.Touch;
             var shiftPressed = args.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
 
-            // need to detect double-taps for centre-and-zoom etc.
-            var diff = thisPoint.Timestamp - _lastPressTimestamp;
-            _lastPressTimestamp = thisPoint.Timestamp;
-            var tapTime = TimeSpan.FromMilliseconds(diff / 1000.0); // by guesswork
-            var isDoubleTap = IsDoubleTap(args, tapTime, _lastPoint);
-
             // Check for palette
             if (PaletteVisible) {
                 _interactionMode = InteractionMode.PalettePicker;
@@ -245,7 +237,7 @@ namespace SlickUWP
 
         private async void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
         {
-            if (args?.CurrentPoint == null) return;
+            if (args?.CurrentPoint == null || _tileCanvas == null) return;
 
 
             if (_processingPointer) return;
@@ -417,21 +409,6 @@ namespace SlickUWP
             }
         }
         
-        private static bool IsDoubleTap(PointerEventArgs args, TimeSpan tapTime, Point prevPoint)
-        {
-            if (args?.CurrentPoint == null) return false;
-            return tapTime.TotalSeconds > 0 && tapTime.TotalSeconds < 0.6 && Distance(prevPoint, args.CurrentPoint.Position) < 32;
-        }
-
-        private static double Distance(Point a, Point b)
-        {
-            return Math.Sqrt(
-                Math.Pow(a.X - b.X, 2)
-                +
-                Math.Pow(a.Y - b.Y, 2)
-            );
-        }
-
         private async void ExportTilesButton_Click(object sender, RoutedEventArgs e)
         {
             if (_tileCanvas == null) return;

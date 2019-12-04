@@ -102,7 +102,6 @@ namespace SlickUWP.Canvas
         private void ResetCache() {
             var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
             foreach (var tile in toDetach) { tile.Detach(); }
-            Win2dCanvasPool.Sanitise();
             _tileCache.Clear();
             _lastChangedTiles.Clear();
 
@@ -121,52 +120,51 @@ namespace SlickUWP.Canvas
             // 4) ensure the tiles are in the correct offset position
 
             if (_inReflow) return;
-            _inReflow = true;
-
-            var width = (int)_displayContainer.ActualWidth;
-            var height = (int)_displayContainer.ActualHeight;
-
-            var required = VisibleTiles(0, 0, width, height);
-            var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
-            var toAdd = new HashSet<PositionKey>();
-
-            // add any missing
-            foreach (var key in required)
+            try
             {
-                toRemove.Remove(key);
-                if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
-            }
+                _inReflow = true;
 
-            // remove any extra
-            foreach (var key in toRemove)
-            {
-                if (!_tileCache.TryGetValue(key, out var container))
+                var width = (int)_displayContainer.ActualWidth;
+                var height = (int)_displayContainer.ActualHeight;
+
+                var required = VisibleTiles(0, 0, width, height);
+                var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
+                var toAdd = new HashSet<PositionKey>();
+
+                // add any missing
+                foreach (var key in required)
                 {
-                    continue;
-                    //throw new Exception("Lost container!");
+                    toRemove.Remove(key);
+                    if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
                 }
 
-                container.Detach();
-                _tileCache.Remove(key);
-            }
+                // remove any extra
+                foreach (var key in toRemove)
+                {
+                    if (!_tileCache.TryGetValue(key, out var container)) { continue; }
+                    container.Detach();
+                    _tileCache.Remove(key);
+                }
 
-            // add any missing (we do this after remove to use the canvas pool effectively)
-            foreach (var key in toAdd)
+                // add any missing (we do this after remove to use the canvas pool effectively)
+                foreach (var key in toAdd)
+                {
+                    if (!_tileCache.ContainsKey(key)) AddToCache(key);
+                }
+
+                // re-align what's left
+                foreach (var kvp in _tileCache)
+                {
+                    var pos = VisualRectangleNative(kvp.Key);
+                    if (kvp.Value == null) continue;
+                    kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
+                    kvp.Value.MoveTo(pos.X, pos.Y);
+                }
+            }
+            finally
             {
-                if (!_tileCache.ContainsKey(key)) AddToCache(key);
+                _inReflow = false;
             }
-
-            // re-align what's left
-            foreach (var kvp in _tileCache)
-            {
-                var pos = VisualRectangleNative(kvp.Key);
-                if (kvp.Value == null) continue;
-                kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
-                kvp.Value.MoveTo(pos.X, pos.Y);
-            }
-
-            Win2dCanvasPool.Sanitise();
-            _inReflow = false;
         }
 
         /// <summary>

@@ -3,9 +3,15 @@ using Windows.UI.Core;
 using Windows.UI.Xaml.Controls;
 using JetBrains.Annotations;
 using Microsoft.Graphics.Canvas.UI.Xaml;
+using SlickUWP.CrossCutting;
 
 namespace SlickUWP.Canvas
 {
+    public class TagContainer {
+        public CachedTile Tile { get; set; }
+        public bool IsAttached { get; set; }
+    }
+
     /// <summary>
     /// Class that works around threading/async issues in UWP
     /// </summary>
@@ -22,23 +28,25 @@ namespace SlickUWP.Canvas
             _commandQueue = new Queue<QueueActionDelegate>();
         }
 
-        public void AttachToContainer(CanvasControl result, Panel container, object tag)
+        public void AttachToContainer(CanvasControl result, Panel container, CachedTile tile)
         {
             _container = container;
             if (result != null) _ctrl = result;
 
-            // ReSharper disable InconsistentlySynchronizedField
-            _container?.Dispatcher?.RunAsync(CoreDispatcherPriority.Low, () =>
+            _container?.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
                 if (_ctrl == null) return;
-                _ctrl.Tag = tag;
+
+                if (_ctrl.Tag is TagContainer tag) {
+                    tag.IsAttached = true;
+                    tag.Tile = tile;
+                } else _ctrl.Tag = new TagContainer{ IsAttached = true, Tile = tile};
 
                 if (_container?.Children?.Contains(_ctrl) == true) return;
                 _container?.Children?.Add(_ctrl);
                 RunWaitingCommands();
             });
             
-            // ReSharper restore InconsistentlySynchronizedField
         }
 
         private void RunWaitingCommands()
@@ -71,13 +79,32 @@ namespace SlickUWP.Canvas
 
         public void RemoveFromContainer()
         {
-            if (_ctrl == null) return;
-            // ReSharper disable InconsistentlySynchronizedField
-            _container?.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
+            if (_ctrl == null) {
+                Logging.WriteLogMessage("Lost control object in `RemoveFromContainer`");
+                return;
+            }
+            if (_container == null) {
+                Logging.WriteLogMessage("Lost container object in `RemoveFromContainer`");
+                return;
+            }
+            if (_container?.Dispatcher == null) {
+                Logging.WriteLogMessage("Container had no dispatcher in `RemoveFromContainer`");
+                return;
+            }
+
+            _container.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                _container?.Children?.Remove(_ctrl);
+                if (_container == null || _ctrl == null) {
+                    Logging.WriteLogMessage("Lost control scope in `RemoveFromContainer` -- dispatch phase");
+                    return;
+                }
+                if (_ctrl.Tag is TagContainer tag) {
+                    tag.IsAttached = false;
+                    tag.Tile = null;
+                }
+                
+                _container.Children?.Remove(_ctrl);
             });
-            // ReSharper restore InconsistentlySynchronizedField
         }
     }
 }

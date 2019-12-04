@@ -138,7 +138,7 @@
     <Compile Include="Canvas\TileState.cs" />
     <Compile Include="Canvas\WetInkCanvas.cs" />
     <Compile Include="Canvas\InteractionMode.cs" />
-    <Compile Include="Canvas\Win2dCanvasPool.cs" />
+    <Compile Include="Canvas\Win2dCanvasManager.cs" />
     <Compile Include="CrossCutting\Logging.cs" />
     <Compile Include="Gui\CornerPalette.xaml.cs">
       <DependentUpon>CornerPalette.xaml</DependentUpon>
