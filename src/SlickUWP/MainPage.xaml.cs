@@ -504,5 +504,31 @@ namespace SlickUWP
         {
             //if (e == null || _tileCanvas == null) return;
         }
+
+        private void baseInkCanvas_PointerWheelChanged(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (e == null || _tileCanvas == null) return;
+
+            // wheel-based scrolling
+            var point = e.GetCurrentPoint(baseInkCanvas);
+            if (point?.Properties == null) return;
+
+            var isHorz = point.Properties.IsHorizontalMouseWheel;
+            var delta = point.Properties.MouseWheelDelta / 2.0; // value by experiment
+
+            // flip direction on shift
+            if (e.KeyModifiers == VirtualKeyModifiers.Shift) isHorz = !isHorz;
+
+            // zoom with control key
+            if (e.KeyModifiers == VirtualKeyModifiers.Control) {
+                delta /= 1000.0; // value by experiment
+                _tileCanvas.DeltaScale(delta + 1);
+                _tileCanvas.Invalidate();
+                return;
+            }
+
+            if (isHorz) _tileCanvas.Scroll(-delta, 0);
+            else _tileCanvas.Scroll(0, delta);
+        }
     }
 }

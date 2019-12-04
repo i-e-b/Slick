@@ -22,7 +22,7 @@
         <Custom1:CornerPalette x:Name="paletteView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0" d:IsLocked="True" />
 
         <!-- The ink canvas records input, and sits over all canvas controls -->
-        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="All" IsHoldingEnabled="False" IsRightTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" ManipulationDelta="baseInkCanvas_ManipulationDelta" ManipulationCompleted="baseInkCanvas_ManipulationCompleted" DoubleTapped="baseInkCanvas_DoubleTapped" Tapped="baseInkCanvas_Tapped"/>
+        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="All" IsHoldingEnabled="False" IsRightTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" ManipulationDelta="baseInkCanvas_ManipulationDelta" ManipulationCompleted="baseInkCanvas_ManipulationCompleted" DoubleTapped="baseInkCanvas_DoubleTapped" Tapped="baseInkCanvas_Tapped" PointerWheelChanged="baseInkCanvas_PointerWheelChanged"/>
 
         <!-- The Pins overlay is for managing hot-spots on the canvas. It sits over the ink layer and uses normal XAML input -->
         <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch" Visibility="Collapsed" d:IsLocked="True"/>

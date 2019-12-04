@@ -119,8 +119,8 @@ namespace SlickUWP.Canvas
 
                 var visualWidth = (int)Math.Ceiling(pixelWidth / tileCanvas.CurrentZoom());
                 var visualHeight = (int)Math.Ceiling(pixelHeight / tileCanvas.CurrentZoom());
-                var visualTop = (int)Math.Round(clipRegion.Y);
-                var visualLeft = (int)Math.Round(clipRegion.X);
+                var visualTop = (int)Math.Floor(clipRegion.Y + 0.5);
+                var visualLeft = (int)Math.Floor(clipRegion.X + 0.5);
                 var visualRight = visualLeft + visualWidth;
                 var visualBottom = visualTop + visualHeight;
                 var success = tileCanvas.ImportBytesScaled(uncropped, visualLeft, visualTop, visualRight, visualBottom);
@@ -189,14 +189,14 @@ namespace SlickUWP.Canvas
             if (canvasOffset == null) return;
 
             var scale = 1.0 / target.CurrentZoom();
-            double grid = TileCanvas.GridSize * scale;
+            var grid = TileCanvas.GridSize * scale;
 
-            var bias = grid / 3.0;
+            var bias = (3 * grid) / 5.0;
 
-            x = Math.Round((x+bias) / grid) * grid;
+            x = Math.Round((x + bias) / grid) * grid;
             x -= (canvasOffset.X * scale) % grid;
 
-            y = Math.Round((y+bias) / grid) * grid;
+            y = Math.Round((y + bias) / grid) * grid;
             y -= (canvasOffset.Y * scale) % grid;
         }
 
@@ -239,16 +239,7 @@ namespace SlickUWP.Canvas
                 if (pts == null || pts.Length < 1) return clipRegion;
 
                 // get size and color from dictionary, or set default
-                if (!_penColors.TryGetValue(pts[0].StylusId, out var color)) { color = pts[0].IsErase ? Colors.White : Colors.BlueViolet; }
-                if (!_penSizes.TryGetValue(pts[0].StylusId, out var size)) { size = pts[0].IsErase ? 6.5 : 2.5; }
-
-                size *= zoom;
-
-                var attr = new InkDrawingAttributes{
-                    Size = new Size(size, size),
-                    Color = color,
-                    PenTip = PenTipShape.Circle
-                };
+                var attr = GetPenAttributes(zoom, pts);
                 var s = new CoreIncrementalInkStroke(attr, Matrix3x2.Identity);
 
                 var minX = pts.Min(p=>p.X);
@@ -268,10 +259,10 @@ namespace SlickUWP.Canvas
                 if (stroke == null) throw new Exception("Stroke creation failed");
 
                 var bounds = stroke.BoundingRect;
-                clipRegion.X = (int)minX - (2 * size);
-                clipRegion.Y = (int)minY - (2 * size);
-                clipRegion.Width = (int)(bounds.Width + (8 * size * zoom));
-                clipRegion.Height = (int)(bounds.Height + (8 * size * zoom));
+                clipRegion.X = (int)minX - (2 * attr.Size.Width);
+                clipRegion.Y = (int)minY - (2 * attr.Size.Width);
+                clipRegion.Width = (int)(bounds.Width + (8 * attr.Size.Width) * zoom);
+                clipRegion.Height = (int)(bounds.Height + (8 * attr.Size.Width) * zoom);
             }
             catch (Exception ex)
             {
@@ -291,15 +282,7 @@ namespace SlickUWP.Canvas
                 // using the ink infrastructure for drawing...
                 var strokes = new List<InkStroke>();
 
-                // get size and color from dictionary, or set default
-                if (!_penColors.TryGetValue(pts[0].StylusId, out var color)) { color = pts[0].IsErase ? Colors.White : Colors.BlueViolet; }
-                if (!_penSizes.TryGetValue(pts[0].StylusId, out var size)) { size = pts[0].IsErase ? 6.5 : 2.5; }
-
-                var attr = new InkDrawingAttributes{
-                    Size = new Size(size * zoom, size * zoom),
-                    Color = color,
-                    PenTip = PenTipShape.Circle
-                };
+                var attr = GetPenAttributes(zoom, pts);
                 var s = new CoreIncrementalInkStroke(attr, Matrix3x2.Identity);
 
                 for (int i = 0; i < pts.Length; i++)
@@ -319,6 +302,35 @@ namespace SlickUWP.Canvas
             {
                 Logging.WriteLogMessage(ex.ToString());
             }
+        }
+
+        [NotNull]private InkDrawingAttributes GetPenAttributes(double zoom, DPoint[] pts)
+        {
+            if (pts == null) throw new Exception("Invalid pen points");
+
+            var detail = new DPoint { StylusId = 0 };
+            if (pts.Length > 0) detail = pts[0];
+
+
+            // get size and color from dictionary, or set default
+            if (!_penColors.TryGetValue(detail.StylusId, out var color))
+            {
+                color = detail.IsErase ? Colors.White : Colors.BlueViolet;
+            }
+
+            if (!_penSizes.TryGetValue(detail.StylusId, out var size))
+            {
+                size = detail.IsErase ? 6.5 : 2.5;
+            }
+
+            var attr = new InkDrawingAttributes
+            {
+                Size = new Size(size * zoom, size * zoom),
+                Color = color,
+                PenTip = PenTipShape.Circle,
+                FitToCurve = false
+            };
+            return attr;
         }
 
         public void SetPenSize(PointerPoint pointer, double size)
