@@ -423,7 +423,8 @@ namespace SlickUWP.Canvas
         /// Returns true if any pixels were changed.
         /// `tileArea` is in tile space. `imageArea` is in image space.
         /// </summary>
-        /// <remarks>The scaling here is really poor. It's much better to keep the image size correct</remarks>
+        /// <remarks>The scaling here is only intended for small variations (between 0.6x and 1.4x). The
+        /// Source image should be scaled if you are outside of this range</remarks>
         private bool AlphaMapImageToTileScaled(RawImageInterleaved_UInt8 img, ICachedTile tile, Quad imageArea, Quad tileArea)
         {
             // This needs to be improved
@@ -450,13 +451,17 @@ namespace SlickUWP.Canvas
             var imgyo = imageArea.Y;
             var imgxo = imageArea.X;
 
+            // AA caches
+            int[] src_aa = new int[(img.Width + 1) * 4];
+
             for (int y = y0; y < y1; y++)
             {
                 var img_yi = y - y0;
-                var src_yi = (int)Math.Round((img_yi + imgyo) * scale_y) * (img.Width * 4);
 
-                // TODO: pre-calc an AA line from two.
+                // prepare a scaled row here
+                AntiAliasRow(img, img_yi, scale_y, imgyo, src, src_aa);
 
+                // copy image row
                 for (int x = x0; x < x1; x++)
                 {
                     var img_xi = x - x0;
@@ -464,30 +469,28 @@ namespace SlickUWP.Canvas
                     // Measure AA
                     var xoff_f = Range(0.0, (img_xi * scale_x) + imgxo, img.Width);
                     var xoff = (int)xoff_f;
-                    int mul = 255;
-                    int imul = 0;
-                    if (Math.Abs(scale_x - 1) > 0.01) {
-                        double x_frac = xoff_f - xoff;
-                        imul = (int)(255 * x_frac);
-                        mul = 255 - mul;
-                    }
+                    double x_frac = xoff_f - xoff;
+                    var imul = (int)(255 * x_frac);
+                    var mul = 255 - imul;
 
                     var src_xi = xoff * 4;
 
-                    var src_i = Range(0, src_yi + src_xi, src.Length - 4); // offset into source raw image
-                    var src_i2 = Range(0, src_yi + src_xi + 4, src.Length - 4);
+                    var src_i = Range(0, src_xi, src_aa.Length - 4); // offset into source raw image
+                    var src_i2 = Range(0, src_xi + 4, src_aa.Length - 4); // offset into source raw image
                     var dst_i = y * (TileImageSize * 4) + (x * 4); // offset into tile data
                     if (dst_i < 0) continue;
                     if (dst_i >= dst.Length) continue;
 
-                    // Take source samples and do AA
-                    var srcAlpha = ((src[src_i + 3] * mul) + (src[src_i2 + 3] * imul)) >> 8;
-                    if (srcAlpha < 2) continue; // threshold for alpha
-                    var srcB = ((src[src_i + 0] * mul) + (src[src_i2 + 0] * imul)) >> 8;
-                    var srcG = ((src[src_i + 1] * mul) + (src[src_i2 + 1] * imul)) >> 8;
-                    var srcR = ((src[src_i + 2] * mul) + (src[src_i2 + 2] * imul)) >> 8;
+                    // Threshold alpha
+                    if (src_aa[src_i + 3] < 2 && src_aa[src_i2 + 3] < 2) continue;
 
-                    var newAlpha = srcAlpha / 255.0f;
+                    // Take source samples and do AA
+                    var srcB = ((src_aa[src_i + 0] * mul) + (src_aa[src_i2 + 0] * imul)) >> 8;
+                    var srcG = ((src_aa[src_i + 1] * mul) + (src_aa[src_i2 + 1] * imul)) >> 8;
+                    var srcR = ((src_aa[src_i + 2] * mul) + (src_aa[src_i2 + 2] * imul)) >> 8;
+                    var srcA = ((src_aa[src_i + 3] * mul) + (src_aa[src_i2 + 3] * imul)) >> 8;
+
+                    var newAlpha = srcA / 255.0f;
                     var oldAlpha = 1.0f - newAlpha;
 
                     // Alpha blend over existing color
@@ -508,6 +511,29 @@ namespace SlickUWP.Canvas
             return changed;
         }
 
+        private void AntiAliasRow([NotNull]RawImageInterleaved_UInt8 img, int img_yi, double scale_y, double imgyo, [NotNull]byte[] src, [NotNull]int[] src_aa)
+        {
+            // Measure AA
+            var rowbytes = img.Width * 4;
+            var yoff_f = Range(0.0, (img_yi * scale_y) + imgyo, img.Height - 1);
+            var yoff = (int) yoff_f;
+            double y_frac = yoff_f - yoff;
+            var imul = (int) (255 * y_frac);
+            var mul = 255 - imul;
+
+            var end = img.Width * 4;
+            var src_yi = Range(0, yoff * rowbytes, src.Length - (rowbytes + 4 + end));
+
+            // pre-calc AA row data from two source lines 
+            for (int x = 0; x < end; x += 4)
+            {
+                src_aa[x + 0] = ((src[src_yi + 0 + x] * mul) + (src[src_yi + 0 + x + rowbytes] * imul)) >> 8;
+                src_aa[x + 1] = ((src[src_yi + 1 + x] * mul) + (src[src_yi + 1 + x + rowbytes] * imul)) >> 8;
+                src_aa[x + 2] = ((src[src_yi + 2 + x] * mul) + (src[src_yi + 2 + x + rowbytes] * imul)) >> 8;
+                src_aa[x + 3] = ((src[src_yi + 3 + x] * mul) + (src[src_yi + 3 + x + rowbytes] * imul)) >> 8;
+            }
+        }
+
         private int Range(int low, int value, int high)
         {
             if (value > high) return high;
@@ -519,137 +545,6 @@ namespace SlickUWP.Canvas
             if (value > high) return high;
             if (value < low) return low;
             return value;
-        }
-
-
-        /// <summary>
-        /// Draw an image into the tile canvas (committing to storage).
-        /// The base position is the visible area of the Display Container.
-        /// </summary>
-        /// <param name="img">Image to import</param>
-        /// <param name="targetLeft">Position on the canvas to import (screen coords)</param>
-        /// <param name="targetTop">Position on the canvas to import (screen coords)</param>
-        /// <param name="targetWidth">Width of the target image</param>
-        /// <param name="targetHeight">Height of the target image</param>
-        /// <param name="sourceLeft">Offset into the source image to copy from</param>
-        /// <param name="sourceTop">Offset into the source image to copy from</param>
-        public void ImportBytes(RawImageInterleaved_UInt8 img, int targetLeft, int targetTop, int targetWidth, int targetHeight, int sourceLeft, int sourceTop)
-        {
-            if (img == null) return;
-
-            // Process:
-            // We get the set of tiles that the bitmap covers
-            // For each tile, we copy over a chunk of the source image into the tile data
-
-            var positionKeys = VisibleTiles(targetLeft, targetTop, targetWidth, targetHeight);
-
-            _lastChangedTiles.Clear(); // last set of tiles are now forever. For multi undo, we could push a stack here
-
-            foreach (var key in positionKeys)
-            {
-                var rect = VisualRectangleNative(key);
-
-                if (!_tileCache.ContainsKey(key)) {
-                    var newTile = new CachedTile(_displayContainer);
-                    _tileCache.Add(key, newTile);
-                }
-
-                var tile = _tileCache[key];
-                if (tile == null) continue; // should never happen
-
-                // Cases:
-                // 1) tile is loaded and empty -- create storage, write, commit to backing
-                // 2) tile is locked -- abort
-                // 3) tile is ready -- merge onto array, commit to backing
-
-                switch (tile.State) {
-                    case TileState.Empty:
-                        // allocate and write
-                        tile.AllocateEmptyImage();
-                        var really = AlphaMapImageToTile(img, rect, tile, targetLeft, targetTop, sourceLeft, sourceTop);
-                        if (!really) {
-                            tile.Deallocate();
-                        }
-                        else {
-                            tile.SetState(TileState.Ready);
-                            
-                            _lastChangedTiles.Add(key);
-                            ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
-                        }
-                        continue;
-
-                    case TileState.Locked:
-                        // Can't safely write at the moment.
-                        // TODO: can we push back and keep the ink wet?
-                        continue;
-
-                    case TileState.Ready:
-                        var changed = AlphaMapImageToTile(img, rect, tile, targetLeft, targetTop, sourceLeft, sourceTop);
-                        tile.Invalidate();
-                        if (changed) { 
-                            _lastChangedTiles.Add(key);
-                            ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
-                        }
-                        break;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns true if any pixels were changed
-        /// </summary>
-        private bool AlphaMapImageToTile(RawImageInterleaved_UInt8 img, Quad rect, ICachedTile tile, int imgDx, int imgDy, int srcX, int srcY)
-        {
-            // This needs to be improved
-            var dst = tile?.GetTileData();
-            var src = img?.Data;
-            if (src == null || dst == null || rect == null) return false;
-
-            bool changed = false;
-
-            int left = (int)rect.X - imgDx + srcX; 
-            int top = (int)rect.Y - imgDy + srcY;
-
-            // start and end limits
-            int x0 = Math.Max(-left, 0);
-            int x1 = Math.Min(img.Width - left, TileImageSize);
-            int y0 = Math.Max(-top, 0);
-            int y1 = Math.Min(img.Height - top, TileImageSize);
-
-            for (int y = y0; y < y1; y++)
-            {
-                for (int x = x0; x < x1; x++)
-                {
-                    var src_i = ((y + top) * img.Width * 4) + ((x + left) * 4); // offset into source raw image
-                    var dst_i = y * (TileImageSize * 4) + (x * 4); // offset into tile data
-
-                    if (dst_i < 0) continue;
-                    if (src_i < 0) continue;
-                    if (dst_i >= dst.Length) continue;
-                    if (src_i >= src.Length) continue;
-
-                    var srcAlpha = src[src_i + 3];
-                    if (srcAlpha < 2) continue;
-
-                    var newAlpha = srcAlpha / 255.0f;
-                    var oldAlpha = 1.0f - newAlpha;
-
-                    // Alpha blend over existing color
-                    // This for plain alpha:
-                    //dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0] * newAlpha));
-                    //dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1] * newAlpha));
-                    //dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2] * newAlpha));
-
-                    // This for pre-multiplied alpha
-                    dst[dst_i + 0] = Clip((dst[dst_i + 0] * oldAlpha) + (src[src_i + 0]));
-                    dst[dst_i + 1] = Clip ((dst[dst_i + 1] * oldAlpha) + (src[src_i + 1]));
-                    dst[dst_i + 2] = Clip ((dst[dst_i + 2] * oldAlpha) + (src[src_i + 2]));
-                    dst[dst_i + 3] = 255;
-
-                    changed = true;
-                }
-            }
-            return changed;
         }
 
         /// <summary>

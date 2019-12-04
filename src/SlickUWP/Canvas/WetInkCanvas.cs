@@ -76,7 +76,7 @@ namespace SlickUWP.Canvas
                 _stroke.Clear(); // ready for next
 
                 // render and copy on a separate thread
-                ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas, width, height));
+                ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas));
 
             }
             catch (Exception ex)
@@ -85,11 +85,10 @@ namespace SlickUWP.Canvas
             }
         }
 
-        private WaitCallback DryWaitingStroke([NotNull]TileCanvas tileCanvas, int width, int height)
+        private WaitCallback DryWaitingStroke([NotNull]TileCanvas tileCanvas)
         {
             return x => {
                 byte[] bytes;
-                Quad coverage;
                 
                 // Try to get a waiting stroke (peek, so we can draw the waiting stroke)
                 if (!_dryingInk.TryPeek(out var strokeToRender)) return;
@@ -98,10 +97,12 @@ namespace SlickUWP.Canvas
                     return;
                 }
 
+                // Figure out what part of the screen is covered
                 var clipRegion = MeasureDrawing(strokeToRender, tileCanvas.CurrentZoom());
                 var pixelWidth = (int)clipRegion.Width;
                 var pixelHeight = (int)clipRegion.Height;
 
+                // draw to an image
                 using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), pixelWidth, pixelHeight, 96,
                     DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
                 {
@@ -114,7 +115,6 @@ namespace SlickUWP.Canvas
                 }
 
                 // render into tile cache
-                // TEST: cropping and using the scaled write
                 var uncropped = new RawImageInterleaved_UInt8{
                     Data = bytes,
                     Width = pixelWidth,
@@ -135,7 +135,7 @@ namespace SlickUWP.Canvas
 
                 // safety check -- if there are still strokes waiting, spawn more threads
                 if (_dryingInk.Count > 0) {
-                    ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas, width, height));
+                    ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas));
                 }
             };
         }
@@ -243,8 +243,10 @@ namespace SlickUWP.Canvas
                 if (!_penColors.TryGetValue(pts[0].StylusId, out var color)) { color = pts[0].IsErase ? Colors.White : Colors.BlueViolet; }
                 if (!_penSizes.TryGetValue(pts[0].StylusId, out var size)) { size = pts[0].IsErase ? 6.5 : 2.5; }
 
+                size *= zoom;
+
                 var attr = new InkDrawingAttributes{
-                    Size = new Size(size * zoom, size * zoom),
+                    Size = new Size(size, size),
                     Color = color,
                     PenTip = PenTipShape.Circle
                 };
@@ -269,8 +271,8 @@ namespace SlickUWP.Canvas
                 var bounds = stroke.BoundingRect;
                 clipRegion.X = (int)minX - (2 * size);
                 clipRegion.Y = (int)minY - (2 * size);
-                clipRegion.Width = (int)(bounds.Width + (4 * size));
-                clipRegion.Height = (int)(bounds.Height + (4 * size));
+                clipRegion.Width = (int)(bounds.Width + (8 * size * zoom));
+                clipRegion.Height = (int)(bounds.Height + (8 * size * zoom));
             }
             catch (Exception ex)
             {

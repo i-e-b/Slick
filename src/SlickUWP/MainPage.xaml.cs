@@ -222,17 +222,6 @@ namespace SlickUWP
                 return;
             }
 
-            // Don't allow drawing when zoomed out
-            if ((int)_tileCanvas.CurrentZoom() != 1) {
-                if (isDoubleTap) {
-                    _tileCanvas?.CentreAndZoom(thisPoint.Position.X, thisPoint.Position.Y);
-                    SetCorrectZoomControlText();
-                }
-
-                _interactionMode = InteractionMode.Move;
-                return;
-            }
-
             _interactionMode = InteractionMode.None;
 
             // Finally, set the interaction mode
