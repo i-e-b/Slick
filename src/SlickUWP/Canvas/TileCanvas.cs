@@ -881,5 +881,25 @@ namespace SlickUWP.Canvas
         {
             return _selectedTiles.ToList();
         }
+
+        /// <summary>
+        /// Erase the content of any selected tiles, and then clear the selection
+        /// </summary>
+        public void EraseSelectedTiles()
+        {
+            var tiles = _selectedTiles.ToArray();
+            foreach (var key in tiles)
+            {
+                if (!PrepareTileForDraw(key, out var tile)) continue;
+
+                tile.AllocateEmptyImage();
+                tile.SetState(TileState.Ready);
+                
+                _lastChangedTiles.Add(key);
+                tile.Invalidate();
+                ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
+            }
+            ClearSelection();
+        }
     }
 }

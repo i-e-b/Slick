@@ -66,8 +66,22 @@ namespace SlickUWP
             var view = SystemNavigationManagerPreview.GetForCurrentView();
             if (view != null) view.CloseRequested += OnCloseRequest;
 
+            this.KeyDown += MainPage_KeyDown;
+
             if (exportTilesButton != null) exportTilesButton.Visibility = Visibility.Collapsed;
             if (importImageButton != null) importImageButton.Visibility = Visibility.Collapsed;
+        }
+
+        private void MainPage_KeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
+        {
+            switch (e?.Key)
+            {
+                case VirtualKey.Delete:
+                    if (_penMode != PenMode.Select) return;
+                    _tileCanvas?.EraseSelectedTiles();
+                    SelectTilesButton_Click(null,null);
+                    return;
+            }
         }
 
         private void OnCloseRequest(object sender, SystemNavigationCloseRequestedPreviewEventArgs e)
