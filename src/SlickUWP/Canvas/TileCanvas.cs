@@ -10,6 +10,7 @@ using JetBrains.Annotations;
 using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
+using SlickUWP.CrossCutting;
 
 namespace SlickUWP.Canvas
 {
@@ -29,11 +30,6 @@ namespace SlickUWP.Canvas
         
         // History
         [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
-
-        // Working buffers (they *MUST* be ThreadStatic)
-        [ThreadStatic]private static byte[] Red;
-        [ThreadStatic]private static byte[] Green;
-        [ThreadStatic]private static byte[] Blue;
 
         /// <summary>Offset of canvas in real pixels</summary>
         public double X;
@@ -101,7 +97,7 @@ namespace SlickUWP.Canvas
         /// </summary>
         private void ResetCache() {
             var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
-            foreach (var tile in toDetach) { tile.Detach(); }
+            foreach (var tile in toDetach) { tile.Detach(); tile.Deallocate(); }
             _tileCache.Clear();
             _lastChangedTiles.Clear();
 
@@ -143,6 +139,7 @@ namespace SlickUWP.Canvas
                 {
                     if (!_tileCache.TryGetValue(key, out var container)) { continue; }
                     container.Detach();
+                    container.Deallocate();
                     _tileCache.Remove(key);
                 }
 
@@ -590,6 +587,7 @@ namespace SlickUWP.Canvas
                 var tileTop = (key.Y * TileImageSize) - top;
                 CopyTileToImage(tileData, raw, tileLeft, tileTop, width, height);
             }
+            temp.Deallocate();
 
             // return image
             return new RawImageInterleaved_UInt8{
@@ -625,9 +623,9 @@ namespace SlickUWP.Canvas
 
         private void LoadTileDataSync(PositionKey key, ICachedTile tile)
         {
-            if (Red == null) Red = new byte[65536];
-            if (Green == null) Green = new byte[65536];
-            if (Blue == null) Blue = new byte[65536];
+            var red = RawImagePool.Capture();
+            var green = RawImagePool.Capture();
+            var blue = RawImagePool.Capture();
             try
             {
                 if (key == null || tile == null) return;
@@ -650,17 +648,19 @@ namespace SlickUWP.Canvas
                 }
 
                 var fileData = InterleavedFile.ReadFromStream(img.ResultData);
-                if (fileData != null) WaveletCompress.Decompress(fileData, Red, Green, Blue, 1);
+                if (fileData != null) WaveletCompress.Decompress(fileData, red, green, blue, 1);
 
-                var packed = new byte[CachedTile.ByteSize];
+                tile.EnsureDataReady();
+                var packed = tile.GetTileData() ?? throw new Exception("Byte pool allocation failed");
 
-                for (int i = 0; i < Red.Length; i++)
+                var end = TileImageSize * TileImageSize;
+                for (int i = 0; i < end; i++)
                 {
-                    packed[4 * i + 0] = Blue[i];
-                    packed[4 * i + 1] = Green[i];
-                    packed[4 * i + 2] = Red[i];
+                    packed[4 * i + 0] = blue[i];
+                    packed[4 * i + 1] = green[i];
+                    packed[4 * i + 2] = red[i];
 
-                    if (Blue[i] >= 254 && Green[i] >= 254 && Red[i] >= 254)
+                    if (blue[i] >= 254 && green[i] >= 254 && red[i] >= 254)
                     {
                         packed[4 * i + 3] = 0;
                     }
@@ -670,59 +670,75 @@ namespace SlickUWP.Canvas
                     }
                 }
 
-                tile.SetTileData(packed);
                 tile.SetState(TileState.Ready);
             }
-            catch
+            catch (Exception ex)
             {
+                Logging.WriteLogMessage("Failed to load tile data\r\n" + ex);
                 tile?.MarkCorrupted();
+            }
+            finally {
+                RawImagePool.Release(red);
+                RawImagePool.Release(green);
+                RawImagePool.Release(blue);
             }
         }
 
         private void WriteTileToBackingStoreSync(PositionKey key, CachedTile tile)
         {
-            if (Red == null) Red = new byte[65536];
-            if (Green == null) Green = new byte[65536];
-            if (Blue == null) Blue = new byte[65536];
 
             if (key == null) return;
 
             if (tile == null) return;
             if (tile.State == TileState.Locked) return;
 
-            var name = key.ToString();
 
-            if (tile.ImageIsBlank())
+            var red = RawImagePool.Capture();
+            var green = RawImagePool.Capture();
+            var blue = RawImagePool.Capture();
+            try
             {
-                _tileStore.Delete(name, "img");
-                tile.SetState(TileState.Empty);
-            }
-            else
-            {
-                var packed = tile.GetTileData();
-                if (packed == null) return;
+                var name = key.ToString();
 
-                for (int i = 0; i < Red.Length; i++)
+                if (tile.ImageIsBlank())
                 {
-                    Blue[i] = packed[4 * i + 0];
-                    Green[i] = packed[4 * i + 1];
-                    Red[i] = packed[4 * i + 2];
+                    _tileStore.Delete(name, "img");
+                    tile.SetState(TileState.Empty);
                 }
-
-                using (var ms = new MemoryStream())
+                else
                 {
-                    WaveletCompress.Compress(Red, Green, Blue, tile.Width, tile.Height).WriteToStream(ms);
-                    ms.Seek(0, SeekOrigin.Begin);
-                    var ok = _tileStore.Store(name, "img", ms);
+                    var packed = tile.GetTileData();
+                    if (packed == null) return;
 
-                    if (ok.IsFailure)
+                    var end = TileImageSize * TileImageSize;
+                    for (int i = 0; i < end; i++)
                     {
-                        throw new Exception("Storage error: DB might be corrupt.", ok.FailureCause);
+                        blue[i] = packed[4 * i + 0];
+                        green[i] = packed[4 * i + 1];
+                        red[i] = packed[4 * i + 2];
+                    }
+
+                    using (var ms = new MemoryStream())
+                    {
+                        WaveletCompress.Compress(red, green, blue, tile.Width, tile.Height).WriteToStream(ms);
+                        ms.Seek(0, SeekOrigin.Begin);
+                        var ok = _tileStore.Store(name, "img", ms);
+
+                        if (ok.IsFailure)
+                        {
+                            throw new Exception("Storage error: DB might be corrupt.", ok.FailureCause);
+                        }
                     }
                 }
             }
+            finally
+            {
+                RawImagePool.Release(red);
+                RawImagePool.Release(green);
+                RawImagePool.Release(blue);
+            }
         }
-        
+
         private static byte Clip(float value)
         {
             if (value >= 255) return 255;

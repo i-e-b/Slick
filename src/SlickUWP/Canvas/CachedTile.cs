@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.UI;
@@ -10,6 +11,30 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 
 namespace SlickUWP.Canvas
 {
+    /// <summary>
+    /// Pools raw data arrays to reduce GC time
+    /// </summary>
+    public static class RawImagePool {
+        [NotNull]private static readonly Queue<byte[]> _available = new Queue<byte[]>();
+        [NotNull]private static readonly object _lock = new object();
+
+        [NotNull]public static byte[] Capture() {
+            lock(_lock){
+                if (_available.TryDequeue(out var data)) return data;
+            }
+
+            return new byte[CachedTile.ByteSize];
+        }
+
+        public static void Release(byte[] data) {
+            if (data == null) return;
+            lock(_lock) {
+                _available.Enqueue(data);
+            }
+        }
+    }
+
+
     /// <summary>
     /// Looks after UI elements of a tile
     /// </summary>
@@ -44,12 +69,10 @@ namespace SlickUWP.Canvas
                 throw new Exception("Cached tile was garbage collected without being detached!");
         }
         
-
-        public void SetTileData(byte[] rawData) {
-            RawImageData = rawData;
-            UiCanvas.QueueAction(canv => canv?.Invalidate());
+        public void EnsureDataReady() {
+            if (RawImageData == null) { AllocateEmptyImage(); }
         }
-
+        
         public byte[] GetTileData()
         {
             return RawImageData;
@@ -184,7 +207,7 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void AllocateEmptyImage()
         {
-            RawImageData = new byte[ByteSize];
+            RawImageData = RawImagePool.Capture();
             for (int i = 0; i < ByteSize; i++) { RawImageData[i] = 255; }
         }
 
@@ -216,14 +239,12 @@ namespace SlickUWP.Canvas
         public void Deallocate()
         {
             State = TileState.Empty;
+            RawImagePool.Release(RawImageData);
             RawImageData = null;
         }
 
         public void SetSelected(bool isSelected)
         {
-            // relies on the background being a different color
-            //UiCanvas.Opacity = isSelected ? 0.5 : 1.0;
-
             IsSelected = isSelected;
             Invalidate();
         }

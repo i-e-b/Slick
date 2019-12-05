@@ -30,6 +30,7 @@ namespace SlickUWP.Canvas
                     Margin = new Thickness(0.0),
                     Height = 256,
                     Width = 256,
+                    CacheMode = null,
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
                     UseLayoutRounding = true

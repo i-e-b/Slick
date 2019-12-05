@@ -18,6 +18,7 @@ namespace SlickCommon.Storage
         public StreamDbStorageContainer([NotNull]IStreamProvider pageFile)
         {
             _pageFile = pageFile;
+            //Database.SetQuickAndDirtyMode();
             _db = Database.TryConnect(_pageFile.Open()) ?? throw new Exception("Failed to open database");
         }
 

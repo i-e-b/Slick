@@ -6,9 +6,9 @@
         public TileState State;
 
         /// <inheritdoc />
-        public void SetTileData(byte[] packed)
+        public void EnsureDataReady()
         {
-            _data = packed;
+            _data = RawImagePool.Capture();
         }
 
         /// <inheritdoc />
@@ -27,6 +27,13 @@
         public void MarkCorrupted()
         {
             State = TileState.Corrupted;
+        }
+
+        /// <inheritdoc />
+        public void Deallocate()
+        {
+            RawImagePool.Release(_data);
+            _data = null;
         }
     }
 }

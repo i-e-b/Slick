@@ -2,9 +2,11 @@
 {
     public interface ICachedTile
     {
-        void SetTileData(byte[] packed);
+        void EnsureDataReady();
         byte[] GetTileData();
         void SetState(TileState ready);
         void MarkCorrupted();
+        void Deallocate();
     }
+
 }
