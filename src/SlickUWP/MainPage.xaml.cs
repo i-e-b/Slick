@@ -74,7 +74,9 @@ namespace SlickUWP
 
         private void MainPage_KeyDown(object sender, Windows.UI.Xaml.Input.KeyRoutedEventArgs e)
         {
-            switch (e?.Key)
+            if (e == null) return;
+
+            switch (e.Key)
             {
                 case VirtualKey.Delete:
                     if (_penMode != PenMode.Select) return;
@@ -135,6 +137,7 @@ namespace SlickUWP
             _tileCanvas = new TileCanvas(renderLayer, _tileStore);
             pinsView?.SetConnections(_tileCanvas, _tileStore);
             ImageImportFloater?.SetCanvasTarget(_tileCanvas);
+            TextFloater?.SetCanvasTarget(_tileCanvas);
 
             _wetInk = new WetInkCanvas(wetInkCanvas ?? throw new Exception("Invalid page structure (2)"));
 
@@ -177,6 +180,7 @@ namespace SlickUWP
             if (_tileCanvas != null) {
                 pinsView?.SetConnections(_tileCanvas, store);
                 ImageImportFloater?.SetCanvasTarget(_tileCanvas);
+                TextFloater?.SetCanvasTarget(_tileCanvas);
             }
 
             return store;
@@ -481,6 +485,15 @@ namespace SlickUWP
             // Show the floating importer
             ImageImportFloater.Margin = new Thickness(128, 128, 0, 0);
             ImageImportFloater.Visibility = Visibility.Visible;
+        }
+        
+
+        private void textInputButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (TextFloater == null) return;
+
+            TextFloater.Margin = new Thickness(128, 128, 0, 0);
+            TextFloater.Visibility = Visibility.Visible;
         }
 
         private async  void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)

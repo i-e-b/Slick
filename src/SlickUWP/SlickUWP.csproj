@@ -143,6 +143,9 @@
     <Compile Include="Gui\CornerPalette.xaml.cs">
       <DependentUpon>CornerPalette.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Gui\TextFloater.xaml.cs">
+      <DependentUpon>TextFloater.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Gui\ImportFloater.xaml.cs">
       <DependentUpon>ImportFloater.xaml</DependentUpon>
     </Compile>
@@ -180,6 +183,10 @@
     <Page Include="Gui\CornerPalette.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Gui\TextFloater.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Gui\ImportFloater.xaml">
       <SubType>Designer</SubType>

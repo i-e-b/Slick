@@ -20,16 +20,19 @@
 
         <!-- This is the visual of our pen-input picker. We get inputs from the `baseInkCanvas` and map from there. -->
         <Custom1:CornerPalette x:Name="paletteView" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0" d:IsLocked="True" />
+        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="All" IsHoldingEnabled="False" IsRightTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" ManipulationDelta="baseInkCanvas_ManipulationDelta" ManipulationCompleted="baseInkCanvas_ManipulationCompleted" DoubleTapped="baseInkCanvas_DoubleTapped" Tapped="baseInkCanvas_Tapped" PointerWheelChanged="baseInkCanvas_PointerWheelChanged" d:IsLocked="True"/>
 
         <!-- The ink canvas records input, and sits over all canvas controls -->
-        <InkCanvas x:Name="baseInkCanvas" Margin="0,0,0,0" ManipulationMode="All" IsHoldingEnabled="False" IsRightTapEnabled="False" HighContrastAdjustment="None" AllowFocusOnInteraction="False" ManipulationDelta="baseInkCanvas_ManipulationDelta" ManipulationCompleted="baseInkCanvas_ManipulationCompleted" DoubleTapped="baseInkCanvas_DoubleTapped" Tapped="baseInkCanvas_Tapped" PointerWheelChanged="baseInkCanvas_PointerWheelChanged"/>
 
         <!-- The Pins overlay is for managing hot-spots on the canvas. It sits over the ink layer and uses normal XAML input -->
         <Custom1:PinsOverlay x:Name="pinsView" HorizontalAlignment="Stretch" Opacity="0"  VerticalAlignment="Stretch" Visibility="Collapsed" d:IsLocked="True"/>
 
         <!-- The import floater is shown to position and import images onto the canvas. It acts a lot like the wet ink canvas. -->
-        <Custom1:ImportFloater x:Name="ImageImportFloater" HorizontalAlignment="Left" Height="163" Margin="177,101,0,0" VerticalAlignment="Top" Width="260" Visibility="Collapsed" d:IsLocked="True"/>
+        <Custom1:ImportFloater x:Name="ImageImportFloater" HorizontalAlignment="Left" Height="163" Margin="177,101,0,0" VerticalAlignment="Top" Width="260" Visibility="Collapsed"/>
 
+        <!-- The text floater allows rendered text to be placed on the canvas -->
+        <Custom1:TextFloater x:Name="TextFloater" HorizontalAlignment="Left" Height="203" Margin="122,0,0,0" VerticalAlignment="Top" Width="264" Visibility="Collapsed"/>
+        
         <!-- Mode switch buttons -->
         <Button x:Name="pickPageButton" Content="Set Page" Margin="0,0,10,10" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" Click="PickPageButton_Click" BorderThickness="1,1,1,1" Width="80" d:IsLocked="True">
             <Button.BorderBrush>
@@ -61,12 +64,17 @@
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="exportTilesButton" Content="Export..." Margin="0,0,10,80" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Click="ExportTilesButton_Click" Visibility="Visible">
+        <Button x:Name="exportTilesButton" Content="Export..." Margin="0,0,10,80" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Click="ExportTilesButton_Click" Visibility="Visible" d:IsLocked="True">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
         </Button>
-        <Button x:Name="importImageButton" Content="Import..." Margin="0,0,10,115" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Visibility="Visible" Click="ImportImageButton_Click">
+        <Button x:Name="importImageButton" Content="Import..." Margin="0,0,10,115" VerticalAlignment="Bottom" HorizontalAlignment="Right" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Visibility="Visible" Click="ImportImageButton_Click" d:IsLocked="True">
+            <Button.BorderBrush>
+                <SolidColorBrush Color="#FF747474" Opacity="1"/>
+            </Button.BorderBrush>
+        </Button>
+        <Button x:Name="textInputButton" Content="Text" Margin="95,0,0,10" VerticalAlignment="Bottom" Background="#99FFFFFF" BorderThickness="1,1,1,1" Width="80" Click="textInputButton_Click" d:IsLocked="True">
             <Button.BorderBrush>
                 <SolidColorBrush Color="#FF747474" Opacity="1"/>
             </Button.BorderBrush>
