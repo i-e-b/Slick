@@ -1,10 +1,11 @@
 ﻿
-//#define USE_STREAM_DB
+#define USE_STREAM_DB
 // There is another switch in EndlessCanvas.cs
 
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Devices.Input;
@@ -66,7 +67,7 @@ namespace SlickUWP
             var view = SystemNavigationManagerPreview.GetForCurrentView();
             if (view != null) view.CloseRequested += OnCloseRequest;
 
-            this.KeyDown += MainPage_KeyDown;
+            KeyDown += MainPage_KeyDown;
 
             if (exportTilesButton != null) exportTilesButton.Visibility = Visibility.Collapsed;
             if (importImageButton != null) importImageButton.Visibility = Visibility.Collapsed;
@@ -191,7 +192,7 @@ namespace SlickUWP
         {
             // commit the wet ink to the canvas and re-draw
             _wetInk?.CommitTo(_tileCanvas);
-            _tileCanvas?.Invalidate();
+            //RateLimitInvalidate();
         }
 
 
@@ -276,6 +277,7 @@ namespace SlickUWP
 
                     case InteractionMode.SelectTiles:
                         _tileCanvas?.AddSelection(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
+                        await RateLimitInvalidate();
                         return;
 
                     default: return;
@@ -328,9 +330,7 @@ namespace SlickUWP
             _tileCanvas?.Scroll(dx, dy);
             _lastPoint = thisPoint.Position;
 
-            var timediff = (int)Math.Max(10, 30 - moveSw.ElapsedMilliseconds);
-            // ReSharper disable once PossibleNullReferenceException
-            await Task.Delay(timediff);
+            await RateLimitInvalidate();
         }
 
         private volatile bool _processingPointer = false;
@@ -505,11 +505,11 @@ namespace SlickUWP
 
             if (disp == null) return;
 
-            await disp.RunAsync(CoreDispatcherPriority.Normal, () =>
+            await disp.RunAsync(CoreDispatcherPriority.Normal, async () =>
             {
                 _tileCanvas.DeltaScale(e.Delta.Scale);
                 _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
-                _tileCanvas.Invalidate();
+                await RateLimitInvalidate();
             }).NotNull();
         }
 
@@ -532,7 +532,7 @@ namespace SlickUWP
             //if (e == null || _tileCanvas == null) return;
         }
 
-        private void baseInkCanvas_PointerWheelChanged(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        private async void baseInkCanvas_PointerWheelChanged(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             if (e == null || _tileCanvas == null) return;
 
@@ -550,12 +550,33 @@ namespace SlickUWP
             if (e.KeyModifiers == VirtualKeyModifiers.Control) {
                 delta /= 1000.0; // value by experiment
                 _tileCanvas.DeltaScale(delta + 1);
-                _tileCanvas.Invalidate();
+                await RateLimitInvalidate();
                 return;
             }
 
             if (isHorz) _tileCanvas.Scroll(-delta, 0);
             else _tileCanvas.Scroll(0, delta);
+            await RateLimitInvalidate();
+        }
+
+        private volatile bool _dirty = true;
+        private async Task RateLimitInvalidate()
+        {
+            _tileCanvas?.Invalidate();
+
+            //await Task.Delay(16);
+            //_tileCanvas?.Invalidate();
+
+            /*_dirty = true;
+            ThreadPool.QueueUserWorkItem(x =>
+                {
+                    if (!_dirty) return;
+                    _dirty = false;
+                    Thread.Sleep(16);
+                    _tileCanvas?.Invalidate();
+                }
+            );
+            */
         }
     }
 }

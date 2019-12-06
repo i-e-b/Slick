@@ -26,8 +26,10 @@ namespace SlickUWP.Canvas
     public class WetInkCanvas
     {
         [NotNull] private readonly CanvasControl _renderTarget;
-        [NotNull] private readonly List<DPoint> _stroke;
-        [NotNull] private readonly Queue<DPoint[]> _dryingInk; // strokes we are currently drying
+        [NotNull] private readonly List<DPoint> _stroke; // stroke being drawn
+        
+        [NotNull]private static readonly object _dryLock = new object();
+        [NotNull] private readonly List<DPoint[]> _dryingInk; // strokes we are currently drying
 
         [NotNull] private readonly Dictionary<int, Color> _penColors; 
         [NotNull] private readonly Dictionary<int, double> _penSizes; 
@@ -37,7 +39,7 @@ namespace SlickUWP.Canvas
             _renderTarget = renderTarget;
             _renderTarget.Draw += _renderTarget_Draw;
             _stroke = new List<DPoint>();
-            _dryingInk = new Queue<DPoint[]>();
+            _dryingInk = new List<DPoint[]>();
             _penColors = new Dictionary<int, Color>();
             _penSizes = new Dictionary<int, double>();
         }
@@ -67,13 +69,17 @@ namespace SlickUWP.Canvas
         {
             if (tileCanvas == null) return;
 
+            // TODO: make this handle huge/slow draws better (needed for zoomed-out writing)
             try
             {
-                _dryingInk.Enqueue(_stroke.ToArray());
-                _stroke.Clear(); // ready for next
+                lock(_dryLock){
+                    _dryingInk.Add(_stroke.ToArray());
+                    _stroke.Clear(); // ready for next
+                }
 
                 // render and copy on a separate thread
-                ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas));
+                //ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas));
+                DryWaitingStroke(tileCanvas);
             }
             catch (Exception ex)
             {
@@ -81,24 +87,34 @@ namespace SlickUWP.Canvas
             }
         }
 
-        private WaitCallback DryWaitingStroke([NotNull]TileCanvas tileCanvas)
+        private void DryWaitingStroke([NotNull]TileCanvas tileCanvas)
         {
-            return x => {
-                byte[] bytes;
-                
-                // Try to get a waiting stroke (peek, so we can draw the waiting stroke)
-                if (!_dryingInk.TryPeek(out var strokeToRender)) return;
-                if (strokeToRender.Length < 1) {
-                    _dryingInk.TryDequeue(out _);
-                    return;
+            // TODO: clean this mess up. I've got threading issues...
+
+            // Try to get a waiting stroke (peek, so we can draw the waiting stroke)
+            DPoint[][] waitingStrokes;
+            lock (_dryLock)
+            {
+                waitingStrokes = _dryingInk.ToArray();
+                _dryingInk.Clear();
+                _renderTarget.Invalidate();
+            }
+
+            if (waitingStrokes == null) return;
+            foreach (var strokeToRender in waitingStrokes)
+            {
+                if (strokeToRender.Length < 1)
+                {
+                    continue;
                 }
 
                 // Figure out what part of the screen is covered
                 var clipRegion = MeasureDrawing(strokeToRender, tileCanvas.CurrentZoom());
-                var pixelWidth = (int)clipRegion.Width;
-                var pixelHeight = (int)clipRegion.Height;
+                var pixelWidth = (int) clipRegion.Width;
+                var pixelHeight = (int) clipRegion.Height;
 
                 // draw to an image
+                byte[] bytes;
                 using (var offscreen = new CanvasRenderTarget(CanvasDevice.GetSharedDevice(), pixelWidth, pixelHeight, 96,
                     DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied))
                 {
@@ -107,33 +123,33 @@ namespace SlickUWP.Canvas
                         ds?.Clear(Colors.Transparent);
                         DrawToSession(ds, strokeToRender, clipRegion, tileCanvas.CurrentZoom());
                     }
+
                     bytes = offscreen.GetPixelBytes();
                 }
 
                 // render into tile cache
-                var uncropped = new RawImageInterleaved_UInt8{
+                var uncropped = new RawImageInterleaved_UInt8
+                {
                     Data = bytes,
                     Width = pixelWidth,
                     Height = pixelHeight
                 };
 
-                var visualWidth = (int)Math.Ceiling(pixelWidth / tileCanvas.CurrentZoom());
-                var visualHeight = (int)Math.Ceiling(pixelHeight / tileCanvas.CurrentZoom());
-                var visualTop = (int)Math.Floor(clipRegion.Y + 0.5);
-                var visualLeft = (int)Math.Floor(clipRegion.X + 0.5);
+                var visualWidth = (int) Math.Ceiling(pixelWidth / tileCanvas.CurrentZoom());
+                var visualHeight = (int) Math.Ceiling(pixelHeight / tileCanvas.CurrentZoom());
+                var visualTop = (int) Math.Floor(clipRegion.Y + 0.5);
+                var visualLeft = (int) Math.Floor(clipRegion.X + 0.5);
                 var visualRight = visualLeft + visualWidth;
                 var visualBottom = visualTop + visualHeight;
                 var success = tileCanvas.ImportBytesScaled(uncropped, visualLeft, visualTop, visualRight, visualBottom);
 
-                
-                _renderTarget.Invalidate();
-                if (success) _dryingInk.TryDequeue(out _); // pull it off the queue (don't do this if a tile was locked)
-
-                // safety check -- if there are still strokes waiting, spawn more threads
-                if (_dryingInk.Count > 0) {
-                    ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas));
+                if (!success) {
+                    lock (_dryLock)
+                    {
+                        _dryingInk.Add(strokeToRender); // try again later
+                    }
                 }
-            };
+            }
         }
 
         /// <summary>

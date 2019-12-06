@@ -42,8 +42,13 @@ namespace SlickUWP.Canvas
 
         private double _viewScale = 1.0;
 
-        private volatile bool _inReflow = false;
-        
+        private int _height;
+        private int _width;
+
+        [NotNull] private static readonly object _reflowLock = new object();
+        [NotNull] private readonly Thread _backgroundUpdate;
+        [NotNull] private readonly ManualResetEventSlim _dirtyTrigger;
+
 
         /// <summary>
         /// Start rendering tiles into a display container. Always starts at 0,0
@@ -61,19 +66,89 @@ namespace SlickUWP.Canvas
             
             _cx = _displayContainer.ActualWidth / 2;
             _cy = _displayContainer.ActualHeight / 2;
+            _width = (int)_displayContainer.ActualWidth;
+            _height = (int)_displayContainer.ActualHeight;
 
             X = 0.0;
             Y = 0.0;
 
-            ThreadPool.SetMinThreads(4, 1);
-            ThreadPool.SetMaxThreads(4, 1);
+            _dirtyTrigger = new ManualResetEventSlim(true, 0);
+            _backgroundUpdate = new Thread(BackgroundUpdateLoop){
+                IsBackground = true,
+                Name = "SlickCanvasBackgroundThread"
+            };
+            _backgroundUpdate.Start();
+
+            ThreadPool.SetMinThreads(4, 4);
+            ThreadPool.SetMaxThreads(4, 4);
             Invalidate();
+        }
+
+        private void BackgroundUpdateLoop()
+        {
+            while (_backgroundUpdate.IsAlive)
+            {
+                try
+                {
+                    _dirtyTrigger.Wait();
+                    lock (_reflowLock)
+                    {
+                        // 1) figure out what tiles should be showing
+                        // 2) add any not in the cache
+                        // 3) remove anything in the cache that should not be visible
+                        // 4) ensure the tiles are in the correct offset position
+
+                        var width = _width;
+                        var height = _height;
+
+                        var required = VisibleTiles(0, 0, width, height);
+                        var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
+
+                        // add any missing
+                        foreach (var key in required)
+                        {
+                            toRemove.Remove(key);
+                            if (!_tileCache.ContainsKey(key)) AddToCache(key);
+                        }
+
+                        // remove any extra
+                        foreach (var key in toRemove)
+                        {
+                            if (!_tileCache.TryGetValue(key, out var container)) { continue; }
+                            container.Detach();
+                            container.Deallocate();
+                            _tileCache.Remove(key);
+                        }
+
+                        // re-align what's left
+                        foreach (var kvp in _tileCache)
+                        {
+                            if (kvp.Value == null) continue;
+
+                            var pos = VisualRectangleNative(kvp.Key);
+                            kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
+                            kvp.Value.MoveTo(pos.X, pos.Y);
+                        }
+
+                        // TODO: anything still in the container should be removed.
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logging.WriteLogMessage("Error in tile background loop: " + ex);
+                }
+
+            }
+            // ReSharper disable once FunctionNeverReturns
         }
 
         private void _displayContainer_SizeChanged(object sender, Windows.UI.Xaml.SizeChangedEventArgs e)
         {
             _cx = _displayContainer.ActualWidth / 2;
             _cy = _displayContainer.ActualHeight / 2;
+            
+            _width = (int)_displayContainer.ActualWidth;
+            _height = (int)_displayContainer.ActualHeight;
             Invalidate();
         }
 
@@ -110,58 +185,7 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void Invalidate()
         {
-            // 1) figure out what tiles should be showing
-            // 2) add any not in the cache
-            // 3) remove anything in the cache that should not be visible
-            // 4) ensure the tiles are in the correct offset position
-
-            if (_inReflow) return;
-            try
-            {
-                _inReflow = true;
-
-                var width = (int)_displayContainer.ActualWidth;
-                var height = (int)_displayContainer.ActualHeight;
-
-                var required = VisibleTiles(0, 0, width, height);
-                var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
-                var toAdd = new HashSet<PositionKey>();
-
-                // add any missing
-                foreach (var key in required)
-                {
-                    toRemove.Remove(key);
-                    if (!_tileCache.ContainsKey(key)) toAdd.Add(key);
-                }
-
-                // remove any extra
-                foreach (var key in toRemove)
-                {
-                    if (!_tileCache.TryGetValue(key, out var container)) { continue; }
-                    container.Detach();
-                    container.Deallocate();
-                    _tileCache.Remove(key);
-                }
-
-                // add any missing (we do this after remove to use the canvas pool effectively)
-                foreach (var key in toAdd)
-                {
-                    if (!_tileCache.ContainsKey(key)) AddToCache(key);
-                }
-
-                // re-align what's left
-                foreach (var kvp in _tileCache)
-                {
-                    var pos = VisualRectangleNative(kvp.Key);
-                    if (kvp.Value == null) continue;
-                    kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
-                    kvp.Value.MoveTo(pos.X, pos.Y);
-                }
-            }
-            finally
-            {
-                _inReflow = false;
-            }
+            _dirtyTrigger.Set();
         }
 
         /// <summary>
@@ -182,9 +206,7 @@ namespace SlickUWP.Canvas
             }
 
             // Read the db and set tile state in the background
-            var xkey = key;
-            //ThreadPool.QueueUserWorkItem(x => { LoadTileDataSync(xkey, tile); });
-            ThreadPool.UnsafeQueueUserWorkItem(x => { LoadTileDataSync((PositionKey)x, tile); }, xkey);
+            ThreadPool.QueueUserWorkItem(xkey => { LoadTileDataSync((PositionKey)xkey, tile); }, key);
         }
 
         [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
@@ -219,8 +241,6 @@ namespace SlickUWP.Canvas
         public void Scroll(double dx, double dy){
             X += dx / _viewScale;
             Y += dy / _viewScale;
-
-            Invalidate();
         }
 
         /// <summary>
@@ -229,8 +249,6 @@ namespace SlickUWP.Canvas
         public void ScrollTo(double x, double y){
             X = x;
             Y = y;
-
-            Invalidate();
         }
 
         /// <summary>
@@ -377,7 +395,7 @@ namespace SlickUWP.Canvas
                         _lastChangedTiles.Add(key);
                         tile.Invalidate();
                         tile.SetState(TileState.Ready);
-                        ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
+                        ThreadPool.UnsafeQueueUserWorkItem(xkey => { WriteTileToBackingStoreSync((PositionKey) xkey, tile); }, key);
                     }
                 }
             }
@@ -884,7 +902,6 @@ namespace SlickUWP.Canvas
         {
             var pos = ScreenToCanvas(x,y);
             _selectedTiles.Add(pos.TilePosition);
-            Invalidate();
         }
 
         public void ClearSelection()
@@ -913,7 +930,7 @@ namespace SlickUWP.Canvas
                 
                 _lastChangedTiles.Add(key);
                 tile.Invalidate();
-                ThreadPool.UnsafeQueueUserWorkItem(x => { WriteTileToBackingStoreSync((PositionKey) x, tile); }, key);
+                ThreadPool.UnsafeQueueUserWorkItem(xkey => { WriteTileToBackingStoreSync((PositionKey) xkey, tile); }, key);
             }
             ClearSelection();
         }

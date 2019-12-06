@@ -246,7 +246,6 @@ namespace SlickUWP.Canvas
         public void SetSelected(bool isSelected)
         {
             IsSelected = isSelected;
-            Invalidate();
         }
     }
 }
