@@ -286,8 +286,8 @@ namespace SlickUWP.Canvas
                 var bounds = stroke.BoundingRect;
                 clipRegion.X = (int)minX - (2 * attr.Size.Width);
                 clipRegion.Y = (int)minY - (2 * attr.Size.Width);
-                clipRegion.Width = (int)(bounds.Width + (4 * attr.Size.Width * zoom));
-                clipRegion.Height = (int)(bounds.Height + (4 * attr.Size.Width * zoom));
+                clipRegion.Width = (int)(bounds.Width + (4 * attr.Size.Width * zoom)) + 2;
+                clipRegion.Height = (int)(bounds.Height + (4 * attr.Size.Width * zoom)) + 2;
             }
             catch (Exception ex)
             {
