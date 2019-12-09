@@ -8,6 +8,11 @@ namespace SlickCommon.Storage
     public interface IStorageContainer: IDisposable
     {
         /// <summary>
+        /// Return a display name for the implementation
+        /// </summary>
+        string DisplayName();
+
+        /// <summary>
         /// Check if there is a storage node at the given path
         /// </summary>
         Result<StorageNode> Exists(string path);

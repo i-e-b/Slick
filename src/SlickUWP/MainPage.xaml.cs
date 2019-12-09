@@ -1,11 +1,6 @@
-﻿
-#define USE_STREAM_DB
-// There is another switch in EndlessCanvas.cs
-
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Devices.Input;
@@ -172,11 +167,8 @@ namespace SlickUWP
 
             var accessStream = await file.OpenAsync(FileAccessMode.ReadWrite).NotNull();
             var wrapper = new StreamWrapper(accessStream);
-#if USE_STREAM_DB
-            var store = new StreamDbStorageContainer(wrapper);
-#else
-            var store = new LiteDbStorageContainer(wrapper);
-#endif
+
+            var store = LoadStorageFile(wrapper);
 
             if (_tileCanvas != null) {
                 pinsView?.SetConnections(_tileCanvas, store);
@@ -186,7 +178,29 @@ namespace SlickUWP
 
             return store;
         }
-        
+
+        [NotNull]private static IStorageContainer LoadStorageFile(StreamWrapper wrapper)
+        {
+            if (wrapper == null) throw new Exception("Could not read file -- failed to access file system");
+            try
+            {
+                return new StreamDbStorageContainer(wrapper);
+            }
+            catch (Exception streamReason)
+            {
+                try
+                {
+                    return new LiteDbStorageContainer(wrapper);
+                }
+                catch (Exception liteReason)
+                {
+                    Logging.WriteLogMessage("Failed to read as a StreamDB file:\r\n" + streamReason);
+                    Logging.WriteLogMessage("Failed to read as a LiteDB file:\r\n" + liteReason);
+                    throw new Exception("Could not read file -- it's either damaged or not a Slick file.");
+                }
+            }
+        }
+
 
         private void UnprocessedInput_PointerReleased(InkUnprocessedInput sender, PointerEventArgs args)
         {
@@ -254,7 +268,7 @@ namespace SlickUWP
             }
         }
 
-        private async void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
+        private void UnprocessedInput_PointerMoved(InkUnprocessedInput sender, PointerEventArgs args)
         {
             if (args?.CurrentPoint == null || _tileCanvas == null) return;
 
@@ -267,7 +281,7 @@ namespace SlickUWP
                 switch (_interactionMode)
                 {
                     case InteractionMode.Move:
-                        await MoveCanvas(args);
+                        MoveCanvas(args);
                         return;
 
                     case InteractionMode.Draw:
@@ -277,7 +291,7 @@ namespace SlickUWP
 
                     case InteractionMode.SelectTiles:
                         _tileCanvas?.AddSelection(args.CurrentPoint.Position.X, args.CurrentPoint.Position.Y);
-                        await RateLimitInvalidate();
+                        _tileCanvas?.Invalidate();
                         return;
 
                     default: return;
@@ -294,7 +308,9 @@ namespace SlickUWP
             try {
                 var appView = Windows.UI.ViewManagement.ApplicationView.GetForCurrentView();
                 if (appView == null) return;
-                appView.Title = $"Slick {GetAppVersion()} - " + text;
+
+                var storeType = _tileStore?.DisplayName() ?? "No file loaded";
+                appView.Title = $"Slick {GetAppVersion()} - {text} - {storeType}";
             }
             catch {
                 // ignore
@@ -314,7 +330,7 @@ namespace SlickUWP
 
         /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
         [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
-        private async Task MoveCanvas([NotNull]PointerEventArgs args)
+        private void MoveCanvas([NotNull]PointerEventArgs args)
         {
             var thisPoint = args.CurrentPoint;
             if (thisPoint == null || _tileCanvas == null) return;
@@ -330,7 +346,7 @@ namespace SlickUWP
             _tileCanvas?.Scroll(dx, dy);
             _lastPoint = thisPoint.Position;
 
-            await RateLimitInvalidate();
+            _tileCanvas?.Invalidate();
         }
 
         private volatile bool _processingPointer = false;
@@ -505,11 +521,11 @@ namespace SlickUWP
 
             if (disp == null) return;
 
-            await disp.RunAsync(CoreDispatcherPriority.Normal, async () =>
+            await disp.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
                 _tileCanvas.DeltaScale(e.Delta.Scale);
                 _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
-                await RateLimitInvalidate();
+                _tileCanvas?.Invalidate();
             }).NotNull();
         }
 
@@ -532,7 +548,7 @@ namespace SlickUWP
             //if (e == null || _tileCanvas == null) return;
         }
 
-        private async void baseInkCanvas_PointerWheelChanged(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
+        private  void baseInkCanvas_PointerWheelChanged(object sender, Windows.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             if (e == null || _tileCanvas == null) return;
 
@@ -550,33 +566,13 @@ namespace SlickUWP
             if (e.KeyModifiers == VirtualKeyModifiers.Control) {
                 delta /= 1000.0; // value by experiment
                 _tileCanvas.DeltaScale(delta + 1);
-                await RateLimitInvalidate();
+                _tileCanvas?.Invalidate();
                 return;
             }
 
             if (isHorz) _tileCanvas.Scroll(-delta, 0);
             else _tileCanvas.Scroll(0, delta);
-            await RateLimitInvalidate();
-        }
-
-        private volatile bool _dirty = true;
-        private async Task RateLimitInvalidate()
-        {
             _tileCanvas?.Invalidate();
-
-            //await Task.Delay(16);
-            //_tileCanvas?.Invalidate();
-
-            /*_dirty = true;
-            ThreadPool.QueueUserWorkItem(x =>
-                {
-                    if (!_dirty) return;
-                    _dirty = false;
-                    Thread.Sleep(16);
-                    _tileCanvas?.Invalidate();
-                }
-            );
-            */
         }
     }
 }

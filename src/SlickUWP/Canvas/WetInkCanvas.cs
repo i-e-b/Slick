@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Threading;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.System;
@@ -30,6 +29,7 @@ namespace SlickUWP.Canvas
         
         [NotNull]private static readonly object _dryLock = new object();
         [NotNull] private readonly List<DPoint[]> _dryingInk; // strokes we are currently drying
+        [NotNull] private readonly List<DPoint[]> _renderingInk; // strokes we are currently rendering
 
         [NotNull] private readonly Dictionary<int, Color> _penColors; 
         [NotNull] private readonly Dictionary<int, double> _penSizes; 
@@ -40,6 +40,7 @@ namespace SlickUWP.Canvas
             _renderTarget.Draw += _renderTarget_Draw;
             _stroke = new List<DPoint>();
             _dryingInk = new List<DPoint[]>();
+            _renderingInk = new List<DPoint[]>();
             _penColors = new Dictionary<int, Color>();
             _penSizes = new Dictionary<int, double>();
         }
@@ -78,7 +79,6 @@ namespace SlickUWP.Canvas
                 }
 
                 // render and copy on a separate thread
-                //ThreadPool.QueueUserWorkItem(DryWaitingStroke(tileCanvas));
                 DryWaitingStroke(tileCanvas);
             }
             catch (Exception ex)
@@ -89,14 +89,13 @@ namespace SlickUWP.Canvas
 
         private void DryWaitingStroke([NotNull]TileCanvas tileCanvas)
         {
-            // TODO: clean this mess up. I've got threading issues...
-
             // Try to get a waiting stroke (peek, so we can draw the waiting stroke)
             DPoint[][] waitingStrokes;
             lock (_dryLock)
             {
                 waitingStrokes = _dryingInk.ToArray();
                 _dryingInk.Clear();
+                _renderingInk.AddRange(waitingStrokes);
                 _renderTarget.Invalidate();
             }
 
@@ -147,6 +146,11 @@ namespace SlickUWP.Canvas
                     lock (_dryLock)
                     {
                         _dryingInk.Add(strokeToRender); // try again later
+                    }
+                } else {
+                    lock (_dryLock)
+                    {
+                        _renderingInk.Clear();
                     }
                 }
             }
@@ -231,12 +235,14 @@ namespace SlickUWP.Canvas
                 g.Clear(Colors.Transparent);
                 DrawToSession(g, _stroke.ToArray(), screenQuad, 1.0);
 
-                // Overdraw any ink that is still drying...
-                var drying = _dryingInk.ToArray();
-                foreach (var stroke in drying)
-                {
-                    DrawToSession(g, stroke, screenQuad, 1.0);
-                }
+                // Overdraw any ink that is waiting to dry (this is for strokes being drawn)
+                DPoint[][] strokes;
+                lock (_dryLock) { strokes = _dryingInk.ToArray(); }
+                if (strokes != null) foreach (var stroke in strokes) { DrawToSession(g, stroke, screenQuad, 1.0); }
+
+                // overdraw any ink that is being rendered (prevents flicker if the render is running slowly)
+                lock (_dryLock) { strokes = _renderingInk.ToArray(); }
+                if (strokes != null) foreach (var stroke in strokes) { DrawToSession(g, stroke, screenQuad, 1.0); }
             }
             catch (Exception ex)
             {

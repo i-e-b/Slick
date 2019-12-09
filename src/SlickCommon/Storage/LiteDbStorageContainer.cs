@@ -34,6 +34,9 @@ namespace SlickCommon.Storage
         }
 
         /// <inheritdoc />
+        public string DisplayName() { return "LiteDB"; }
+
+        /// <inheritdoc />
         public Result<StorageNode> Exists(string path)
         {
             if (_disposed) return Result<StorageNode>.Failure(NoDb);

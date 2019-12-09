@@ -31,6 +31,9 @@ namespace SlickCommon.Storage
         }
 
         /// <inheritdoc />
+        public string DisplayName() { return "StreamDB"; }
+
+        /// <inheritdoc />
         public Result<StorageNode> Exists(string path)
         {
             var ok = _db.Get("map/" + path, out var rawStream);
