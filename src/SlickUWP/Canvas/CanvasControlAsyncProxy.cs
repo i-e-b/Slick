@@ -52,19 +52,16 @@ namespace SlickUWP.Canvas
         private void RunWaitingCommands()
         {
             if (_ctrl == null) return;
-            lock (_commandQueue)
+            _container?.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                _container?.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () =>
+                lock (_commandQueue)
                 {
-                    while (_commandQueue.Count > 0)
+                    while (_commandQueue.TryDequeue(out var cmd))
                     {
-                        _commandQueue.Dequeue()?.Invoke(_ctrl);
+                        cmd.Invoke(_ctrl);
                     }
-
-                    _ctrl?.Invalidate();
-                    _container.InvalidateArrange();
-                });
-            }
+                }
+            });
         }
 
 
@@ -79,10 +76,8 @@ namespace SlickUWP.Canvas
 
         public void RemoveFromContainer()
         {
-            if (_ctrl == null) {
-                Logging.WriteLogMessage("Lost control object in `RemoveFromContainer`");
-                return;
-            }
+            if (_ctrl == null) { return; } // this happens quite a lot.
+
             if (_container == null) {
                 Logging.WriteLogMessage("Lost container object in `RemoveFromContainer`");
                 return;

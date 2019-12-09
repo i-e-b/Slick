@@ -48,6 +48,8 @@ namespace SlickUWP
         private TileCanvas _tileCanvas;
         private WetInkCanvas _wetInk;
         
+        [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
+        double sumScrollX,sumScrollY;
         Point _lastPoint;
         InteractionMode _interactionMode = InteractionMode.None;
         PenMode _penMode = PenMode.Ink;
@@ -328,26 +330,6 @@ namespace SlickUWP
             return $"{version.Value.Major}.{version.Value.Minor}.{version.Value.Build}.{version.Value.Revision}";
         }
 
-        /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
-        [NotNull] private readonly Stopwatch moveSw = new Stopwatch();
-        private void MoveCanvas([NotNull]PointerEventArgs args)
-        {
-            var thisPoint = args.CurrentPoint;
-            if (thisPoint == null || _tileCanvas == null) return;
-
-            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 10) return;
-
-            var thresh = _tileCanvas.CurrentZoom();
-            var dx = _lastPoint.X - thisPoint.Position.X;
-            var dy = _lastPoint.Y - thisPoint.Position.Y;
-            if (Math.Abs(dx) < thresh && Math.Abs(dy) < thresh) return;
-
-            moveSw.Restart();
-            _tileCanvas?.Scroll(dx, dy);
-            _lastPoint = thisPoint.Position;
-
-            _tileCanvas?.Invalidate();
-        }
 
         private volatile bool _processingPointer = false;
 
@@ -373,12 +355,12 @@ namespace SlickUWP
 
             var newStore = await LoadTileStore(file.Path);
             if (newStore == null) return;
-            SetTitleBarString(file.DisplayName);
-
             _tileStore?.Dispose();
             _tileStore = newStore;
             _tileCanvas?.ChangeStorage(_tileStore);
             // Application now has read/write access to the picked file
+
+            SetTitleBarString(file.DisplayName);
         }
 
         private void MapModeButton_Click(object sender, RoutedEventArgs e)
@@ -512,7 +494,7 @@ namespace SlickUWP
             TextFloater.Visibility = Visibility.Visible;
         }
 
-        private async  void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
+        private void baseInkCanvas_ManipulationDelta(object sender, Windows.UI.Xaml.Input.ManipulationDeltaRoutedEventArgs e)
         {
             if (e == null || _tileCanvas == null) return;
             if (e.IsInertial) return; // disable intertia
@@ -520,13 +502,43 @@ namespace SlickUWP
             var disp = Dispatcher;
 
             if (disp == null) return;
+            
+            if (Math.Abs(e.Delta.Expansion) > 2) {
+                disp.RunAsync(CoreDispatcherPriority.Normal, () => { _tileCanvas.DeltaScale(e.Delta.Scale); });
+            }
 
-            await disp.RunAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                _tileCanvas.DeltaScale(e.Delta.Scale);
-                _tileCanvas.Scroll(-e.Delta.Translation.X, -e.Delta.Translation.Y);
-                _tileCanvas?.Invalidate();
-            }).NotNull();
+            sumScrollX -= e.Delta.Translation.X;
+            sumScrollY -= e.Delta.Translation.Y;
+
+            var thresh = _tileCanvas.CurrentZoom();
+            if (Math.Abs(sumScrollX) < thresh && Math.Abs(sumScrollY) < thresh) return;
+            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 10) return;
+
+            moveSw.Restart();
+            _tileCanvas.Scroll(sumScrollX, sumScrollY);
+            sumScrollX = 0;
+            sumScrollY = 0;
+            _tileCanvas?.Invalidate();
+        }
+
+        /// <summary>Used to rate limit move calls, as it can swamp the UI with changes </summary>
+        private void MoveCanvas([NotNull]PointerEventArgs args)
+        {
+            var thisPoint = args.CurrentPoint;
+            if (thisPoint == null || _tileCanvas == null) return;
+
+            if (moveSw.IsRunning && moveSw.ElapsedMilliseconds < 10) return;
+
+            var thresh = _tileCanvas.CurrentZoom();
+            var dx = _lastPoint.X - thisPoint.Position.X;
+            var dy = _lastPoint.Y - thisPoint.Position.Y;
+            if (Math.Abs(dx) < thresh && Math.Abs(dy) < thresh) return;
+
+            moveSw.Restart();
+            _tileCanvas?.Scroll(dx, dy);
+            _lastPoint = thisPoint.Position;
+
+            _tileCanvas?.Invalidate();
         }
 
         private void baseInkCanvas_ManipulationCompleted(object sender, Windows.UI.Xaml.Input.ManipulationCompletedRoutedEventArgs e)

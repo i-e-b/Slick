@@ -27,6 +27,7 @@ namespace SlickUWP.Canvas
         [NotNull] private IStorageContainer _tileStore;
         [NotNull] private readonly Dictionary<PositionKey, CachedTile> _tileCache;
         [NotNull] private readonly HashSet<PositionKey> _selectedTiles;
+        [NotNull] private readonly Queue<CachedTile> _loadQueue;
         
         // History
         [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
@@ -48,6 +49,8 @@ namespace SlickUWP.Canvas
         [NotNull] private static readonly object _reflowLock = new object();
         [NotNull] private readonly Thread _backgroundUpdate;
         [NotNull] private readonly ManualResetEventSlim _dirtyTrigger;
+        [NotNull] private readonly Thread _backgroundLoader;
+        [NotNull] private readonly ManualResetEventSlim _dataLoadTrigger;
 
 
         /// <summary>
@@ -58,6 +61,7 @@ namespace SlickUWP.Canvas
             _tileCache = new Dictionary<PositionKey, CachedTile>();
             _lastChangedTiles = new HashSet<PositionKey>();
             _selectedTiles = new HashSet<PositionKey>();
+            _loadQueue = new Queue<CachedTile>();
 
             _tileStore = tileStore;
 
@@ -75,13 +79,44 @@ namespace SlickUWP.Canvas
             _dirtyTrigger = new ManualResetEventSlim(true, 0);
             _backgroundUpdate = new Thread(BackgroundUpdateLoop){
                 IsBackground = true,
-                Name = "SlickCanvasBackgroundThread"
+                Name = "SlickCanvasBackground_Render_Thread"
             };
             _backgroundUpdate.Start();
+            
+            _dataLoadTrigger = new ManualResetEventSlim(true, 0);
+            _backgroundLoader = new Thread(BackgroundDataLoadLoop){
+                IsBackground = true,
+                Name = "SlickCanvasBackground_Load_Thread"
+            };
+            _backgroundLoader.Start();
 
             ThreadPool.SetMinThreads(4, 4);
-            ThreadPool.SetMaxThreads(4, 4);
+            ThreadPool.SetMaxThreads(16, 16);
             Invalidate();
+        }
+
+        private void BackgroundDataLoadLoop()
+        {
+            while (_backgroundLoader.IsAlive)
+            {
+                try
+                {
+                    _dataLoadTrigger.Wait();
+                    _dataLoadTrigger.Reset();
+
+                    while (_loadQueue.TryDequeue(out var tile)) {
+                        var key = tile.PositionKey();
+                        if (key != null && _tileCache.ContainsKey(key)) {
+                            ThreadPool.QueueUserWorkItem(x => { var t = (CachedTile)x; LoadTileDataSync(t.PositionKey(), t); }, tile);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logging.WriteLogMessage("Error in BackgroundDataLoadLoop: " + ex);
+                }
+
+            }
         }
 
         private void BackgroundUpdateLoop()
@@ -92,47 +127,47 @@ namespace SlickUWP.Canvas
                 {
                     _dirtyTrigger.Wait();
                     _dirtyTrigger.Reset();
+                    PositionKey[] currentKeys;
                     lock (_reflowLock)
                     {
-                        // 1) figure out what tiles should be showing
-                        // 2) add any not in the cache
-                        // 3) remove anything in the cache that should not be visible
-                        // 4) ensure the tiles are in the correct offset position
-
-                        var width = _width;
-                        var height = _height;
-
-                        var oldKeys = new HashSet<PositionKey>(_tileCache.Keys?.ToArray() ?? NoKeys());
-                        var required = VisibleTiles(0, 0, width, height, ref oldKeys);
-
-                        // add any missing
-                        foreach (var key in required)
-                        {
-                            AddToCache(key);
-                        }
-
-                        // remove any extra
-                        foreach (var key in oldKeys)
-                        {
-                            if (!_tileCache.TryGetValue(key, out var container)) { continue; }
-                            container.Detach();
-                            container.Deallocate();
-                            _tileCache.Remove(key);
-                        }
-
-                        // re-align what's left
-                        var everything = _tileCache.ToArray();
-                        foreach (var kvp in everything)
-                        {
-                            if (kvp.Value == null) continue;
-
-                            var pos = VisualRectangleNative(kvp.Key);
-                            kvp.Value.SetSelected(_selectedTiles.Contains(kvp.Key));
-                            kvp.Value.MoveTo(pos.X, pos.Y);
-                        }
-
-                        // TODO: anything still in the container should be removed.
+                        currentKeys = _tileCache.Keys?.ToArray() ?? NoKeys();
                     }
+                    // 1) figure out what tiles should be showing
+                    // 2) add any not in the cache
+                    // 3) remove anything in the cache that should not be visible
+                    // 4) ensure the tiles are in the correct offset position
+
+                    var width = _width;
+                    var height = _height;
+
+                    var oldKeys = new HashSet<PositionKey>(currentKeys);
+                    var existing = new HashSet<PositionKey>(currentKeys);
+                    var required = VisibleTiles(0, 0, width, height, ref oldKeys);
+
+                    // add any missing
+                    foreach (var key in required) { AddToCache(key); }
+
+                    // remove any extra
+                    foreach (var key in oldKeys)
+                    {
+                        if (!_tileCache.TryGetValue(key, out var container)) { continue; }
+                        _tileCache.Remove(key);
+                        container.Detach();
+                        container.Deallocate();
+                    }
+
+                    // re-align what's left
+                    existing.ExceptWith(oldKeys);
+                    foreach (var key in existing)
+                    {
+                        if (!_tileCache.TryGetValue(key, out var tile)) continue;
+                        var pos = VisualRectangleNative(key);
+                        tile.SetSelected(_selectedTiles.Contains(key));
+                        tile.MoveTo(pos.X, pos.Y);
+                    }
+                    
+                    // Load any missing data
+                    _dataLoadTrigger.Set();
                 }
                 catch (Exception ex)
                 {
@@ -200,20 +235,18 @@ namespace SlickUWP.Canvas
         {
             if (key == null) return;
 
-            var tile = new CachedTile(_displayContainer);
-            try {
-                lock (_reflowLock) _tileCache.Add(key, tile);
-                tile.SetState(TileState.Locked);
-            }
-            catch {
-                return;
-            }
+            var pos = VisualRectangleNative(key);
+            var tile = new CachedTile(_displayContainer, key, pos.X, pos.Y); // calls down to "Win2dCanvasManager.Employ"
+            tile.SetState(TileState.Locked);
 
-            // Read the db and set tile state in the background
-            ThreadPool.QueueUserWorkItem(xkey => { LoadTileDataSync((PositionKey)xkey, tile); }, key);
+            lock (_reflowLock)
+            {
+                _tileCache.Add(key, tile);
+                _loadQueue.Enqueue(tile);
+            }
         }
 
-        [NotNull]private static IEnumerable<PositionKey> NoKeys() { yield break; }
+        [NotNull]private static PositionKey[] NoKeys() { return new PositionKey[0]; }
 
 
         [NotNull]
@@ -285,17 +318,20 @@ namespace SlickUWP.Canvas
         /// Change scale by a fractional amount.
         /// This is restricted in range
         /// </summary>
-        public void DeltaScale(double deltaScale)
+        public bool DeltaScale(double deltaScale)
         {
-            if (Math.Abs(1 - deltaScale) < 0.001) return;
+            if (Math.Abs(1 - deltaScale) < 0.001) return false;
             var target = _viewScale;
 
             target += deltaScale - 1.0f;
             if (target > 2.0) target = 2.0;
             if (target < 0.25) target = 0.25;
 
+            if (Math.Abs(target - _viewScale) < 0.001) return false;
+
             _viewScale = target;
             UpdateViewScale();
+            return true;
         }
 
         /// <summary>
@@ -421,7 +457,8 @@ namespace SlickUWP.Canvas
             {
                 if (!_tileCache.ContainsKey(key))
                 {
-                    var newTile = new CachedTile(_displayContainer);
+                    var pos = VisualRectangleNative(key);
+                    var newTile = new CachedTile(_displayContainer, key, pos.X, pos.Y); // calls down to "Win2dCanvasManager.Employ"
                     newTile.AllocateEmptyImage();
                     _tileCache.Add(key, newTile);
                 }

@@ -1,6 +1,7 @@
 ﻿using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 
@@ -18,7 +19,7 @@ namespace SlickUWP.Canvas
         /// Should be returned to the pool with `Retire`
         /// </summary>
         [NotNull]
-        public static CanvasControlAsyncProxy Employ([NotNull] Panel container, [NotNull]CachedTile cachedTile)
+        public static CanvasControlAsyncProxy Employ([NotNull] Panel container, [NotNull]CachedTile cachedTile, double x, double y)
         {
             // Need a new canvas
             var proxy = new CanvasControlAsyncProxy(container);
@@ -30,10 +31,14 @@ namespace SlickUWP.Canvas
                     Margin = new Thickness(0.0),
                     Height = 256,
                     Width = 256,
-                    CacheMode = null,
                     HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Top,
-                    UseLayoutRounding = true
+                    UseLayoutRounding = false,
+                    RenderTransform = new TranslateTransform
+                    {
+                        X = x,
+                        Y = y
+                    }
                 };
 
                 proxy.QueueAction(canv =>
@@ -41,7 +46,6 @@ namespace SlickUWP.Canvas
                     // We have a single common 'Draw' event hook and use context data to pump in image & state
                     if (canv == null) return;
                     canv.Draw += _drawHub.Draw;
-                    canv.Invalidate();
                 });
                 proxy.AttachToContainer(ctrl, container, targetTile);
             });

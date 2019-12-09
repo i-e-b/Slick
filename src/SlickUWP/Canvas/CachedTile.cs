@@ -7,6 +7,8 @@ using Windows.UI.Xaml.Media;
 using JetBrains.Annotations;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
+using SlickCommon.Storage;
+using SlickUWP.CrossCutting;
 
 namespace SlickUWP.Canvas
 {
@@ -21,6 +23,7 @@ namespace SlickUWP.Canvas
         public bool IsSelected = false;
 
         private byte[] RawImageData;
+        private readonly PositionKey _key;
         private double _x, _y;
         private volatile bool _detached = false;
 
@@ -28,20 +31,17 @@ namespace SlickUWP.Canvas
         public int Width => 256;
         public int Height => 256;
 
-        public CachedTile([NotNull]Panel container)
+        public CachedTile([NotNull] Panel container, PositionKey key, double x, double y)
         {
+            _key = key;
+            _x = x;
+            _y = y;
             State = TileState.Locked;
-            UiCanvas = Win2dCanvasManager.Employ(container, this);
-            UiCanvas.QueueAction(canv =>
-            {
-                if (canv == null) return;
-                canv.RenderTransform = new TranslateTransform { X = _x, Y = _y };
-            });
+            UiCanvas = Win2dCanvasManager.Employ(container, this, x, y);
         }
 
         ~CachedTile() {
-            if (!_detached)
-                throw new Exception("Cached tile was garbage collected without being detached!");
+            if (!_detached) Logging.WriteLogMessage("Cached tile was garbage collected without being detached!");
         }
         
         public void EnsureDataReady() {
@@ -219,9 +219,17 @@ namespace SlickUWP.Canvas
             RawImageData = null;
         }
 
-        public void SetSelected(bool isSelected)
+        public void SetSelected(bool setSelected)
         {
-            IsSelected = isSelected;
+            if (setSelected == IsSelected) return;
+
+            IsSelected = setSelected;
+            Invalidate();
+        }
+
+        public PositionKey PositionKey()
+        {
+            return _key;
         }
     }
 }
