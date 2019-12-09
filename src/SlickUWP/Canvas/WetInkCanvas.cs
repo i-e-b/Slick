@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.System;
@@ -29,7 +30,7 @@ namespace SlickUWP.Canvas
         
         [NotNull]private static readonly object _dryLock = new object();
         [NotNull] private readonly List<DPoint[]> _dryingInk; // strokes we are currently drying
-        [NotNull] private readonly List<DPoint[]> _renderingInk; // strokes we are currently rendering
+        [NotNull] private readonly HashSet<DPoint[]> _renderingInk; // strokes we are currently rendering
 
         [NotNull] private readonly Dictionary<int, Color> _penColors; 
         [NotNull] private readonly Dictionary<int, double> _penSizes; 
@@ -40,7 +41,7 @@ namespace SlickUWP.Canvas
             _renderTarget.Draw += _renderTarget_Draw;
             _stroke = new List<DPoint>();
             _dryingInk = new List<DPoint[]>();
-            _renderingInk = new List<DPoint[]>();
+            _renderingInk = new HashSet<DPoint[]>();
             _penColors = new Dictionary<int, Color>();
             _penSizes = new Dictionary<int, double>();
         }
@@ -70,7 +71,6 @@ namespace SlickUWP.Canvas
         {
             if (tileCanvas == null) return;
 
-            // TODO: make this handle huge/slow draws better (needed for zoomed-out writing)
             try
             {
                 lock(_dryLock){
@@ -95,9 +95,11 @@ namespace SlickUWP.Canvas
             {
                 waitingStrokes = _dryingInk.ToArray();
                 _dryingInk.Clear();
-                _renderingInk.AddRange(waitingStrokes);
-                _renderTarget.Invalidate();
+                if (waitingStrokes != null) _renderingInk.UnionWith(waitingStrokes);
             }
+
+            tileCanvas.Invalidate(); // show progress if the render is slow.
+            _renderTarget.Invalidate();
 
             if (waitingStrokes == null) return;
             foreach (var strokeToRender in waitingStrokes)
@@ -140,19 +142,20 @@ namespace SlickUWP.Canvas
                 var visualLeft = (int) Math.Floor(clipRegion.X + 0.5);
                 var visualRight = visualLeft + visualWidth;
                 var visualBottom = visualTop + visualHeight;
-                var success = tileCanvas.ImportBytesScaled(uncropped, visualLeft, visualTop, visualRight, visualBottom);
 
-                if (!success) {
+                ThreadPool.QueueUserWorkItem(canv =>
+                {
+                    var ok = tileCanvas.ImportBytesScaled(uncropped, visualLeft, visualTop, visualRight, visualBottom);
+                    if (! ok) {
+                        Logging.WriteLogMessage("Tile byte import failed when drawing strokes");
+                    }
                     lock (_dryLock)
                     {
-                        _dryingInk.Add(strokeToRender); // try again later
+                        _renderingInk.Remove(strokeToRender);
                     }
-                } else {
-                    lock (_dryLock)
-                    {
-                        _renderingInk.Clear();
-                    }
-                }
+                    tileCanvas.Invalidate(); // show finished strokes
+                    _renderTarget.Invalidate();
+                });
             }
         }
 
@@ -230,7 +233,7 @@ namespace SlickUWP.Canvas
             {
                 var g = args?.DrawingSession;
                 if (g == null) return;
-                Quad screenQuad = new Quad(0, 0, sender?.ActualWidth ?? 0, sender?.ActualHeight ?? 0);
+                var screenQuad = new Quad(0, 0, sender?.ActualWidth ?? 0, sender?.ActualHeight ?? 0);
 
                 g.Clear(Colors.Transparent);
                 DrawToSession(g, _stroke.ToArray(), screenQuad, 1.0);
@@ -242,7 +245,7 @@ namespace SlickUWP.Canvas
 
                 // overdraw any ink that is being rendered (prevents flicker if the render is running slowly)
                 lock (_dryLock) { strokes = _renderingInk.ToArray(); }
-                if (strokes != null) foreach (var stroke in strokes) { DrawToSession(g, stroke, screenQuad, 1.0); }
+                foreach (var stroke in strokes) { DrawToSession(g, stroke, screenQuad, 1.0, true); }
             }
             catch (Exception ex)
             {
@@ -283,8 +286,8 @@ namespace SlickUWP.Canvas
                 var bounds = stroke.BoundingRect;
                 clipRegion.X = (int)minX - (2 * attr.Size.Width);
                 clipRegion.Y = (int)minY - (2 * attr.Size.Width);
-                clipRegion.Width = (int)(bounds.Width + (8 * attr.Size.Width) * zoom);
-                clipRegion.Height = (int)(bounds.Height + (8 * attr.Size.Width) * zoom);
+                clipRegion.Width = (int)(bounds.Width + (4 * attr.Size.Width * zoom));
+                clipRegion.Height = (int)(bounds.Height + (4 * attr.Size.Width * zoom));
             }
             catch (Exception ex)
             {
@@ -294,7 +297,7 @@ namespace SlickUWP.Canvas
             return clipRegion;
         }
 
-        private void DrawToSession([CanBeNull]CanvasDrawingSession g, DPoint[] strokeToRender, [NotNull]Quad clipRegion, double zoom)
+        private void DrawToSession([CanBeNull]CanvasDrawingSession g, DPoint[] strokeToRender, [NotNull]Quad clipRegion, double zoom, bool dim = false)
         {
             try
             {
@@ -305,6 +308,9 @@ namespace SlickUWP.Canvas
                 var strokes = new List<InkStroke>();
 
                 var attr = GetPenAttributes(zoom, pts);
+                if (dim) {
+                    attr.Color = Color.FromArgb(255, 127, 127, 127);
+                }
                 var s = new CoreIncrementalInkStroke(attr, Matrix3x2.Identity);
 
                 for (int i = 0; i < pts.Length; i++)
@@ -318,7 +324,7 @@ namespace SlickUWP.Canvas
                 var stroke = s.CreateInkStroke();
                 if (stroke == null) throw new Exception("Stroke creation failed");
                 strokes.Add(stroke);
-                g?.DrawInk(strokes);
+                g?.DrawInk(strokes); // this call can be *very* slow! It's bad when using wide strokes at high zoom levels.
             }
             catch (Exception ex)
             {

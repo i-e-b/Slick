@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Windows.Foundation;
 using Windows.Graphics.DirectX;
 using Windows.UI;
@@ -11,30 +10,6 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 
 namespace SlickUWP.Canvas
 {
-    /// <summary>
-    /// Pools raw data arrays to reduce GC time
-    /// </summary>
-    public static class RawImagePool {
-        [NotNull]private static readonly Queue<byte[]> _available = new Queue<byte[]>();
-        [NotNull]private static readonly object _lock = new object();
-
-        [NotNull]public static byte[] Capture() {
-            lock(_lock){
-                if (_available.TryDequeue(out var data)) return data;
-            }
-
-            return new byte[CachedTile.ByteSize];
-        }
-
-        public static void Release(byte[] data) {
-            if (data == null) return;
-            lock(_lock) {
-                _available.Enqueue(data);
-            }
-        }
-    }
-
-
     /// <summary>
     /// Looks after UI elements of a tile
     /// </summary>
@@ -207,8 +182,9 @@ namespace SlickUWP.Canvas
         /// </summary>
         public void AllocateEmptyImage()
         {
-            RawImageData = RawImagePool.Capture();
+            RawImageData = RawDataPool.Capture();
             for (int i = 0; i < ByteSize; i++) { RawImageData[i] = 255; }
+            State = TileState.Empty;
         }
 
         /// <summary>
@@ -239,7 +215,7 @@ namespace SlickUWP.Canvas
         public void Deallocate()
         {
             State = TileState.Empty;
-            RawImagePool.Release(RawImageData);
+            RawDataPool.Release(RawImageData);
             RawImageData = null;
         }
 

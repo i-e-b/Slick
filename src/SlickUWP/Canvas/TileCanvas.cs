@@ -91,6 +91,7 @@ namespace SlickUWP.Canvas
                 try
                 {
                     _dirtyTrigger.Wait();
+                    _dirtyTrigger.Reset();
                     lock (_reflowLock)
                     {
                         // 1) figure out what tiles should be showing
@@ -101,18 +102,17 @@ namespace SlickUWP.Canvas
                         var width = _width;
                         var height = _height;
 
-                        var required = VisibleTiles(0, 0, width, height);
-                        var toRemove = new HashSet<PositionKey>(_tileCache.Keys ?? NoKeys());
+                        var oldKeys = new HashSet<PositionKey>(_tileCache.Keys?.ToArray() ?? NoKeys());
+                        var required = VisibleTiles(0, 0, width, height, ref oldKeys);
 
                         // add any missing
                         foreach (var key in required)
                         {
-                            toRemove.Remove(key);
-                            if (!_tileCache.ContainsKey(key)) AddToCache(key);
+                            AddToCache(key);
                         }
 
                         // remove any extra
-                        foreach (var key in toRemove)
+                        foreach (var key in oldKeys)
                         {
                             if (!_tileCache.TryGetValue(key, out var container)) { continue; }
                             container.Detach();
@@ -121,7 +121,8 @@ namespace SlickUWP.Canvas
                         }
 
                         // re-align what's left
-                        foreach (var kvp in _tileCache)
+                        var everything = _tileCache.ToArray();
+                        foreach (var kvp in everything)
                         {
                             if (kvp.Value == null) continue;
 
@@ -171,10 +172,13 @@ namespace SlickUWP.Canvas
         /// Called when the base store changes (changed page, or undo)
         /// </summary>
         private void ResetCache() {
-            var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
-            foreach (var tile in toDetach) { tile.Detach(); tile.Deallocate(); }
-            _tileCache.Clear();
-            _lastChangedTiles.Clear();
+            lock (_reflowLock)
+            {
+                var toDetach = _tileCache.Values?.ToArray() ?? new CachedTile[0];
+                foreach (var tile in toDetach) { tile.Detach(); tile.Deallocate(); }
+                _tileCache.Clear();
+                _lastChangedTiles.Clear();
+            }
 
             Invalidate();
         }
@@ -198,7 +202,7 @@ namespace SlickUWP.Canvas
 
             var tile = new CachedTile(_displayContainer);
             try {
-                _tileCache.Add(key, tile);
+                lock (_reflowLock) _tileCache.Add(key, tile);
                 tile.SetState(TileState.Locked);
             }
             catch {
@@ -213,7 +217,7 @@ namespace SlickUWP.Canvas
 
 
         [NotNull]
-        public List<PositionKey> VisibleTiles(int dx, int dy, int width, int height)
+        public List<PositionKey> VisibleTiles(int dx, int dy, int width, int height, ref HashSet<PositionKey> exclude)
         {
             var tlLoc = ScreenToCanvas(dx, dy);
             var brLoc = ScreenToCanvas(dx + width, dy + height);
@@ -228,6 +232,11 @@ namespace SlickUWP.Canvas
             {
                 for (int x = tlPos.X; x <= brPos.X; x++)
                 {
+                    var pk = new PositionKey(x, y);
+                    if (exclude?.Contains(pk) == true) {
+                        exclude.Remove(pk);
+                        continue;
+                    }
                     result.Add(new PositionKey(x, y));
                 }
             }
@@ -384,8 +393,12 @@ namespace SlickUWP.Canvas
                     // Ensure the tile is ready to be drawn on:
                     var key = new PositionKey(tx, ty);
                     var ok = PrepareTileForDraw(key, out var tile);
-                    if (!ok) return false;
+                    if (!ok) {
+                        Logging.WriteLogMessage($"Preparing tile failed: {tx}, {ty}");
+                        return false;
+                    }
 
+                    // This could be kicked out to threads?:
                     var changed = AlphaMapImageToTileScaled(img, tile,
                             imageArea: new Quad(imgLeft, imgTop, tgtWidth * scale_x, tgtHeight * scale_y),
                             tileArea: new Quad(tgtLeft, tgtTop, tgtWidth, tgtHeight)
@@ -404,16 +417,25 @@ namespace SlickUWP.Canvas
 
         private bool PrepareTileForDraw([NotNull]PositionKey key, out CachedTile tile)
         {
-            if (!_tileCache.ContainsKey(key))
+            lock (_reflowLock)
             {
-                var newTile = new CachedTile(_displayContainer);
-                newTile.AllocateEmptyImage();
-                _tileCache.Add(key, newTile);
-            }
+                if (!_tileCache.ContainsKey(key))
+                {
+                    var newTile = new CachedTile(_displayContainer);
+                    newTile.AllocateEmptyImage();
+                    _tileCache.Add(key, newTile);
+                }
 
-            tile = _tileCache[key];
-            if (tile == null) return false; // should never happen
-            if (tile.State == TileState.Locked) return false;
+                tile = _tileCache[key];
+            }
+            if (tile == null) {
+                Logging.WriteLogMessage("Tile cache returned null after being populated!");
+                return false; // should never happen
+            }
+            if (tile.State == TileState.Locked) {
+                Logging.WriteLogMessage("Tried to write to a locked tile");
+                return false;
+            }
 
             var dst = tile.GetTileData();
             if (dst == null)
@@ -592,10 +614,11 @@ namespace SlickUWP.Canvas
             {
                 if (key == null) continue;
                 byte[] tileData;
-                if (_tileCache.TryGetValue(key, out var cached))
-                {
-                    tileData = cached.GetTileData();
-                }
+                bool found;
+                CachedTile cached;
+                lock (_reflowLock) { found = _tileCache.TryGetValue(key, out cached); }
+
+                if (found) { tileData = cached.GetTileData(); }
                 else
                 {
                     LoadTileDataSync(key, temp);
@@ -641,9 +664,9 @@ namespace SlickUWP.Canvas
 
         private void LoadTileDataSync(PositionKey key, ICachedTile tile)
         {
-            var red = RawImagePool.Capture();
-            var green = RawImagePool.Capture();
-            var blue = RawImagePool.Capture();
+            var red = RawDataPool.Capture();
+            var green = RawDataPool.Capture();
+            var blue = RawDataPool.Capture();
             try
             {
                 if (key == null || tile == null) return;
@@ -696,9 +719,9 @@ namespace SlickUWP.Canvas
                 tile?.MarkCorrupted();
             }
             finally {
-                RawImagePool.Release(red);
-                RawImagePool.Release(green);
-                RawImagePool.Release(blue);
+                RawDataPool.Release(red);
+                RawDataPool.Release(green);
+                RawDataPool.Release(blue);
             }
         }
 
@@ -711,9 +734,9 @@ namespace SlickUWP.Canvas
             if (tile.State == TileState.Locked) return;
 
 
-            var red = RawImagePool.Capture();
-            var green = RawImagePool.Capture();
-            var blue = RawImagePool.Capture();
+            var red = RawDataPool.Capture();
+            var green = RawDataPool.Capture();
+            var blue = RawDataPool.Capture();
             try
             {
                 var name = key.ToString();
@@ -751,9 +774,9 @@ namespace SlickUWP.Canvas
             }
             finally
             {
-                RawImagePool.Release(red);
-                RawImagePool.Release(green);
-                RawImagePool.Release(blue);
+                RawDataPool.Release(red);
+                RawDataPool.Release(green);
+                RawDataPool.Release(blue);
             }
         }
 

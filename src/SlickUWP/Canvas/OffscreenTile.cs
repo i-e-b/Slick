@@ -8,7 +8,7 @@
         /// <inheritdoc />
         public void EnsureDataReady()
         {
-            _data = RawImagePool.Capture();
+            _data = RawDataPool.Capture();
         }
 
         /// <inheritdoc />
@@ -32,7 +32,7 @@
         /// <inheritdoc />
         public void Deallocate()
         {
-            RawImagePool.Release(_data);
+            RawDataPool.Release(_data);
             _data = null;
         }
     }
