@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
+using Windows.ApplicationModel.Activation;
 using Windows.Devices.Input;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
@@ -585,6 +586,25 @@ namespace SlickUWP
             if (isHorz) _tileCanvas.Scroll(-delta, 0);
             else _tileCanvas.Scroll(0, delta);
             _tileCanvas?.Invalidate();
+        }
+
+        public async Task LoadActivationFile(FileActivatedEventArgs args)
+        {
+            if (args?.Files == null) return;  
+            if (args.Files.Count < 1) return;
+
+            var path = args.Files[0]?.Path;
+            if (path == null) return;
+
+            
+            var newStore = await LoadTileStore(path);
+            if (newStore == null) return;
+            _tileStore?.Dispose();
+            _tileStore = newStore;
+            _tileCanvas?.ChangeStorage(_tileStore);
+
+            // The number of files received is args.Files.Size
+            // The name of the first file is args.Files[0].Name
         }
     }
 }

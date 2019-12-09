@@ -11,6 +11,7 @@ namespace SlickUWP
     /// <summary>
     /// Provides application-specific behavior to supplement the default Application class.
     /// </summary>
+    // ReSharper disable once RedundantExtendsListEntry
     sealed partial class App : Application
     {
         /// <summary>
@@ -19,8 +20,8 @@ namespace SlickUWP
         /// </summary>
         public App()
         {
-            this.InitializeComponent();
-            this.Suspending += OnSuspending;
+            InitializeComponent();
+            Suspending += OnSuspending;
             UnhandledException += App_UnhandledException;
         }
 
@@ -38,38 +39,53 @@ namespace SlickUWP
         /// <param name="e">Details about the launch request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
-            Frame rootFrame = Window.Current.Content as Frame;
+            if (Window.Current == null) return;
+            if (e == null) return;
+            var rootFrame = Window.Current?.Content as Frame;
 
             // Do not repeat app initialization when the Window already has content,
             // just ensure that the window is active
             if (rootFrame == null)
             {
-                // Create a Frame to act as the navigation context and navigate to the first page
-                rootFrame = new Frame();
-
-                rootFrame.NavigationFailed += OnNavigationFailed;
-
-                if (e.PreviousExecutionState == ApplicationExecutionState.Terminated)
-                {
-                    //TODO: Load state from previously suspended application
-                }
-
-                // Place the frame in the current Window
-                Window.Current.Content = rootFrame;
+                rootFrame = CreateRootFrame();
+                if (rootFrame == null) throw new Exception("Failed to generate root frame");
             }
 
             if (e.PrelaunchActivated == false)
             {
-                if (rootFrame.Content == null)
-                {
-                    // When the navigation stack isn't restored navigate to the first page,
-                    // configuring the new page by passing required information as a navigation
-                    // parameter
-                    rootFrame.Navigate(typeof(MainPage), e.Arguments);
-                }
-                // Ensure the current window is active
-                Window.Current.Activate();
+                ActivateNewMainPage(e, rootFrame);
             }
+        }
+
+        private static MainPage ActivateNewMainPage(ILaunchActivatedEventArgs e, Frame rootFrame)
+        {
+            if (rootFrame == null) throw new Exception("Tried to activate null frame");
+            if (rootFrame.Content == null)
+            {
+                // When the navigation stack isn't restored navigate to the first page,
+                // configuring the new page by passing required information as a navigation
+                // parameter
+                rootFrame.Navigate(typeof(MainPage), e?.Arguments ?? "");
+            }
+
+            // Ensure the current window is active
+            Window.Current?.Activate();
+
+            return rootFrame.Content as MainPage;
+        }
+
+        private Frame CreateRootFrame()
+        {
+            if (Window.Current == null) return null;
+
+            // Create a Frame to act as the navigation context and navigate to the first page
+            var rootFrame = new Frame();
+
+            rootFrame.NavigationFailed += OnNavigationFailed;
+
+            // Place the frame in the current Window
+            Window.Current.Content = rootFrame;
+            return rootFrame;
         }
 
         /// <summary>
@@ -79,7 +95,7 @@ namespace SlickUWP
         /// <param name="e">Details about the navigation failure</param>
         void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
         {
-            throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
+            throw new Exception("Failed to load Page " + (e?.SourcePageType?.FullName ?? "<null>"));
         }
 
         /// <summary>
@@ -91,9 +107,32 @@ namespace SlickUWP
         /// <param name="e">Details about the suspend request.</param>
         private void OnSuspending(object sender, SuspendingEventArgs e)
         {
+            if (e?.SuspendingOperation == null) return;
             var deferral = e.SuspendingOperation.GetDeferral();
-            //TODO: Save application state and stop any background activity
-            deferral.Complete();
+            deferral?.Complete();
+        }
+
+        protected override async void OnFileActivated(FileActivatedEventArgs args)
+        {
+            // TODO: try making a new `Frame` to open another window?
+            if (!(Window.Current?.Content is Frame rootFrame)) {
+                rootFrame = CreateRootFrame();
+                if (rootFrame == null)
+                {
+                    throw new Exception("Failed to generate root frame");
+                }
+            }
+
+            if (!(rootFrame.Content is MainPage page))
+            {
+                page = ActivateNewMainPage(null, rootFrame);
+                if (page == null)
+                {
+                    throw new Exception("Root frame was not of type <MainPage> in `OnFileActivated`");
+                }
+            }
+
+            await page.LoadActivationFile(args);
         }
     }
 }
