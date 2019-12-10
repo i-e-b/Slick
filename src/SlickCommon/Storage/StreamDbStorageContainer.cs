@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Containers;
 using Containers.Types;
 using JetBrains.Annotations;
@@ -43,6 +42,7 @@ namespace SlickCommon.Storage
             try
             {
                 var node = StorageNode.FromStream(rawStream);
+                if (node == null || node.IsDeleted) return Result<StorageNode>.Failure(NotFound);
                 return Result<StorageNode>.Success(node);
             }
             catch (Exception ex)
@@ -170,7 +170,7 @@ namespace SlickCommon.Storage
             _db.Flush();
 
             // Wipe out anything in our garbage pile
-            var found = _db.Search($"garbage/{path}/{type}");
+            var found = _db.Search("garbage/");
             foreach (var junkPath in found)
             {
                 _db.Delete(junkPath); // should also delete the root document and all other paths
@@ -178,11 +178,11 @@ namespace SlickCommon.Storage
 
             // bind the new file into the garbage pile
             var currentVersion =  node.ResultData.CurrentVersion;
-            var ok = _db.GetIdByPath(path, out var id);
+            var ok = _db.GetIdByPath("map/" + path, out var id);
             if (ok) {
                 _db.BindToPath(id, $"garbage/{path}/{type}/{currentVersion}");
             }
-
+            
             return Result<Nothing>.Success(Nothing.Instance);
         }
     }

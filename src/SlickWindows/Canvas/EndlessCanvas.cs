@@ -1,8 +1,4 @@
-﻿
-#define USE_STREAM_DB
-// There is another switch in MainPage.xaml.cs
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -751,11 +747,7 @@ namespace SlickWindows.Canvas
                 _storage?.Dispose();
                 Directory.CreateDirectory(Path.GetDirectoryName(newPath) ?? "");
 
-#if USE_STREAM_DB
-                _storage = new StreamDbStorageContainer(new SystemIoFile(newPath));
-#else
-                _storage = new LiteDbStorageContainer(new SystemIoFile(newPath));
-#endif
+                _storage = LoadStorageFile(new SystemIoFile(newPath));
                 _storagePath = newPath;
 
                 // re-centre
@@ -764,6 +756,26 @@ namespace SlickWindows.Canvas
             }
             _updateTileCache.Set();
             _invalidateAction?.Invoke(new Rectangle(0, 0, 0, 0));
+        }
+        
+        [NotNull]private static IStorageContainer LoadStorageFile(IStreamProvider wrapper)
+        {
+            if (wrapper == null) throw new Exception("Could not read file -- failed to access file system");
+            try
+            {
+                return new StreamDbStorageContainer(wrapper);
+            }
+            catch (Exception streamReason)
+            {
+                try
+                {
+                    return new LiteDbStorageContainer(wrapper);
+                }
+                catch (Exception liteReason)
+                {
+                    throw new Exception("Could not read file -- it's either damaged or not a Slick file.\r\n" + liteReason + "\r\n" + streamReason);
+                }
+            }
         }
 
 
