@@ -106,9 +106,16 @@ namespace SlickUWP.Canvas
 
                     while (_loadQueue.TryDequeue(out var tile)) {
                         var key = tile.PositionKey();
-                        if (key != null && _tileCache.ContainsKey(key)) {
-                            ThreadPool.QueueUserWorkItem(x => { var t = (CachedTile)x; LoadTileDataSync(t.PositionKey(), t); }, tile);
-                        }
+                        if (key == null || !_tileCache.ContainsKey(key)) continue;
+
+                        ThreadPool.QueueUserWorkItem(x => { 
+                            var t = x as CachedTile;
+                            if (t == null) {
+                                Logging.WriteLogMessage("Lost tile key in `BackgroundDataLoadLoop`");
+                                return;
+                            }
+                            LoadTileDataSync(t.PositionKey(), t);
+                        }, tile);
                     }
                 }
                 catch (Exception ex)
