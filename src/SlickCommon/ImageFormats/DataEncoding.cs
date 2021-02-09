@@ -25,13 +25,13 @@ namespace SlickCommon.ImageFormats
             uint accum = 0;
             uint pos = 0;
             var bytePos = 0;
-            int outidx = 0;
-            int outlimit = output.Length;
+            int outIdx = 0;
+            int outLimit = output.Length;
 
             while ((bv = input.ReadByte()) >= 0) {
 
                 while (bytePos++ < 8) {
-                    if (outidx >= outlimit) return; // end of buffer
+                    if (outIdx >= outLimit) return; // end of buffer
                     uint f = (uint)((bv >> (8 - bytePos)) & 0x01);
 
                     if (f > 0) {
@@ -39,8 +39,8 @@ namespace SlickCommon.ImageFormats
                             // convert back to signed, add to list
                             if (accum > 0) {
                                 long n = accum - 1L;
-                                if ((n & 1) == 0) output[outidx++] = ((int)(n >> 1));
-                                else output[outidx++] = ((int)(((n + 1) >> 1) * -1));
+                                if ((n & 1) == 0) output[outIdx++] = ((int)(n >> 1));
+                                else output[outIdx++] = ((int)(((n + 1) >> 1) * -1));
                             } // else damaged data
                             // `b11`; reset, move to next number
                             accum = 0;
@@ -51,7 +51,7 @@ namespace SlickCommon.ImageFormats
                         lastWas1 = true;
                     } else lastWas1 = false;
 
-                    accum += f * fseq[pos + 2];
+                    accum += f * _fibonacciSequence[pos + 2];
                     pos++;
                 }
                 
@@ -59,8 +59,7 @@ namespace SlickCommon.ImageFormats
             }
         }
         
-        // fibonacci sequence.
-        [NotNull]private static readonly uint[] fseq = {0,1,1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,
+        [NotNull]private static readonly uint[] _fibonacciSequence = {0,1,1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,
             2584,4181,6765,10946,17711,28657,46368,75025,121393,196418,317811,514229  };
 
 
@@ -69,7 +68,7 @@ namespace SlickCommon.ImageFormats
         /// The input of double values are truncated during encoding.
         /// </summary>
         /// <param name="buffer">Input buffer. Values will be truncated and must be in the range +- 196418</param>
-        /// <param name="length">Number of smaples to encode. Must be equal-or-less than buffer length. To encode entire buffer, pass zero.</param>
+        /// <param name="length">Number of samples to encode. Must be equal-or-less than buffer length. To encode entire buffer, pass zero.</param>
         /// <param name="output">Writable stream for output</param>
         public static void FibonacciEncode([NotNull]float[] buffer, int length, [NotNull]Stream output)
         {
@@ -94,27 +93,27 @@ namespace SlickCommon.ImageFormats
 
                 // Fibonacci encode
                 ulong res = 0UL;
-                var maxidx = -1;
+                var maxIdx = -1;
 
                 // find starting position
                 var i = 2;
-                while (fseq[i] < n) i++;
+                while (_fibonacciSequence[i] < n) i++;
 
                 // scan backwards marking value bits
                 while (n > 0)
                 {
-                    if (fseq[i] <= n)
+                    if (_fibonacciSequence[i] <= n)
                     {
                         res |= 1UL << (i - 2);
-                        n -= (int)fseq[i];
-                        if (maxidx < i) maxidx = i;
+                        n -= (int)_fibonacciSequence[i];
+                        if (maxIdx < i) maxIdx = i;
                     }
                     i--;
                 }
-                res |= 1UL << (maxidx - 1);
+                res |= 1UL << (maxIdx - 1);
 
                 // output to stream
-                for (int boc = 0; boc < maxidx; boc++)
+                for (int boc = 0; boc < maxIdx; boc++)
                 {
                     bf[bytePos] = (byte)(0xFF * ((res >> (boc)) & 1));
                     bytePos++;

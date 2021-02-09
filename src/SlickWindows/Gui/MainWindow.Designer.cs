@@ -1,4 +1,6 @@
-﻿namespace SlickWindows.Gui
+﻿using SlickWindows.Gui.Components;
+
+namespace SlickWindows.Gui
 {
     partial class MainWindow
     {
@@ -40,7 +42,7 @@
             this.selectButton = new System.Windows.Forms.Button();
             this.pickFolderDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.saveFileDialog = new System.Windows.Forms.SaveFileDialog();
-            this.floatingImage1 = new SlickWindows.Gui.FloatingImage();
+            this.floatingImage1 = new FloatingImage();
             this.floatingText1 = new SlickWindows.Gui.Components.FloatingText();
             this.textButton = new System.Windows.Forms.Button();
             this.SuspendLayout();

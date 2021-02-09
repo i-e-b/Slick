@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
 using JetBrains.Annotations;
@@ -10,6 +11,7 @@ namespace SlickCommon.ImageFormats
     /// It gives nearly the same quality as PNG at lower sizes.
     /// This also allows us to load scaled-down versions of images at reduced processing / loading costs.
     /// </summary>
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     public class WaveletCompress
     {
         // This set of coefficients will be used for new and edited tiles
@@ -103,13 +105,13 @@ namespace SlickCommon.ImageFormats
                     // Wavelet decompose vertical
                     for (int x = 0; x < width; x++) // each column
                     {
-                        CDF.Fwt97(buffer, hx, height, x, planeWidth);
+                        CdfWavelet.Fwt97(buffer, hx, height, x, planeWidth);
                     }
 
                     // Wavelet decompose HALF horizontal
                     for (int y = 0; y < height / 2; y++) // each row
                     {
-                        CDF.Fwt97(buffer, wx, width, y * planeWidth, 1);
+                        CdfWavelet.Fwt97(buffer, wx, width, y * planeWidth, 1);
                     }
                 }
 
@@ -213,13 +215,13 @@ namespace SlickCommon.ImageFormats
                     // Wavelet restore HALF horizontal
                     for (int y = 0; y < height / 2; y++) // each row
                     {
-                        CDF.Iwt97(buffer, wx, width, y * planeWidth, 1);
+                        CdfWavelet.Iwt97(buffer, wx, width, y * planeWidth, 1);
                     }
 
                     // Wavelet restore vertical
                     for (int x = 0; x < width; x++) // each column
                     {
-                        CDF.Iwt97(buffer, hx, height, x, planeWidth);
+                        CdfWavelet.Iwt97(buffer, hx, height, x, planeWidth);
                     }
                 }
 

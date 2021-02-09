@@ -1,6 +1,6 @@
 ﻿namespace SlickWindows.Gui.Components
 {
-    partial class FloatingText
+    sealed partial class FloatingText
     {
         /// <summary> 
         /// Required designer variable.

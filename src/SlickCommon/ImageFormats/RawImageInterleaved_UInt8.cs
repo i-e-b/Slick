@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using SlickCommon.Canvas;
 
 namespace SlickCommon.ImageFormats
@@ -7,6 +8,7 @@ namespace SlickCommon.ImageFormats
     /// Container for 4-channel 8888 image data
     /// as an array of bytes
     /// </summary>
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     public class RawImageInterleaved_UInt8
     {
         public byte[] Data;
@@ -18,6 +20,9 @@ namespace SlickCommon.ImageFormats
         /// Create a cropped copy of this image
         /// </summary>
         public RawImageInterleaved_UInt8 Crop(Quad target) {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (Data == null) throw new InvalidOperationException();
+            
             // calculate bounds
             int left = Range(0, target.X, Width);
             int top = Range(0, target.Y, Height);
@@ -61,6 +66,7 @@ namespace SlickCommon.ImageFormats
 
         public static RawImageInterleaved_UInt8 CropFromData(byte[] bytes, int originalWidth, int originalHeight, int x, int y, int width, int height)
         {
+            if (bytes == null) throw new ArgumentNullException(nameof(bytes));
             // calculate bounds
             int left = Range(0, x, originalWidth);
             int top = Range(0, y, originalHeight);

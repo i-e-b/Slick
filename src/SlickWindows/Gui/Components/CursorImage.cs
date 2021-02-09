@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace SlickWindows.Gui.Components
     /// <summary>
     /// Helper to make custom cursor
     /// </summary>
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     public class CursorImage
     {
         public struct IconInfo

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using JetBrains.Annotations;
 
@@ -36,11 +37,13 @@ namespace SlickCommon.ImageFormats
         /// <summary>
         /// Quantiser settings for non-color planes used to create the image.
         /// </summary>
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
         public double[] QuantiserSettings_Y { get; set; }
 
         /// <summary>
         /// Quantiser settings for color planes used to create the image.
         /// </summary>
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
         public double[] QuantiserSettings_C { get; set; }
 
         /// <summary>
@@ -102,10 +105,10 @@ namespace SlickCommon.ImageFormats
 
                 for (int p = 0; p < Planes.Length; p++)
                 {
-                    if (Planes[p]?.Length > i) {
-                        anything = true;
-                        output.WriteByte(Planes[p][i]);
-                    }
+                    if (!(Planes[p]?.Length > i)) continue;
+                    
+                    anything = true;
+                    output.WriteByte(Planes[p][i]);
                 }
                 i++;
 
@@ -135,7 +138,7 @@ namespace SlickCommon.ImageFormats
 
 
         /// <summary>
-        /// Read from a source file. If the source is trucated, the recovery will go as far as possible
+        /// Read from a source file. If the source is truncated, the recovery will go as far as possible
         /// </summary>
         public static InterleavedFile ReadFromStream([NotNull]Stream input) {
             ReadU16(input, out var version);
@@ -153,14 +156,14 @@ namespace SlickCommon.ImageFormats
             ReadU16(input, out var depth);
 
             // Read quantiser settings if we expect them
-            var yquant = new List<double>();
-            var cquant = new List<double>();
+            var yQuant = new List<double>();
+            var cQuant = new List<double>();
             if (version >= 2)
             {   // we should have quantiser information
-                ReadQuantiserSettings(input, yquant, cquant);
+                ReadQuantiserSettings(input, yQuant, cQuant);
             }
-            if (yquant.Count < 1) yquant.AddRange(OldYQuants);
-            if (cquant.Count < 1) cquant.AddRange(OldCQuants);
+            if (yQuant.Count < 1) yQuant.AddRange(OldYQuants);
+            if (cQuant.Count < 1) cQuant.AddRange(OldCQuants);
 
             // Each plane can have a different byte size
             ReadU8(input, out var planeCount);
@@ -170,16 +173,16 @@ namespace SlickCommon.ImageFormats
             if (result.Planes == null) throw new Exception("Interleaved file did not have a planes container");
 
             result.Version = version;
-            result.QuantiserSettings_Y = yquant.ToArray();
-            result.QuantiserSettings_C = cquant.ToArray();
+            result.QuantiserSettings_Y = yQuant.ToArray();
+            result.QuantiserSettings_C = cQuant.ToArray();
 
             // allocate the buffers
             long i;
             for (i = 0; i < planeCount; i++)
             {
-                var ok = ReadU64(input, out var psize);
-                if (!ok || psize > 10_000_000) return result;//throw new Exception("Plane data was outside of expected bounds (this is a safety check)");
-                result.Planes[i] = new byte[psize];
+                var ok = ReadU64(input, out var pSize);
+                if (!ok || pSize > 10_000_000) return result;//throw new Exception("Plane data was outside of expected bounds (this is a safety check)");
+                result.Planes[i] = new byte[pSize];
             }
 
 
@@ -209,41 +212,42 @@ namespace SlickCommon.ImageFormats
         }
 
         
-        private static void WriteQuantiserSettings(Stream output, double[] yquant, double[] cquant)
+        private static void WriteQuantiserSettings(Stream output, double[] yQuant, double[] cQuant)
         {
-            if (yquant==null || cquant == null) {
+            if (yQuant == null || cQuant == null)
+            {
                 WriteU8(0, output);
                 WriteU8(0, output);
                 return;
             }
-            WriteU8(yquant.Length, output);
-            WriteU8(cquant.Length, output);
+            WriteU8(yQuant.Length, output);
+            WriteU8(cQuant.Length, output);
 
-            for (int q = 0; q < yquant.Length; q++)
+            for (int q = 0; q < yQuant.Length; q++)
             {
-                var qs = yquant[q] * 100.0;
+                var qs = yQuant[q] * 100.0;
                 WriteU16((ushort)qs, output);
             }
 
-            for (int q = 0; q < cquant.Length; q++)
+            for (int q = 0; q < cQuant.Length; q++)
             {
-                var qs = cquant[q] * 100.0;
+                var qs = cQuant[q] * 100.0;
                 WriteU16((ushort)qs, output);
             }
         }
 
-        private static void ReadQuantiserSettings([NotNull]Stream input, List<double> yquant, List<double> cquant)
+        private static void ReadQuantiserSettings([NotNull]Stream input, List<double> yQuant, List<double> cQuant)
         {
             var ok = ReadU8(input, out var yqCount);
             ok &= ReadU8(input, out var cqCount);
 
-            if (!ok || yquant == null || cquant == null) return;
+            if (!ok || yQuant == null || cQuant == null) return;
 
             for (int q = 0; q < yqCount; q++)
             {
                 if (ReadU16(input, out var qs))
                 {
-                    yquant.Add(qs / 100.0);
+                    yQuant.Add(qs / 100.0);
                 }
             }
 
@@ -251,7 +255,7 @@ namespace SlickCommon.ImageFormats
             {
                 if (ReadU16(input, out var qs))
                 {
-                    cquant.Add(qs / 100.0);
+                    cQuant.Add(qs / 100.0);
                 }
             }
         }
@@ -294,9 +298,9 @@ namespace SlickCommon.ImageFormats
             return true;
         }
 
-        private static void WriteU64(long srcvalue, Stream ws)
+        private static void WriteU64(long srcValue, Stream ws)
         {
-            ulong value = (ulong)srcvalue;
+            ulong value = (ulong)srcValue;
             for (int i = 56; i >= 0; i -= 8)
             {
                 byte b = (byte)((value >> i) & 0xff);

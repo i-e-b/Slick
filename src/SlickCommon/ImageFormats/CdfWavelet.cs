@@ -5,7 +5,7 @@ namespace SlickCommon.ImageFormats
     /// <summary>
     /// https://en.wikipedia.org/wiki/Cohen%E2%80%93Daubechies%E2%80%93Feauveau_wavelet
     /// </summary>
-    public static class CDF {
+    public static class CdfWavelet {
 
         /// <summary>
         ///  fwt97 - Forward biorthogonal 9/7 wavelet transform (lifting implementation)

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SlickWindows.Canvas
+namespace SlickCommon.Canvas
 {
     [Flags]
     internal enum DrawResult

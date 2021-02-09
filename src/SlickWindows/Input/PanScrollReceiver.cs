@@ -1,10 +1,7 @@
-﻿using System;
-using System.Drawing;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using JetBrains.Annotations;
 
-namespace SlickWindows.Gui
+namespace SlickWindows.Input
 {
     /// <summary>
     /// Handles reading mouse-wheel style events across the application
@@ -31,7 +28,9 @@ namespace SlickWindows.Gui
 
     public class MouseWheelMessageFilter : IMessageFilter
     {
-        public IScrollTarget Target { get; private set; }
+        public IScrollTarget? Target { get; private set; }
+        // ReSharper disable InconsistentNaming
+        // ReSharper disable IdentifierTypo
         public const int MK_CONTROL = 0x0008;
         public const int MK_SHIFT = 0x0004;
 
@@ -41,6 +40,8 @@ namespace SlickWindows.Gui
         public const int WM_VSCROLL = 0x115;
 
         public const int MOUSEEVENTF_HWHEEL = 0x01000;
+        // ReSharper restore InconsistentNaming
+        // ReSharper restore IdentifierTypo
 
         public MouseWheelMessageFilter(IScrollTarget target)
         {

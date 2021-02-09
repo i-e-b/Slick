@@ -17,7 +17,7 @@ namespace SlickWindows.Gui
         private readonly FloatingImage? _importFloat;
         private readonly FloatingText? _textFloat;
 
-        public Extras(IEndlessCanvas target, FloatingImage importFloat, FloatingText textFloat)
+        public Extras(IEndlessCanvas target, FloatingImage? importFloat, FloatingText? textFloat)
         {
             _target = target ?? throw new ArgumentNullException(nameof(target));
             _importFloat = importFloat;

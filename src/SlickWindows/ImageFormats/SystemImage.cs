@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using JetBrains.Annotations;
@@ -9,6 +10,7 @@ namespace SlickWindows.ImageFormats
     public class SystemImage
     {
         [NotNull]
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
         public static RawImagePlanar ToRaw([NotNull]Bitmap src)
         {
             var ri = new Rectangle(Point.Empty, src.Size);

@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
+// ReSharper disable InconsistentNaming
+// ReSharper disable CommentTypo
+// ReSharper disable FieldCanBeMadeReadOnly.Global
+// ReSharper disable IdentifierTypo
+// ReSharper disable StringLiteralTypo
 
 namespace SlickWindows.Gui.Components
 {

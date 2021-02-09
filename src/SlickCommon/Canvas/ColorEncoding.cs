@@ -1,7 +1,9 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 
 namespace SlickCommon.Canvas
 {
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     public static class ColorEncoding {
 
         public static Color YcocgToColor(int Y, int Co, int Cg)

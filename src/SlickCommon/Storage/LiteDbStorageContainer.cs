@@ -15,11 +15,13 @@ namespace SlickCommon.Storage
         [NotNull] private readonly object _storageLock = new object();
         [NotNull] private readonly LiteDatabase _db;
 
+        // ReSharper disable InconsistentNaming
         private static readonly Exception NotFound = new Exception("The node does not exist");
         private static readonly Exception NoVersion = new Exception("The listed version is missing");
         private static readonly Exception NoDb = new Exception("Could not connect to DB");
+        // ReSharper restore InconsistentNaming
 
-        private volatile bool _writeLock = false;
+        private volatile bool _writeLock;
         private volatile bool _disposed;
 
         public LiteDbStorageContainer([NotNull]IStreamProvider pageFile)
@@ -261,6 +263,7 @@ namespace SlickCommon.Storage
                     {
                         foreach (var node in old)
                         {
+                            if (node == null) continue;
                             for (int i = node.CurrentVersion; i > 0; i--) // delete files
                             {
                                 var id = $"{path}/{type}/{i}";

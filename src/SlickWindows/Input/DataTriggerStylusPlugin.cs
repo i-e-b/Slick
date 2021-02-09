@@ -8,7 +8,7 @@ namespace SlickWindows.Input
     /// </summary>
     public class DataTriggerStylusPlugin : IStylusAsyncPlugin
     {
-        private readonly IDataTriggered _sink;
+        private readonly IDataTriggered? _sink;
 
         public DataTriggerStylusPlugin(IDataTriggered sink)
         {
@@ -16,12 +16,12 @@ namespace SlickWindows.Input
         }
 
 
-        public void StylusUp(RealTimeStylus sender, StylusUpData data) {
+        public void StylusUp(RealTimeStylus? sender, StylusUpData? data) {
             if (sender == null || data == null) return;
             _sink?.DataCollected(sender);
         }
 
-        public void Packets(RealTimeStylus sender,  PacketsData data) {
+        public void Packets(RealTimeStylus? sender,  PacketsData? data) {
             if (sender == null || data == null) return;
             _sink?.DataCollected(sender);
         }
@@ -30,14 +30,8 @@ namespace SlickWindows.Input
         /// <summary>
         /// Defines the types of notifications the plugin is interested in.
         /// </summary>
-        public DataInterestMask DataInterest
-        {
-            get
-            {
-                // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
-                return DataInterestMask.Packets | DataInterestMask.StylusUp;
-            }
-        }
+        public DataInterestMask DataInterest => // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
+            DataInterestMask.Packets | DataInterestMask.StylusUp;
 
         // The remaining interface methods are not used.
         public void CustomStylusDataAdded(RealTimeStylus sender, CustomStylusData data) { }

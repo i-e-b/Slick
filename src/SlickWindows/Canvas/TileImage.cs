@@ -31,7 +31,7 @@ namespace SlickWindows.Canvas
 
         // caching
         private TextureBrush? _renderCache;
-        [NotNull] private readonly object _cacheLock = new object();
+        [NotNull] private readonly object _cacheLock = new();
         private volatile bool _canCache;
 
         /// <summary>

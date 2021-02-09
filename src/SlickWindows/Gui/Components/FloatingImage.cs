@@ -2,10 +2,9 @@
 using System.Drawing;
 using System.Windows.Forms;
 using SlickCommon.Canvas;
-using SlickWindows.Gui.Components;
 using SlickWindows.ImageFormats;
 
-namespace SlickWindows.Gui
+namespace SlickWindows.Gui.Components
 {
     public partial class FloatingImage : UserControl
     {
@@ -23,7 +22,7 @@ namespace SlickWindows.Gui
         private bool _scaling;
         private int _dx,_dy;
         private Image? _candidateImage;
-        private int _scale;
+        private readonly int _scale;
 
         public FloatingImage()
         {
@@ -37,6 +36,7 @@ namespace SlickWindows.Gui
         }
 
         public void NormaliseControlScale() {
+            if (mergeButton == null) return;
             mergeButton.Left = Width - mergeButton.Width;
         }
 
@@ -125,15 +125,15 @@ namespace SlickWindows.Gui
             base.OnMouseDown(e);
         }
 
-        private void RemoveButton_Click(object sender, System.EventArgs e)
+        private void RemoveButton_Click(object sender, EventArgs e)
         {
-            if (CandidateImage != null) CandidateImage.Dispose();
+            CandidateImage?.Dispose();
             CandidateImage = null;
 
             Visible = false;
         }
 
-        private void MergeButton_Click(object sender, System.EventArgs e)
+        private void MergeButton_Click(object sender, EventArgs e)
         {
             if (CanvasTarget == null || CandidateImage == null) return;
 
@@ -144,7 +144,7 @@ namespace SlickWindows.Gui
             }
 
             // close the floater
-            if (CandidateImage != null) CandidateImage.Dispose();
+            CandidateImage?.Dispose();
             CandidateImage = null;
             Visible = false;
         }

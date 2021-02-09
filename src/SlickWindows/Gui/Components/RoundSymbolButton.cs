@@ -69,7 +69,7 @@ namespace SlickWindows.Gui.Components
         /// <summary> 
         /// Required designer variable.
         /// </summary>
-        private readonly System.ComponentModel.IContainer components;
+        private readonly System.ComponentModel.IContainer? components;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -77,10 +77,7 @@ namespace SlickWindows.Gui.Components
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
+            if (disposing) { components?.Dispose(); }
             base.Dispose(disposing);
         }
     }

@@ -1,17 +1,15 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace SlickWindows.Gui
+namespace SlickWindows.Gui.Components
 {
     public static class FormsHelper {
 
         /// <summary>
         /// returns false if the window is partly or completely off screen
         /// </summary>
-        public static bool IsOnScreen( Form form )
+        public static bool IsOnScreen(Form? form )
         {
             if (form == null) return true;
             var rect = form.DesktopBounds;
@@ -21,7 +19,7 @@ namespace SlickWindows.Gui
         /// <summary>
         /// Push a window so it is fully on it's closest screen
         /// </summary>
-        public static void NudgeOnScreen(Form form)
+        public static void NudgeOnScreen(Form? form)
         {
             if (form == null) return;
 

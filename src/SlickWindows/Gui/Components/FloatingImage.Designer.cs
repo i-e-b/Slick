@@ -1,6 +1,4 @@
-﻿using SlickWindows.Gui.Components;
-
-namespace SlickWindows.Gui
+﻿namespace SlickWindows.Gui.Components
 {
     partial class FloatingImage
     {

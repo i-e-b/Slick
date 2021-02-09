@@ -1,4 +1,4 @@
-﻿namespace SlickWindows.Gui
+﻿namespace SlickWindows.Input
 {
     public interface IScrollTarget
     {

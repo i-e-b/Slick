@@ -7,12 +7,14 @@ using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Gui.Components
 {
-    public partial class FloatingText : UserControl
+    public sealed partial class FloatingText : UserControl
     {
         public IEndlessCanvas? CanvasTarget { get; set; }
 
+        // ReSharper disable InconsistentNaming
         private static Font? LargeFont;
         private static Font? SmallFont;
+        // ReSharper restore InconsistentNaming
 
         private int _dx, _dy;
         private bool _scaling;
@@ -43,11 +45,14 @@ namespace SlickWindows.Gui.Components
         }
 
         public void NormaliseControlScale() {
-            textBiggerButton.Top = Height - textBiggerButton.Height; 
-            textSmallerButton.Top = Height - textSmallerButton.Height; 
-            mergeButton.Left = Width - mergeButton.Width;
-            textBox.Width = Width;
-            textBox.Height = textBiggerButton.Top - textBox.Top;
+            if (textBiggerButton != null)  textBiggerButton.Top = Height - textBiggerButton.Height;
+            if (textSmallerButton != null) textSmallerButton.Top = Height - textSmallerButton.Height;
+            if (mergeButton != null) mergeButton.Left = Width - mergeButton.Width;
+            if (textBox != null)
+            {
+                textBox.Width = Width;
+                if (textBiggerButton != null) textBox.Height = textBiggerButton.Top - textBox.Top;
+            }
         }
         
         protected override CreateParams CreateParams {

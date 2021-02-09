@@ -14,6 +14,7 @@ namespace SlickWindows
         /// <summary>
         /// Assemblies loaded from embedded resources
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         private static List<Assembly> EmbeddedDlls = new();
 
         /// <summary>
@@ -27,11 +28,11 @@ namespace SlickWindows
             AppDomain.CurrentDomain.AssemblyResolve += TryUsingManifest;
 
             // Trap errors
-            /*AppDomain.CurrentDomain.FirstChanceException += (sender, eventArgs) => { LogError("First chance", eventArgs?.Exception?.ToString()); };
-            AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) => {
+            AppDomain.CurrentDomain.FirstChanceException += (_, eventArgs) => { LogError("First chance", eventArgs?.Exception?.ToString()); };
+            AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) => {
                 MessageBox.Show("An unhandled exception occurred. Check  C:\\Temp\\SlickLog.txt  for details", "Slick: Unhandled Error", MessageBoxButtons.OK);
                 LogError("Unhandled", eventArgs?.ExceptionObject?.ToString());
-            };*/
+            };
 
             // Run the code
             Win32.SetProcessDPIAware();
@@ -40,7 +41,7 @@ namespace SlickWindows
             Application.Run(new MainWindow(args));
         }
 
-        private static void LogError(string kind, string message)
+        private static void LogError(string kind, string? message)
         {
             try {
                 Directory.CreateDirectory(@"C:\Temp");
@@ -56,16 +57,16 @@ namespace SlickWindows
         /// </summary>
         private static void LoadEmbeddedAssemblies()
         {
-            var assm = Assembly.GetExecutingAssembly();
+            var assembly = Assembly.GetExecutingAssembly();
 
             EmbeddedDlls = new List<Assembly>();
-            var embeddedDlls = assm
+            var embeddedDlls = assembly
                 .GetManifestResourceNames()
                 .Where(name => name.EndsWith(".dll"));
 
             foreach (var dll in embeddedDlls)
             {
-                var stream = assm.GetManifestResourceStream(dll);
+                var stream = assembly.GetManifestResourceStream(dll);
                 if (stream == null) continue;
 
                 var ms = new MemoryStream();
@@ -79,7 +80,7 @@ namespace SlickWindows
         /// <summary>
         /// Try to load dependencies from embedded resource cache
         /// </summary>
-        private static Assembly? TryUsingManifest(object sender, ResolveEventArgs args)
+        private static Assembly? TryUsingManifest(object? sender, ResolveEventArgs? args)
         {
             if (args?.Name?.StartsWith("SlickWindows.resources") != false) return null;
             if (EmbeddedDlls == null) throw new Exception("Embedded dependency list is null. The executable file may be corrupt.");

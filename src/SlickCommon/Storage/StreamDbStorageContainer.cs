@@ -13,7 +13,9 @@ namespace SlickCommon.Storage
         [NotNull] private readonly IStreamProvider _pageFile;
         [NotNull] private readonly Database _db;
 
+        // ReSharper disable InconsistentNaming
         private static readonly Exception NotFound = new Exception("The node does not exist");
+        // ReSharper restore InconsistentNaming
 
         public StreamDbStorageContainer([NotNull]IStreamProvider pageFile)
         {

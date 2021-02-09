@@ -18,17 +18,17 @@ namespace SlickWindows.Gui
         [NotNull]private readonly EndlessCanvas _canvas;
 
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
-        [NotNull] private readonly string DefaultLocation;
+        [NotNull] private readonly string _defaultLocation;
 
         // custom cursors
-        [NotNull] private readonly Cursor InkCrosshair_LoDpi;
-        [NotNull] private readonly Cursor InkCrosshair_HiDpi;
-        [NotNull] private readonly Cursor MoveCursor_LoDpi;
-        [NotNull] private readonly Cursor MoveCursor_HiDpi;
+        [NotNull] private readonly Cursor _inkCrosshairLoDpi;
+        [NotNull] private readonly Cursor _inkCrosshairHiDpi;
+        [NotNull] private readonly Cursor _moveCursorLoDpi;
+        [NotNull] private readonly Cursor _moveCursorHiDpi;
 
         private double _lastScalePercent = 100.0;
 
-        public MainWindow(string[] args)
+        public MainWindow(string[]? args)
         {
             InitializeComponent();
             Closing += MainWindow_Closing;
@@ -38,30 +38,31 @@ namespace SlickWindows.Gui
             HorizontalScroll.Enabled = false;
 
             //DefaultLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Slick");
-            DefaultLocation = "C:\\Temp"; // For testing
+            _defaultLocation = "C:\\Temp"; // For testing
             PanScrollReceiver.Initialise(this);
 
             //RescaleScreen(); // get a reliable DPI figure (DeviceDpi is nonsense)
-            var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(DefaultLocation, "default.slick");
+            var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(_defaultLocation, "default.slick");
             _canvas = new EndlessCanvas(Width, Height, Dpi, initialFile, CanvasChanged);
             _scale = 1;
             if (floatingText1 != null) { floatingText1.CanvasTarget = _canvas; floatingText1.Visible = false; }
 
-            if (saveFileDialog != null) saveFileDialog.InitialDirectory = DefaultLocation;
+            if (saveFileDialog != null) saveFileDialog.InitialDirectory = _defaultLocation;
             
 
-            InkCrosshair_LoDpi = CursorImage.MakeCrosshair(1);
-            InkCrosshair_HiDpi = CursorImage.MakeCrosshair(2);
-            MoveCursor_LoDpi = CursorImage.MakeMove(1);
-            MoveCursor_HiDpi = CursorImage.MakeMove(2);
+            _inkCrosshairLoDpi = CursorImage.MakeCrosshair(1);
+            _inkCrosshairHiDpi = CursorImage.MakeCrosshair(2);
+            _moveCursorLoDpi = CursorImage.MakeMove(1);
+            _moveCursorHiDpi = CursorImage.MakeMove(2);
             SetCursorForState();
 
 
             UpdateWindowAndStatus();
 
-            _stylusInput = new RealTimeStylus(this, true);
-            _stylusInput.MultiTouchEnabled = true;
-            _stylusInput.AllTouchEnabled = true;
+            _stylusInput = new RealTimeStylus(this, true) {
+                MultiTouchEnabled = true,
+                AllTouchEnabled = true
+            };
 
             // Async calls get triggered on the UI thread, so we use this to trigger updates to WinForms visuals.
             _stylusInput.AsyncPluginCollection?.Add(new DataTriggerStylusPlugin(this));
@@ -124,7 +125,7 @@ namespace SlickWindows.Gui
             }.ShowDialog();
         }
 
-        private void mapButton_Click(object sender, EventArgs e)
+        private void mapButton_Click(object sender, EventArgs? e)
         {
             if (mapButton == null || e == null) return;
 
@@ -164,14 +165,13 @@ namespace SlickWindows.Gui
         private void MoreButton_Click(object sender, EventArgs e)
         {
             // show extras interface
-            var dlog = new Extras(_canvas, floatingImage1, floatingText1);
-            dlog.Location = moreButton?.PointToScreen(new Point(-dlog.Width, -dlog.Height)) ?? new Point(Right, Bottom);
-            dlog.ShowDialog();
+            var dialog = new Extras(_canvas, floatingImage1, floatingText1);
+            dialog.Location = moreButton?.PointToScreen(new Point(-dialog.Width, -dialog.Height)) ?? new Point(Right, Bottom);
+            dialog.ShowDialog();
         }
 
         private void MainWindow_ClientSizeChanged(object sender, EventArgs e)
         {
-            if (_canvas == null) return;
             _canvas.SetSizeHint(Width, Height);
         }
 
@@ -181,7 +181,7 @@ namespace SlickWindows.Gui
             Invalidate();
         }
 
-        private void MainWindow_MouseDoubleClick(object sender, MouseEventArgs e)
+        private void MainWindow_MouseDoubleClick(object sender, MouseEventArgs? e)
         {
             if (mapButton == null || e == null) return;
             _canvas.CentreAndZoom(e.X, e.Y);
@@ -205,7 +205,7 @@ namespace SlickWindows.Gui
             if (selectButton != null) selectButton.BackColor = inSelect ? Color.DarkGray : Color.White;
         }
 
-        private void MainWindow_KeyDown(object sender, KeyEventArgs e)
+        private void MainWindow_KeyDown(object sender, KeyEventArgs? e)
         {
             _shiftDown = e?.Shift ?? false;
             SetCursorForState();
@@ -237,13 +237,11 @@ namespace SlickWindows.Gui
         {
             if (_scale == 1 && !_shiftDown)
             {
-                if (Dpi > 120) Cursor = InkCrosshair_HiDpi;
-                else Cursor = InkCrosshair_LoDpi;
+                Cursor = Dpi > 120 ? _inkCrosshairHiDpi : _inkCrosshairLoDpi;
             }
             else
             {
-                if (Dpi > 120) Cursor = MoveCursor_HiDpi;
-                else Cursor = MoveCursor_LoDpi;
+                Cursor = Dpi > 120 ? _moveCursorHiDpi : _moveCursorLoDpi;
             }
         }
 

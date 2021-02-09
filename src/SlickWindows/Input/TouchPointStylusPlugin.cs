@@ -8,7 +8,7 @@ namespace SlickWindows.Input
     /// </summary>
     public class TouchPointStylusPlugin : IStylusAsyncPlugin
     {
-        private readonly ITouchTriggered _sink;
+        private readonly ITouchTriggered? _sink;
         private readonly int _deviceDpi;
 
         public TouchPointStylusPlugin(ITouchTriggered sink, int deviceDpi)
@@ -17,7 +17,7 @@ namespace SlickWindows.Input
             _deviceDpi = deviceDpi;
         }
 
-        public void StylusDown(RealTimeStylus sender, StylusDownData data)
+        public void StylusDown(RealTimeStylus? sender, StylusDownData? data)
         {
             if (data?.Stylus == null || _sink == null) return;
             if (data.Count < 2) return; // no co-ordinates
@@ -30,7 +30,7 @@ namespace SlickWindows.Input
         /// <summary>
         /// Defines the types of notifications the plugin is interested in.
         /// </summary>
-        public DataInterestMask DataInterest { get { return DataInterestMask.StylusDown; } }
+        public DataInterestMask DataInterest => DataInterestMask.StylusDown;
 
         // The remaining interface methods are not used.
         public void CustomStylusDataAdded(RealTimeStylus sender, CustomStylusData data) { }
