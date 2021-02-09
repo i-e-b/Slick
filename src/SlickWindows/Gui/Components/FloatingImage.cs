@@ -12,17 +12,17 @@ namespace SlickWindows.Gui
         /// <summary>
         /// Image to be shown
         /// </summary>
-        public Image CandidateImage
+        public Image? CandidateImage
         {
-            get { return _candidateImage; }
+            get => _candidateImage;
             set { _candidateImage = value; Invalidate(); }
         }
 
-        public IEndlessCanvas CanvasTarget { get; set; }
+        public IEndlessCanvas? CanvasTarget { get; set; }
 
         private bool _scaling;
         private int _dx,_dy;
-        private Image _candidateImage;
+        private Image? _candidateImage;
         private int _scale;
 
         public FloatingImage()

@@ -9,7 +9,7 @@ namespace SlickWindows.Canvas
     {
         [NotNull] private static readonly object _lock = new object();
         [NotNull] private readonly string _path;
-        [CanBeNull] private FileStream _openStream;
+        private FileStream? _openStream;
 
 
         public SystemIoFile([NotNull]string path)

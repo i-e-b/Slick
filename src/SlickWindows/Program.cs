@@ -14,7 +14,7 @@ namespace SlickWindows
         /// <summary>
         /// Assemblies loaded from embedded resources
         /// </summary>
-        private static List<Assembly> EmbeddedDlls;
+        private static List<Assembly> EmbeddedDlls = new();
 
         /// <summary>
         /// The main entry point for the application.
@@ -79,7 +79,7 @@ namespace SlickWindows
         /// <summary>
         /// Try to load dependencies from embedded resource cache
         /// </summary>
-        private static Assembly TryUsingManifest(object sender, ResolveEventArgs args)
+        private static Assembly? TryUsingManifest(object sender, ResolveEventArgs args)
         {
             if (args?.Name?.StartsWith("SlickWindows.resources") != false) return null;
             if (EmbeddedDlls == null) throw new Exception("Embedded dependency list is null. The executable file may be corrupt.");

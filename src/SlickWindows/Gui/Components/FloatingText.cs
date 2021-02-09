@@ -9,10 +9,10 @@ namespace SlickWindows.Gui.Components
 {
     public partial class FloatingText : UserControl
     {
-        public IEndlessCanvas CanvasTarget { get; set; }
+        public IEndlessCanvas? CanvasTarget { get; set; }
 
-        private static Font LargeFont;
-        private static Font SmallFont;
+        private static Font? LargeFont;
+        private static Font? SmallFont;
 
         private int _dx, _dy;
         private bool _scaling;

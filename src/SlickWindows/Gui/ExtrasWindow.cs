@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using JetBrains.Annotations;
 using SlickCommon.Canvas;
 using SlickWindows.Canvas;
+using SlickWindows.Extensions;
 using SlickWindows.Gui.Components;
 using SlickWindows.ImageFormats;
 
@@ -13,8 +14,8 @@ namespace SlickWindows.Gui
     public partial class Extras : AutoScaleForm
     {
         [NotNull] private readonly IEndlessCanvas _target;
-        private readonly FloatingImage _importFloat;
-        private readonly FloatingText _textFloat;
+        private readonly FloatingImage? _importFloat;
+        private readonly FloatingText? _textFloat;
 
         public Extras(IEndlessCanvas target, FloatingImage importFloat, FloatingText textFloat)
         {
@@ -23,16 +24,16 @@ namespace SlickWindows.Gui
             _textFloat = textFloat;
             InitializeComponent();
 
-            if (exportButton != null) exportButton.Enabled = target.SelectedTiles().Count > 0;
+            if (exportButton != null) exportButton.Enabled = target.SelectedTiles()?.Count > 0;
         }
 
         private void ImportButton_Click(object sender, EventArgs e)
         {
-            if (_importFloat == null) return;
+            if (_importFloat == null || loadImageDialog == null) return;
 
             _importFloat.NormaliseControlScale();
-            string path;
-            var result = loadImageDialog?.ShowDialog();
+            string? path;
+            var result = loadImageDialog.ShowDialog();
             switch (result)
             {
                 case DialogResult.OK:
@@ -57,9 +58,10 @@ namespace SlickWindows.Gui
 
         private void ExportButton_Click(object sender, EventArgs e)
         {
+            if (saveJpegDialog == null) return;
             // Pick path
-            string path;
-            var result = saveJpegDialog?.ShowDialog();
+            string? path;
+            var result = saveJpegDialog.ShowDialog();
             switch (result)
             {
                 case DialogResult.OK:
@@ -83,7 +85,7 @@ namespace SlickWindows.Gui
             int right = int.MinValue;
             int bottom = int.MinValue;
 
-            foreach (var key in selected)
+            foreach (var key in selected.OrEmpty())
             {
                 top = Math.Min(top, key.Y);
                 left = Math.Min(left, key.X);

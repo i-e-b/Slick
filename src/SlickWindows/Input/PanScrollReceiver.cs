@@ -11,9 +11,9 @@ namespace SlickWindows.Gui
     /// </summary>
     public static class PanScrollReceiver
     {
-        [NotNull] private static readonly object _lock = new object();
+        [NotNull] private static readonly object _lock = new();
         private static bool isSetUp = false;
-        private static MouseWheelMessageFilter _mouseFilter;
+        private static MouseWheelMessageFilter? _mouseFilter;
 
         public static void Initialise(IScrollTarget target) {
             if (isSetUp) {

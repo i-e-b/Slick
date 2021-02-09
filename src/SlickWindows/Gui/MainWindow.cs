@@ -41,7 +41,7 @@ namespace SlickWindows.Gui
             DefaultLocation = "C:\\Temp"; // For testing
             PanScrollReceiver.Initialise(this);
 
-            RescaleScreen(); // get a reliable DPI figure (DeviceDpi is nonsense)
+            //RescaleScreen(); // get a reliable DPI figure (DeviceDpi is nonsense)
             var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(DefaultLocation, "default.slick");
             _canvas = new EndlessCanvas(Width, Height, Dpi, initialFile, CanvasChanged);
             _scale = 1;
@@ -146,7 +146,8 @@ namespace SlickWindows.Gui
 
         private void SetPageButton_Click(object sender, EventArgs e)
         {
-            var result = saveFileDialog?.ShowDialog();
+            if (saveFileDialog == null) return;
+            var result = saveFileDialog.ShowDialog();
             switch (result) {
                 case DialogResult.OK:
                 case DialogResult.Yes:
@@ -220,7 +221,7 @@ namespace SlickWindows.Gui
         {
             SetCursorForState();
         }
-
+/*
         protected override void OnRescale(int dpi)
         {
             SetCursorForState();
@@ -231,7 +232,7 @@ namespace SlickWindows.Gui
                 _canvas.ResetTileCache();
             }
         }
-
+*/
         private void SetCursorForState()
         {
             if (_scale == 1 && !_shiftDown)

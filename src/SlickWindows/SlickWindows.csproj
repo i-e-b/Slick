@@ -8,13 +8,15 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>SlickWindows</RootNamespace>
     <AssemblyName>SlickWindows</AssemblyName>
-    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <LangVersion>9</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -23,9 +25,10 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Prefer32bit>false</Prefer32bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -33,6 +36,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Prefer32bit>false</Prefer32bit>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>mona-lisa.ico</ApplicationIcon>
@@ -72,6 +76,7 @@
     <Compile Include="Canvas\InkSettings.cs" />
     <Compile Include="Canvas\SystemIoFile.cs" />
     <Compile Include="Canvas\TileImage.cs" />
+    <Compile Include="Extensions\CollectionExtensions.cs" />
     <Compile Include="Gui\Components\AutoscaleForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -184,7 +189,7 @@
     <EmbeddedResource Include="..\..\packages\LiteDB.4.1.3\lib\net40\LiteDB.dll">
       <Link>Embed\LiteDB.dll</Link>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\SlickCommon\bin\Release\netstandard2.0\SlickCommon.dll">
+    <EmbeddedResource Include="..\SlickCommon\bin\Debug\netstandard2.0\SlickCommon.dll">
       <Link>Embed\SlickCommon.dll</Link>
     </EmbeddedResource>
     <Content Include="mona-lisa.ico" />

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -13,7 +14,7 @@ using SlickCommon.Storage;
 namespace SlickWindows.Canvas
 {
 
-    // TODO: split this into a sharable and Winforms side
+    // TODO: split this into a sharable and Win-forms side
 
     /// <summary>
     /// small image fragment
@@ -24,12 +25,12 @@ namespace SlickWindows.Canvas
         public const int Pixels = Size * Size;
 
         // Image planes:
-        // The RGB planes are as you'd expect. Hilight is a special indexed plane: 0 is transparent.
-        [NotNull] public readonly byte[] Red, Green, Blue, Hilight;
-        [NotNull] private readonly int[] raw;
+        // The RGB planes are as you'd expect. Highlight is a special indexed plane: 0 is transparent.
+        [NotNull] public readonly byte[] Red, Green, Blue, Highlight;
+        [NotNull] private readonly int[] _raw;
 
         // caching
-        [CanBeNull]private TextureBrush _renderCache;
+        private TextureBrush? _renderCache;
         [NotNull] private readonly object _cacheLock = new object();
         private volatile bool _canCache;
 
@@ -38,8 +39,8 @@ namespace SlickWindows.Canvas
         /// </summary>
         public volatile bool Locked;
 
-        public int Width { get { return Size; } }
-        public int Height { get { return Size; } }
+        public int Width => Size;
+        public int Height => Size;
         public PositionKey Position { get; set; }
 
 
@@ -58,8 +59,8 @@ namespace SlickWindows.Canvas
             Red = new byte[Pixels];
             Green = new byte[Pixels];
             Blue = new byte[Pixels];
-            Hilight = new byte[Pixels];
-            raw = new int[Pixels* 8];
+            Highlight = new byte[Pixels];
+            _raw = new int[Pixels* 8];
             var r = background.R;
             var g = background.G;
             var b = background.B;
@@ -69,7 +70,7 @@ namespace SlickWindows.Canvas
                 Red[i] = r;
                 Green[i] = g;
                 Blue[i] = b;
-                Hilight[i] = 0;
+                Highlight[i] = 0;
             }
         }
 
@@ -81,7 +82,7 @@ namespace SlickWindows.Canvas
                 if (Red[i] < 255) return false;
                 if (Green[i] < 255) return false;
                 if (Blue[i] < 255) return false;
-                if (Hilight[i] != 0) return false;
+                if (Highlight[i] != 0) return false;
             }
             return true;
         }
@@ -98,9 +99,9 @@ namespace SlickWindows.Canvas
             }
         }
 
-        public void Render(Graphics g, double dx, double dy, bool selected, byte drawScale, float visualScale)
+        public void Render(Graphics? g, double dx, double dy, bool selected, byte drawScale, float visualScale)
         {
-            if (g==null) return;
+            if (g == null) return;
             var rect = GetTargetRectangle(dx,dy, drawScale, visualScale);
             if (Locked) {
                 g.FillRectangle(Brushes.Gray, rect);
@@ -143,7 +144,7 @@ namespace SlickWindows.Canvas
 
             return new RawImageInterleaved_Int32
             {
-                Data = raw,
+                Data = _raw,
                 Height = rect.Height,
                 Width = rect.Width
             };
@@ -218,11 +219,11 @@ namespace SlickWindows.Canvas
                         if (posSum > rsq) continue;
 
                         var blend = Pin255(blurFact * (posSum - blurEdge));
-                        int dnelb = 256 - blend;
+                        int invBlend = 256 - blend;
 
-                        Red[idx] = (byte)((Red[idx] * blend + r * dnelb) >> 8);
-                        Green[idx] = (byte)((Green[idx] * blend + g * dnelb) >> 8);
-                        Blue[idx] = (byte)((Blue[idx] * blend + b * dnelb) >> 8);
+                        Red[idx] = (byte)((Red[idx] * blend + r * invBlend) >> 8);
+                        Green[idx] = (byte)((Green[idx] * blend + g * invBlend) >> 8);
+                        Blue[idx] = (byte)((Blue[idx] * blend + b * invBlend) >> 8);
                     }
                 }
             }
@@ -297,7 +298,7 @@ namespace SlickWindows.Canvas
                     var g = Green[i];
                     var b = Blue[i];
 
-                    raw[i] = Alpha | (r << 16) | (g << 8) | (b);
+                    _raw[i] = Alpha | (r << 16) | (g << 8) | (b);
                 }
             }
         }
@@ -305,6 +306,8 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Pixel art scaler for exactly 2x
         /// </summary>
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        // ReSharper disable once IdentifierTypo
         public void EPXT_2x(int size, int width, int height, int sigBits)
         {
             var srcWidth = size;
@@ -313,7 +316,7 @@ namespace SlickWindows.Canvas
 
             for (int i = 0; i < width*height; i++)
             {
-                raw[i] = Alpha;
+                _raw[i] = Alpha;
             }
 
             var dy = dstWidth;
@@ -355,10 +358,10 @@ namespace SlickWindows.Canvas
                         if (D == C && D != B && C != A) { v3 = small[syo + x - col]; }
                         if (B == D && B != A && D != C) { v4 = small[syo + x + row]; }
 
-                        raw[_1] |= v1 << shift;
-                        raw[_2] |= v2 << shift;
-                        raw[_3] |= v3 << shift;
-                        raw[_4] |= v4 << shift;
+                        _raw[_1] |= v1 << shift;
+                        _raw[_2] |= v2 << shift;
+                        _raw[_3] |= v3 << shift;
+                        _raw[_4] |= v4 << shift;
                     }
                 }
             }
@@ -387,42 +390,40 @@ namespace SlickWindows.Canvas
                     var g = Green[i];
                     var b = Blue[i];
 
-                    raw[j] = Alpha | (r << 16) | (g << 8) | (b);
+                    _raw[j] = Alpha | (r << 16) | (g << 8) | (b);
                 }
             }
         }
 
         [NotNull]private TextureBrush RawToTextureBrush(int width, int height)
         {
-            using (var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb))
+            using var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+            BitmapData? bmpData = null;
+            try
             {
-                BitmapData bmpData = null;
-                try
-                {
-                    bmpData = bmp.LockBits(
-                        new Rectangle(0, 0, width, height),
-                        ImageLockMode.WriteOnly, bmp.PixelFormat);
+                bmpData = bmp.LockBits(
+                    new Rectangle(0, 0, width, height),
+                    ImageLockMode.WriteOnly, bmp.PixelFormat);
 
-                    Marshal.Copy(raw, 0, bmpData.Scan0, width * height);
-                }
-                catch
-                {
-                    /* ignore draw races */
-                }
-                finally
-                {
-                    bmp.UnlockBits(bmpData);
-                }
-
-                var texture = new TextureBrush(bmp);
-                return texture;
+                Marshal.Copy(_raw, 0, bmpData.Scan0, width * height);
             }
+            catch
+            {
+                /* ignore draw races */
+            }
+            finally
+            {
+                if (bmpData != null) bmp.UnlockBits(bmpData);
+            }
+
+            var texture = new TextureBrush(bmp);
+            return texture;
         }
 
         
-        private static T Pick<T>(int i, params T[] stuff)
+        private static T? Pick<T>(int i, params T[] stuff)
         {
-            if (stuff == null) return default;
+            if (i >= stuff.Length) return default;
             return stuff[i];
         }
     }

@@ -12,7 +12,7 @@ namespace SlickWindows.Gui.Components
     public class Window : IDisposable, IEquatable<Window>
     {
 
-        private string _title;
+        private string? _title;
         private readonly IntPtr _handle;
         private IntPtr _dwmThumb;
 
@@ -54,7 +54,7 @@ namespace SlickWindows.Gui.Components
             return obj is Window && Equals((Window)obj);
         }
 
-        public bool Equals(Window other)
+        public bool Equals(Window? other)
         {
             return other != null && _handle == other._handle;
         }
@@ -184,8 +184,7 @@ namespace SlickWindows.Gui.Components
             int i = Win32.DwmRegisterThumbnail(host.Handle, _handle, out _dwmThumb);
             if (i != 0) return;
 
-            Win32.PSIZE size;
-            Win32.DwmQueryThumbnailSourceSize(_dwmThumb, out size);
+            Win32.DwmQueryThumbnailSourceSize(_dwmThumb, out var size);
 
             var props = new Win32.DWM_THUMBNAIL_PROPERTIES
             {
@@ -254,14 +253,14 @@ namespace SlickWindows.Gui.Components
         }
 
         // System-wide foreground window.
-        public static Window ForegroundWindow()
+        public static Window? ForegroundWindow()
         {
             var target = Win32.GetForegroundWindow();
             return target == IntPtr.Zero ? null : new Window(target);
         }
 
         // Active window on this GDI thread
-        public static Window ActiveWindow()
+        public static Window? ActiveWindow()
         {
             var target = Win32.GetActiveWindow();
             return target == IntPtr.Zero ? null : new Window(target);
@@ -271,7 +270,7 @@ namespace SlickWindows.Gui.Components
         /// Try to return the Exe icon for a given window. Tries to return largest first
         /// <para>Return null if one can't be found</para>
         /// </summary>
-        public Icon GetAppIcon()
+        public Icon? GetAppIcon()
         {
             var iconHandle = Win32.SendMessage(_handle, Win32.WM_GETICON, Win32.ICON_BIG, 0);
             if (iconHandle == IntPtr.Zero)

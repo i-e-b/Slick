@@ -11,11 +11,11 @@ namespace SlickWindows.Gui.Components
     /// </summary>
     public class AutoScaleForm:Form
     {
-        public short Dpi = 0, LastDpi = 0;
-        protected short OriginalDpi = 0;
+        public short Dpi = 96, LastDpi = 96;
+        protected short OriginalDpi = 96;
         protected float OriginalFontSize;
 
-
+/*
         [NotNull] private readonly Dictionary<short, Font> _scaleFonts = new Dictionary<short, Font>();
         [NotNull] private readonly Dictionary<Control, Dictionary<short, LayoutRect>> _layoutCache = new Dictionary<Control, Dictionary<short, LayoutRect>>();
 
@@ -23,7 +23,7 @@ namespace SlickWindows.Gui.Components
         {
             OriginalFontSize = Font.Size;
 
-            SetInitialDPI();
+            //SetInitialDPI();
         }
 
         private void SetInitialDPI()
@@ -195,6 +195,6 @@ namespace SlickWindows.Gui.Components
             public int Width;
             public int Height;
         }
-
+*/
     }
 }

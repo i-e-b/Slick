@@ -13,10 +13,12 @@ namespace SlickWindows.Gui
 {
     public partial class PaletteWindow : AutoScaleForm, ITouchTriggered
     {
-        private static Image _paletteImage;
+        private static Image? _paletteImage;
         [NotNull] private readonly RealTimeStylus _colorInput;
         private bool _shouldClose;
         private int _penSize = (int)PenSizes.Default;
+
+        public IEndlessCanvas? Canvas { get; set; }
 
         public PaletteWindow()
         {
@@ -33,9 +35,6 @@ namespace SlickWindows.Gui
             _colorInput.AsyncPluginCollection?.Add(new TouchPointStylusPlugin(this, DeviceDpi));
             _colorInput.Enabled = true;
         }
-
-
-        public IEndlessCanvas Canvas { get; set; }
 
         private void PaletteWindow_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -56,23 +55,23 @@ namespace SlickWindows.Gui
         /// <summary>
         /// render a standard colour palette.
         /// </summary>
-        private Image PaintPalette()
+        private Image? PaintPalette()
         {
             if (_paletteImage != null) return _paletteImage;
             if (colorBox == null) return null;
             var width = colorBox.Width;
             var thirdWidth = colorBox.Width / 3;
-            var qheight = colorBox.Height / 4;
-            var height = colorBox.Height - qheight;
+            var qtrHeight = colorBox.Height / 4;
+            var height = colorBox.Height - qtrHeight;
 
             var bmp = new Bitmap(colorBox.Width, colorBox.Height, PixelFormat.Format16bppRgb565);
 
             // Fixed black and white targets
             using (var gr = Graphics.FromImage(bmp))
             {
-                gr.FillRectangle(Brushes.Black, 0, 0, thirdWidth, qheight);
-                gr.FillRectangle(Brushes.BlueViolet, thirdWidth, 0, thirdWidth, qheight);
-                gr.FillRectangle(Brushes.White, thirdWidth * 2, 0, thirdWidth, qheight);
+                gr.FillRectangle(Brushes.Black, 0, 0, thirdWidth, qtrHeight);
+                gr.FillRectangle(Brushes.BlueViolet, thirdWidth, 0, thirdWidth, qtrHeight);
+                gr.FillRectangle(Brushes.White, thirdWidth * 2, 0, thirdWidth, qtrHeight);
             }
 
             // Generate a color swatch at two brightness levels
@@ -84,10 +83,10 @@ namespace SlickWindows.Gui
                 for (int x = 0; x < halfWidth; x++)
                 {
                     var c = ColorEncoding.YcocgToColor(100, (int)(y * dy), (int)(x * dx));
-                    bmp.SetPixel(x, y + qheight, c);
+                    bmp.SetPixel(x, y + qtrHeight, c);
 
                     c = ColorEncoding.YcocgToColor(200, (int)(y * dy), (int)(x * dx));
-                    bmp.SetPixel(x + halfWidth, y + qheight, c);
+                    bmp.SetPixel(x + halfWidth, y + qtrHeight, c);
                 }
             }
 

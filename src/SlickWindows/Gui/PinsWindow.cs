@@ -35,7 +35,7 @@ namespace SlickWindows.Gui
             var pins = _canvas.AllPins().OrderBy(p => p?.Description);
             foreach (var pin in pins)
             {
-                if (pin == null) continue;
+                if (pin?.Description == null) continue;
                 pinListView.Items.Add(new ListViewItem(pin.Description) {Tag = pin});
             }
         }
@@ -63,7 +63,7 @@ namespace SlickWindows.Gui
         }
 
 
-        private InfoPin SelectedPin()
+        private InfoPin? SelectedPin()
         {
             if (pinListView?.SelectedItems == null) return null;
             if (pinListView.SelectedItems.Count < 1) return null;
@@ -73,9 +73,9 @@ namespace SlickWindows.Gui
         private void AddButton_Click(object sender, EventArgs e)
         {
             // Add a new pin and close
-            if (string.IsNullOrWhiteSpace(newPinBox?.Text)) return;
+            if (string.IsNullOrWhiteSpace(newPinBox?.Text!)) return;
 
-            _canvas.WritePinAtCurrentOffset(newPinBox.Text);
+            _canvas.WritePinAtCurrentOffset(newPinBox!.Text!);
 
             Close();
         }
@@ -88,10 +88,10 @@ namespace SlickWindows.Gui
         private void NewPinBox_TextChanged(object sender, EventArgs e)
         {
             if (addButton == null) return;
-            addButton.Enabled = !string.IsNullOrWhiteSpace(newPinBox?.Text);
+            addButton.Enabled = !string.IsNullOrWhiteSpace(newPinBox?.Text!);
         }
 
-        private void PinListView_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
+        private void PinListView_ItemSelectionChanged(object? sender, ListViewItemSelectionChangedEventArgs? e)
         {
             if (viewButton == null || deleteButton == null) return;
             viewButton.Enabled = deleteButton.Enabled = pinListView?.SelectedItems.Count > 0;
