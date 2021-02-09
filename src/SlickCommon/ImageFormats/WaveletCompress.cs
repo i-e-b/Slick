@@ -30,8 +30,8 @@ namespace SlickCommon.ImageFormats
 
         public static void Decompress([NotNull]InterleavedFile file, [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue, byte scale)
         {
-            var pwidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
-            YuvPlanes_To_RgbPlanes(file.Version, Y, U, V, pwidth, pwidth, pwidth, Red, Green, Blue);
+            var planeWidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
+            YuvPlanes_To_RgbPlanes(file.Version, Y, U, V, planeWidth, planeWidth, planeWidth, Red, Green, Blue);
         }
 
         // This controls the overall size and quality of the output
@@ -67,7 +67,7 @@ namespace SlickCommon.ImageFormats
         /// <summary>
         /// Compress an image to a byte stream
         /// </summary>
-        /// <param name="Y">Luminence plane</param>
+        /// <param name="Y">Luminance plane</param>
         /// <param name="U">color plane</param>
         /// <param name="V">color plane</param>
         /// <param name="planeWidth">Width of the YUV planes, in samples. This must be a power-of-two</param>
@@ -146,9 +146,11 @@ namespace SlickCommon.ImageFormats
 
         public static int WaveletRestorePlanar2([NotNull]InterleavedFile container, byte scale, out float[] Y, out float[] U, out float[] V)
         {
-            var Ybytes = container.Planes[0];
-            var Ubytes = container.Planes[1];
-            var Vbytes = container.Planes[2];
+            // ReSharper disable IdentifierTypo
+            var Ybytes = container.Planes?[0];
+            var Ubytes = container.Planes?[1];
+            var Vbytes = container.Planes?[2];
+            // ReSharper restore IdentifierTypo
 
             var yQuants = container.QuantiserSettings_Y ?? StandardYQuants;
             var cQuants = container.QuantiserSettings_C ?? StandardCQuants;

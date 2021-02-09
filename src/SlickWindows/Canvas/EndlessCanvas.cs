@@ -128,7 +128,7 @@ namespace SlickWindows.Canvas
         /// <summary>
         /// Convert a screen position to a canvas pixel
         /// </summary>
-        [NotNull]public CanvasPixelPosition ScreenToCanvas(double x, double y) {
+        public CanvasPixelPosition ScreenToCanvas(double x, double y) {
             var dss = 1.0 / (1 << (_drawScale - 1));
             var invScale = 1.0 / VisualScale;
 
@@ -260,7 +260,7 @@ namespace SlickWindows.Canvas
                         }
                         if (info == null) continue;
                         var fileData = InterleavedFile.ReadFromStream(info.Data);
-                        if (fileData != null) WaveletCompress.Decompress(fileData, info.Image.Red, info.Image.Green, info.Image.Blue, _drawScale);
+                        WaveletCompress.Decompress(fileData, info.Image.Red, info.Image.Green, info.Image.Blue, _drawScale);
                         info.Image.Invalidate();
                         info.Image.Locked = false;
                         info.Image.CommitCache(_drawScale, VisualScale);
@@ -502,7 +502,7 @@ namespace SlickWindows.Canvas
 
             var image = new TileImage(tile);
             var fileData = InterleavedFile.ReadFromStream(data);
-            if (fileData != null) WaveletCompress.Decompress(fileData, image.Red, image.Green, image.Blue, 1);
+            WaveletCompress.Decompress(fileData, image.Red, image.Green, image.Blue, 1);
             return image;
         }
 
@@ -610,7 +610,7 @@ namespace SlickWindows.Canvas
             {
                 // use pens to toggle selection
                 var startPoint = ScreenToCanvas((int)start.X, (int)start.Y);
-                _selectedTiles.Add(startPoint.TilePosition);
+                if (startPoint.TilePosition != null) _selectedTiles.Add(startPoint.TilePosition);
                 Invalidate();
                 return;
             }
@@ -938,7 +938,6 @@ namespace SlickWindows.Canvas
             return _inSelectMode;
         }
 
-        [NotNull]
         public List<PositionKey> SelectedTiles()
         {
             return _selectedTiles.ToList();
@@ -956,7 +955,7 @@ namespace SlickWindows.Canvas
         /// Write an external image into this canvas.
         /// `px` & `py` are in screen points
         /// </summary>
-        public void CrossLoadImage([NotNull] RawImagePlanar img, int px, int py, Size size)
+        public void CrossLoadImage(RawImagePlanar img, int px, int py, Size size)
         {
             if (img.Red == null || img.Green == null || img.Blue == null) return;
 

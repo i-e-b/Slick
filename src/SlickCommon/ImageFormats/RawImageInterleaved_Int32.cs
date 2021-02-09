@@ -7,7 +7,7 @@
     // ReSharper disable once InconsistentNaming
     public class RawImageInterleaved_Int32
     {
-        public int[] Data;
+        public int[]? Data;
 
         public int Width;
         public int Height;

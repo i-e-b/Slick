@@ -12,12 +12,12 @@ namespace SlickCommon.Storage
         /// <summary>
         /// matching Tile ID
         /// </summary>
-        public string Id { get; set; }
+        public string? Id { get; set; }
 
         /// <summary>
         /// Text of the pin
         /// </summary>
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         public static InfoPin Centre()
         {

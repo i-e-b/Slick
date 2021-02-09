@@ -11,7 +11,7 @@ namespace SlickCommon.ImageFormats
     [SuppressMessage("ReSharper", "InconsistentNaming")]
     public class RawImageInterleaved_UInt8
     {
-        public byte[] Data;
+        public byte[]? Data;
 
         public int Width;
         public int Height;

@@ -44,7 +44,7 @@ namespace SlickCommon.Storage
             try
             {
                 var node = StorageNode.FromStream(rawStream);
-                if (node == null || node.IsDeleted) return Result<StorageNode>.Failure(NotFound);
+                if (node.IsDeleted) return Result<StorageNode>.Failure(NotFound);
                 return Result<StorageNode>.Success(node);
             }
             catch (Exception ex)
@@ -159,7 +159,7 @@ namespace SlickCommon.Storage
             // 1. Delete any currently marked tiles
             // 2. Write the deleted flag for this one
 
-            // With streamdb, we use the ability to put single documents under multiple paths.
+            // With stream-db, we use the ability to put single documents under multiple paths.
             
 
             var node = Exists(path);

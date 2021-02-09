@@ -7,7 +7,7 @@ namespace SlickCommon.Canvas
     /// This is invariant of scale
     /// </summary>
     public class CanvasPixelPosition {
-        public PositionKey TilePosition { get; set; }
+        public PositionKey? TilePosition { get; set; }
         public double X { get; set; }
         public double Y { get; set; }
     }

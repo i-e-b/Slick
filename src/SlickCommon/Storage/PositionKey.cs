@@ -46,12 +46,12 @@ namespace SlickCommon.Storage
             return X.ToString("X") + "_" + Y.ToString("X");
         }
 
-        public static PositionKey Parse(string s) {
+        public static PositionKey? Parse(string? s) {
             var bits = s?.Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
             if (bits == null || bits.Length < 2) return null;
 
-            var ok = int.TryParse(bits[0], NumberStyles.HexNumber, null, out var x);
-            ok &= int.TryParse(bits[1], NumberStyles.HexNumber, null, out var y);
+            var ok = int.TryParse(bits[0]!, NumberStyles.HexNumber, null!, out var x);
+            ok &= int.TryParse(bits[1]!, NumberStyles.HexNumber, null!, out var y);
             if (!ok) return null;
 
             return new PositionKey(x, y);

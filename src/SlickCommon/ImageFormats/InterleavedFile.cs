@@ -38,18 +38,18 @@ namespace SlickCommon.ImageFormats
         /// Quantiser settings for non-color planes used to create the image.
         /// </summary>
         [SuppressMessage("ReSharper", "InconsistentNaming")]
-        public double[] QuantiserSettings_Y { get; set; }
+        public double[]? QuantiserSettings_Y { get; set; }
 
         /// <summary>
         /// Quantiser settings for color planes used to create the image.
         /// </summary>
         [SuppressMessage("ReSharper", "InconsistentNaming")]
-        public double[] QuantiserSettings_C { get; set; }
+        public double[]? QuantiserSettings_C { get; set; }
 
         /// <summary>
         /// All planes. Expected to be in order: Y,U,V,extra
         /// </summary>
-        [NotNull]public byte[][] Planes { get; }
+        public byte[][]? Planes { get; }
 
         // Old quantiser settings from before they were stored with the image
         [NotNull]public static readonly double[] OldYQuants = { 15, 8, 5, 3, 2.0};
@@ -103,9 +103,10 @@ namespace SlickCommon.ImageFormats
             while (true) {
                 var anything = false;
 
-                for (int p = 0; p < Planes.Length; p++)
+                var planeCount = Planes?.Length ?? 0;
+                for (int p = 0; p < planeCount; p++)
                 {
-                    if (!(Planes[p]?.Length > i)) continue;
+                    if (!(Planes![p].Length > i)) continue;
                     
                     anything = true;
                     output.WriteByte(Planes[p][i]);
@@ -128,10 +129,11 @@ namespace SlickCommon.ImageFormats
             WriteQuantiserSettings(output, QuantiserSettings_Y, QuantiserSettings_C);
 
             // Each plane can have a different byte size
-            WriteU8(Planes.Length, output);
-            for (int i = 0; i < Planes.Length; i++)
+            var planeLength = Planes?.Length ?? 0;
+            WriteU8(planeLength, output);
+            for (int i = 0; i < planeLength; i++)
             {
-                if (Planes[i] == null) throw new Exception("Invalid planar data when writing file stream headers");
+                if (Planes![i] == null) throw new Exception("Invalid planar data when writing file stream headers");
                 WriteU64(Planes[i].LongLength, output);
             }
         }
@@ -212,7 +214,7 @@ namespace SlickCommon.ImageFormats
         }
 
         
-        private static void WriteQuantiserSettings(Stream output, double[] yQuant, double[] cQuant)
+        private static void WriteQuantiserSettings(Stream output, double[]? yQuant, double[]? cQuant)
         {
             if (yQuant == null || cQuant == null)
             {
@@ -236,7 +238,7 @@ namespace SlickCommon.ImageFormats
             }
         }
 
-        private static void ReadQuantiserSettings([NotNull]Stream input, List<double> yQuant, List<double> cQuant)
+        private static void ReadQuantiserSettings([NotNull]Stream input, List<double>? yQuant, List<double>? cQuant)
         {
             var ok = ReadU8(input, out var yqCount);
             ok &= ReadU8(input, out var cqCount);
@@ -265,7 +267,7 @@ namespace SlickCommon.ImageFormats
             return value >= 0;
         }
 
-        private static void WriteU8(int value, Stream ws) {
+        private static void WriteU8(int value, Stream? ws) {
             ws?.WriteByte((byte)value);
         }
         
@@ -279,7 +281,7 @@ namespace SlickCommon.ImageFormats
             return true;
         }
 
-        private static void WriteU16(ushort value, Stream ws) {
+        private static void WriteU16(ushort value, Stream? ws) {
             byte hi = (byte)((value >> 8) & 0xff);
             byte lo = (byte)((value     ) & 0xff);
             ws?.WriteByte(hi);
