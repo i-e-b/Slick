@@ -38,12 +38,6 @@ namespace SlickCommon.Canvas
         CanvasPixelPosition ScreenToCanvas(double x, double y);
 
         /// <summary>
-        /// Draw the selected tiles, from a given offset, into a bitmap image.
-        /// This does NOT change the canvas position or size hint.
-        /// </summary>
-        void RenderToImage(RawImagePlanar bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles);
-
-        /// <summary>
         /// Draw curve in the current inking colour
         /// </summary>
         void Ink(DPoint start, DPoint end);

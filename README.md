@@ -4,22 +4,23 @@ A light-weight infinite-whiteboard tool
 ## To do
 Immediate next steps:
 
-* [ ] Improve drawing quality on Winforms version
+* [ ] Improve drawing quality on Winforms version (better wet ink, commit wet ink directly to tiles)
 * [ ] Make sure 'undo' works well with stream-db
-* [ ] Migrate the 'repeatable' palette from the UWP app over to Winforms
-* [ ] Remove the UWP app, because UWP is so bad.
+* [ ] Use the 'repeatable' palette, like from the UWP version
+* [x] Remove the UWP app, because UWP is so bad.
 * [ ] Highlighting ink
 * [ ] Bring the wavelet image code out to its own library and use that
+* [ ] Erase selected tiles
 
 ## Possible features
 
 * [ ] shared 'infinite whiteboard' inside group
   * [ ] 'strands' to loosely link conversations
   * [ ] 'bubbles' to tightly link conversations
-  * [ ] a way to push off-topic or humourous chat aside without removing it
+  * [ ] a way to push off-topic or humorous chat aside without removing it
 * [ ] peer-to-peer audio/video link
   * [ ] try the 3D CDF wavelet thing here?
-* [ ] Non-euclidian surface -- as you scroll away, content is reduced but not hidden.
+* [ ] Non-euclidean surface -- as you scroll away, content is reduced but not hidden.
 * [ ] Android client
 
 ## Links

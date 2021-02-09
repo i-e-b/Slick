@@ -24,7 +24,7 @@ namespace SlickWindows.Gui
             _textFloat = textFloat;
             InitializeComponent();
 
-            if (exportButton != null) exportButton.Enabled = target.SelectedTiles()?.Count > 0;
+            if (exportButton != null) exportButton.Enabled = target.SelectedTiles().Count > 0;
         }
 
         private void ImportButton_Click(object sender, EventArgs e)
@@ -100,7 +100,6 @@ namespace SlickWindows.Gui
             // render and save bitmap
             using (var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb))
             {
-                // TODO: fix this
                 ((EndlessCanvas)_target).RenderToImage(bmp, top, left, selected);
                 Application.DoEvents();
                 bmp.SaveJpeg(path);

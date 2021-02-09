@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -375,13 +376,6 @@ namespace SlickWindows.Canvas
             RenderWetInk(g);
         }
 
-        
-        /// <inheritdoc />
-        public void RenderToImage(RawImagePlanar bmp, int topIdx, int leftIdx, List<PositionKey> selectedTiles)
-        {
-            //TODO: IMPLEMENT_ME();
-        }
-
         /// <summary>
         /// Draw the selected tiles, from a given offset, into a bitmap image.
         /// This does NOT change the canvas position or size hint.
@@ -422,6 +416,8 @@ namespace SlickWindows.Canvas
                 var pen = GuessPen(next.IsErase);
                 var size = next.Pressure * pen.PenSize * VisualScale * 0.6;
 
+                g.InterpolationMode = InterpolationMode.High;
+                g.SmoothingMode = SmoothingMode.HighQuality;
                 using (var gPen = new Pen(pen.PenColor, (float)size))
                 {
                     g.DrawLine(gPen,
@@ -574,6 +570,7 @@ namespace SlickWindows.Canvas
                 }
                 double radius;
 
+                // TODO: render the wet ink to a temp bitmap and import it
                 // Instead of drawing dots, get every covered tile, and draw the whole line to each
                 for (double i = 0; i <= dd; i += radius)
                 {

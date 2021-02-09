@@ -14,8 +14,6 @@ using SlickCommon.Storage;
 namespace SlickWindows.Canvas
 {
 
-    // TODO: split this into a sharable and Win-forms side
-
     /// <summary>
     /// small image fragment
     /// </summary>
@@ -195,41 +193,51 @@ namespace SlickWindows.Canvas
 
             if (inkPenType == InkType.Import)
             {
-                var idx = (top * size) + left;
-
-                Red[idx] = (byte)r;
-                Green[idx] = (byte)g;
-                Blue[idx] = (byte)b;
+                SetPixel(top, size, left, r, g, b);
             }
             else
             {
-                for (int y = top; y < bottom; y++)
-                {
-                    var ysq = (int)((y - py) * (y - py));
-                    var yo = y * size;
-
-                    for (int x = left; x < right; x++)
-                    {
-                        var idx = yo + x;
-
-                        // circular pen
-                        var xsq = (int)((x - px) * (x - px));
-                        var posSum = xsq + ysq;
-
-                        if (posSum > rsq) continue;
-
-                        var blend = Pin255(blurFact * (posSum - blurEdge));
-                        int invBlend = 256 - blend;
-
-                        Red[idx] = (byte)((Red[idx] * blend + r * invBlend) >> 8);
-                        Green[idx] = (byte)((Green[idx] * blend + g * invBlend) >> 8);
-                        Blue[idx] = (byte)((Blue[idx] * blend + b * invBlend) >> 8);
-                    }
-                }
+                DrawPenPoint(px, py, top, bottom, size, left, right, rsq, blurFact, blurEdge, r, g, b);
             }
             Invalidate();
 
             return true;
+        }
+
+        private void DrawPenPoint(double px, double py, int top, int bottom, int size, int left, int right, int rsq, double blurFact, double blurEdge, int r, int g, int b)
+        {
+            for (int y = top; y < bottom; y++)
+            {
+                var ysq = (int) ((y - py) * (y - py));
+                var yo = y * size;
+
+                for (int x = left; x < right; x++)
+                {
+                    var idx = yo + x;
+
+                    // circular pen
+                    var xsq = (int) ((x - px) * (x - px));
+                    var posSum = xsq + ysq;
+
+                    if (posSum > rsq) continue;
+
+                    var blend = Pin255(blurFact * (posSum - blurEdge));
+                    int invBlend = 256 - blend;
+
+                    Red[idx] = (byte) ((Red[idx] * blend + r * invBlend) >> 8);
+                    Green[idx] = (byte) ((Green[idx] * blend + g * invBlend) >> 8);
+                    Blue[idx] = (byte) ((Blue[idx] * blend + b * invBlend) >> 8);
+                }
+            }
+        }
+
+        private void SetPixel(int top, int size, int left, int r, int g, int b)
+        {
+            var idx = (top * size) + left;
+
+            Red[idx] = (byte) r;
+            Green[idx] = (byte) g;
+            Blue[idx] = (byte) b;
         }
 
         private int Pin255(double rsq)
