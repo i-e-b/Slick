@@ -19,10 +19,10 @@ namespace SlickWindows.Canvas
     public class EndlessCanvas : IEndlessCanvas
     {
         // For tile cache
-        [NotNull] private static readonly object _dataQueueLock = new object();
+        [NotNull] private static readonly object _dataQueueLock = new();
         [NotNull] private readonly HashSet<PositionKey> _changedTiles;
         [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
-        [NotNull] private readonly Queue<TileSource> _imageQueue = new Queue<TileSource>();
+        [NotNull] private readonly Queue<TileSource> _imageQueue = new();
         private volatile IStorageContainer? _storage;
         private string? _storagePath;
 

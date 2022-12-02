@@ -1,43 +1,14 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{6B3871A9-F246-413B-935E-9D5E337CAF1B}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>SlickWindows</RootNamespace>
-    <AssemblyName>SlickWindows</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Deterministic>true</Deterministic>
-    <LangVersion>9</LangVersion>
+    <TargetFramework>net6.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>10</LangVersion>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>x64</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <Prefer32bit>false</Prefer32bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>x64</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <Prefer32bit>false</Prefer32bit>
-  </PropertyGroup>
+
   <PropertyGroup>
     <ApplicationIcon>mona-lisa.ico</ApplicationIcon>
   </PropertyGroup>
@@ -45,160 +16,37 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Containers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll</HintPath>
-    </Reference>
-    <Reference Include="LiteDB, Version=4.1.3.0, Culture=neutral, PublicKeyToken=4ee40123013c9f27, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\LiteDB.4.1.3\lib\net40\LiteDB.dll</HintPath>
+    <Reference Include="Microsoft.Ink">
+      <HintPath>..\..\..\..\Program Files\Common Files\microsoft shared\ink\Microsoft.Ink.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Ink, Version=1.7.2600.2180, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\..\..\Reference Assemblies\Microsoft\Tablet PC\v1.7\Microsoft.Ink.dll</HintPath>
     </Reference>
-    <Reference Include="ResharperAnnotations, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\MiniResharperAnnotations.1.0.2\lib\netstandard1.0\ResharperAnnotations.dll</HintPath>
-    </Reference>
-    <Reference Include="StreamDb, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\bin\StreamDb.dll</HintPath>
-    </Reference>
+    <!--<Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Runtime" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml" />-->
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Canvas\InkSettings.cs" />
-    <Compile Include="Canvas\SystemIoFile.cs" />
-    <Compile Include="Canvas\TileImage.cs" />
-    <Compile Include="Extensions\CollectionExtensions.cs" />
-    <Compile Include="Gui\Components\AutoscaleForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Gui\Components\RoundSymbolButton.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Gui\Components\CursorImage.cs" />
-    <Compile Include="Gui\Components\FloatingText.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Gui\Components\FloatingText.Designer.cs">
-      <DependentUpon>FloatingText.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Gui\Components\ScreenExtensions.cs" />
-    <Compile Include="Gui\Components\Win32.cs" />
-    <Compile Include="Gui\Components\Window.cs" />
-    <Compile Include="Gui\ExtrasWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Gui\ExtrasWindow.Designer.cs">
-      <DependentUpon>ExtrasWindow.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Gui\Components\FloatingImage.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Gui\Components\FloatingImage.Designer.cs">
-      <DependentUpon>FloatingImage.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Gui\Components\FormsHelper.cs" />
-    <Compile Include="Gui\PinsWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Gui\PinsWindow.Designer.cs">
-      <DependentUpon>PinsWindow.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Gui\Components\SymbolType.cs" />
-    <Compile Include="ImageFormats\SystemImage.cs" />
-    <Compile Include="ImageFormats\Save.cs" />
-    <Compile Include="Input\IScrollTarget.cs" />
-    <Compile Include="Gui\PaletteWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Gui\PaletteWindow.Designer.cs">
-      <DependentUpon>PaletteWindow.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Input\PanScrollReceiver.cs" />
-    <Compile Include="Input\DataTriggerStylusPlugin.cs" />
-    <Compile Include="Canvas\EndlessCanvas.cs" />
-    <Compile Include="Input\IDataTriggered.cs" />
-    <Compile Include="Input\IKeyboard.cs" />
-    <Compile Include="Input\ITouchTriggered.cs" />
-    <Compile Include="Input\TouchPointStylusPlugin.cs" />
-    <Compile Include="Input\WinFormsKeyboard.cs" />
-    <Compile Include="Gui\MainWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Gui\MainWindow.Designer.cs">
-      <DependentUpon>MainWindow.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Input\PluginListItem.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Input\CanvasDrawingPlugin.cs" />
-    <EmbeddedResource Include="Gui\Components\FloatingText.resx">
-      <DependentUpon>FloatingText.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Gui\ExtrasWindow.resx">
-      <DependentUpon>ExtrasWindow.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Gui\Components\FloatingImage.resx">
-      <DependentUpon>FloatingImage.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Gui\PaletteWindow.resx">
-      <DependentUpon>PaletteWindow.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Gui\MainWindow.resx">
-      <DependentUpon>MainWindow.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Gui\PinsWindow.resx">
-      <DependentUpon>PinsWindow.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-    <None Include="app.manifest" />
-    <None Include="packages.config" />
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
+    <PackageReference Include="StreamDb_exp" Version="1.0.0" />
+    <PackageReference Include="GeneralContainers" Version="2.0.1" />
+    <PackageReference Include="LiteDB" Version="4.1.3" />
+    <PackageReference Include="MiniResharperAnnotations" Version="1.0.2" />
+    <PackageReference Include="System.Buffers" Version="4.5.1" />
+    <PackageReference Include="System.Memory" Version="4.5.4" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+    <PackageReference Include="System.Resources.Extensions" Version="4.6.0" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.5.3" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <ProjectReference Include="..\SlickCommon\SlickCommon.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\packages\GeneralContainers.2.0.1\lib\netstandard1.0\Containers.dll">
-      <Link>Embed\Containers.dll</Link>
-    </EmbeddedResource>
-    <EmbeddedResource Include="..\..\packages\LiteDB.4.1.3\lib\net40\LiteDB.dll">
-      <Link>Embed\LiteDB.dll</Link>
-    </EmbeddedResource>
-    <EmbeddedResource Include="..\SlickCommon\bin\Debug\netstandard2.0\SlickCommon.dll">
-      <Link>Embed\SlickCommon.dll</Link>
-    </EmbeddedResource>
-    <Content Include="mona-lisa.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\SlickCommon\SlickCommon.csproj">
-      <Project>{2799264C-B883-4B88-8D4D-EA0980BA3656}</Project>
-      <Name>SlickCommon</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

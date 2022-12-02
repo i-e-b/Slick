@@ -32,8 +32,7 @@ namespace SlickWindows.Gui.Components
         /// <summary>
         /// Create a cursor from a bitmap without resizing and with the specified hot spot
         /// </summary>
-        [NotNull]
-        public static Cursor CreateCursorNoResize([NotNull]Bitmap bmp, int xHotSpot, int yHotSpot)
+        public static Cursor CreateCursorNoResize(Bitmap bmp, int xHotSpot, int yHotSpot)
         {
             IntPtr ptr = bmp.GetHicon();
             IconInfo tmp = new IconInfo();
@@ -45,7 +44,7 @@ namespace SlickWindows.Gui.Components
             return new Cursor(ptr);
         }
 
-        [NotNull] public static Cursor MakeCrosshair(int scale)
+        public static Cursor MakeCrosshair(int scale)
         {
             using (var bmp = new Bitmap(16 * scale, 16 * scale, PixelFormat.Format32bppArgb))
             using (var pen = new Pen(Color.Black, 1.0f * scale))
@@ -58,7 +57,7 @@ namespace SlickWindows.Gui.Components
             }
         }
 
-        [NotNull] public static Cursor MakeMove(int scale)
+        public static Cursor MakeMove(int scale)
         {
             using (var bmp = new Bitmap(16 * scale, 16 * scale, PixelFormat.Format32bppArgb))
             using (var g = Graphics.FromImage(bmp))

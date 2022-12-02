@@ -14,25 +14,22 @@ namespace SlickWindows.Gui
     {
         // Declare the real time stylus.
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
-        [NotNull]private readonly RealTimeStylus _stylusInput;
-        [NotNull]private readonly EndlessCanvas _canvas;
+        private readonly RealTimeStylus _stylusInput;
+        private readonly EndlessCanvas _canvas;
 
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
-        [NotNull] private readonly string _defaultLocation;
+        private readonly string _defaultLocation;
 
         // custom cursors
-        [NotNull] private readonly Cursor _inkCrosshairLoDpi;
-        [NotNull] private readonly Cursor _inkCrosshairHiDpi;
-        [NotNull] private readonly Cursor _moveCursorLoDpi;
-        [NotNull] private readonly Cursor _moveCursorHiDpi;
+        private readonly Cursor _inkCrosshairLoDpi;
+        private readonly Cursor _inkCrosshairHiDpi;
+        private readonly Cursor _moveCursorLoDpi;
+        private readonly Cursor _moveCursorHiDpi;
 
         private double _lastScalePercent = 100.0;
 
         public MainWindow(string[]? args)
         {
-            InitializeComponent();
-            Closing += MainWindow_Closing;
-
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.UserMouse, true);
             VerticalScroll.Enabled = false;
             HorizontalScroll.Enabled = false;
@@ -49,6 +46,8 @@ namespace SlickWindows.Gui
 
             if (saveFileDialog != null) saveFileDialog.InitialDirectory = _defaultLocation;
             
+            InitializeComponent();
+            Closing += MainWindow_Closing;
 
             _inkCrosshairLoDpi = CursorImage.MakeCrosshair(1);
             _inkCrosshairHiDpi = CursorImage.MakeCrosshair(2);
@@ -72,12 +71,12 @@ namespace SlickWindows.Gui
             _stylusInput.Enabled = true; 
         }
 
-        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             _canvas.Dispose();
         }
 
-        private static void AddInputPlugin([NotNull]RealTimeStylus stylusInput, IStylusSyncPlugin plugin)
+        private static void AddInputPlugin(RealTimeStylus stylusInput, IStylusSyncPlugin plugin)
         {
             if (plugin == null || stylusInput.SyncPluginCollection == null) throw new Exception("Input state not correct");
             var rtsEnabled = stylusInput.Enabled;
@@ -86,7 +85,7 @@ namespace SlickWindows.Gui
             stylusInput.Enabled = rtsEnabled;
         }
 
-        [NotNull]private static readonly object _drawLock = new object();
+        private static readonly object _drawLock = new();
         private volatile bool _ignoreDraw;
         private int _scale;
         private bool _shiftDown;
@@ -172,7 +171,7 @@ namespace SlickWindows.Gui
 
         private void MainWindow_ClientSizeChanged(object sender, EventArgs e)
         {
-            _canvas.SetSizeHint(Width, Height);
+            _canvas?.SetSizeHint(Width, Height);
         }
 
         private void UndoButton_Click(object sender, EventArgs e)

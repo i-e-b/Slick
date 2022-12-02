@@ -54,8 +54,9 @@ namespace SlickWindows.Input
             {
                 case WM_MOUSEWHEEL:
                     {
-                        var delta = m.WParam.ToInt32() >> 16;
-                        var shiftKeyDown = (char)((Keys)m.WParam) == MK_SHIFT;
+                        var delta = (short)((m.WParam.ToInt64() >> 16) & 0xFFFF);
+                        var keyBits = (char)(m.WParam.ToInt64() & 0xFF);
+                        var shiftKeyDown = keyBits == MK_SHIFT;
 
                         if (shiftKeyDown)
                         {
@@ -72,7 +73,7 @@ namespace SlickWindows.Input
                 case WM_MOUSEHWHEEL:
                     {
                         // wheel delta
-                        var delta = m.WParam.ToInt32() >> 16;
+                        var delta = (short)((m.WParam.ToInt64() >> 16) & 0xFFFF);
 
                         Target?.Scroll2D(-delta, 0);
 

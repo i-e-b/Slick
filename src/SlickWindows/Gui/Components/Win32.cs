@@ -206,23 +206,23 @@ namespace SlickWindows.Gui.Components
 		#endregion
 
         #region Hwnd positions
-        public static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
-        public static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
-        public static readonly IntPtr HWND_TOP = new IntPtr(0);
-        public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        public static readonly IntPtr HWND_BOTTOM = new(1);
+        public static readonly IntPtr HWND_NOTOPMOST = new(-2);
+        public static readonly IntPtr HWND_TOP = new(0);
+        public static readonly IntPtr HWND_TOPMOST = new(-1);
         #endregion
 
         #region Window hit detection
         /// <summary>The title bar of the window. Window will be moved</summary>
-        public static IntPtr HTCAPTION = new IntPtr(2);
+        public static IntPtr HTCAPTION = new(2);
         /// <summary>In the window, but not in a normal window area</summary>
-        public static IntPtr HTCLIENT = new IntPtr(1);
+        public static IntPtr HTCLIENT = new(1);
         /// <summary>Did not hit this window</summary>
-        public static IntPtr HTNOWHERE = new IntPtr(0);
+        public static IntPtr HTNOWHERE = new(0);
         /// <summary>In the 'close' box</summary>
-        public static IntPtr HTCLOSE = new IntPtr(20);
+        public static IntPtr HTCLOSE = new(20);
         /// <summary>In a resize box -- can resize horz or vert</summary>
-        public static IntPtr HTBOTTOMRIGHT = new IntPtr(17);
+        public static IntPtr HTBOTTOMRIGHT = new(17);
         #endregion
 
         #region Monitor constants

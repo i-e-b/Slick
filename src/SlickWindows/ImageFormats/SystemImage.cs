@@ -9,9 +9,8 @@ namespace SlickWindows.ImageFormats
 {
     public class SystemImage
     {
-        [NotNull]
         [SuppressMessage("ReSharper", "InconsistentNaming")]
-        public static RawImagePlanar ToRaw([NotNull]Bitmap src)
+        public static RawImagePlanar ToRaw(Bitmap src)
         {
             var ri = new Rectangle(Point.Empty, src.Size);
             var srcData = src.LockBits(ri, ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb); // this is actually BGRA

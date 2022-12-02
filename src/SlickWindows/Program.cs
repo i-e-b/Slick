@@ -24,15 +24,15 @@ namespace SlickWindows
         static void Main(string[] args)
         {
             // Setup the embed dll reader
-            LoadEmbeddedAssemblies();
-            AppDomain.CurrentDomain.AssemblyResolve += TryUsingManifest;
+           // LoadEmbeddedAssemblies();
+            //AppDomain.CurrentDomain.AssemblyResolve += TryUsingManifest;
 
             // Trap errors
-            AppDomain.CurrentDomain.FirstChanceException += (_, eventArgs) => { LogError("First chance", eventArgs?.Exception?.ToString()); };
+           /* AppDomain.CurrentDomain.FirstChanceException += (_, eventArgs) => { LogError("First chance", eventArgs?.Exception?.ToString()); };
             AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) => {
                 MessageBox.Show("An unhandled exception occurred. Check  C:\\Temp\\SlickLog.txt  for details", "Slick: Unhandled Error", MessageBoxButtons.OK);
                 LogError("Unhandled", eventArgs?.ExceptionObject?.ToString());
-            };
+            };*/
 
             // Run the code
             Win32.SetProcessDPIAware();

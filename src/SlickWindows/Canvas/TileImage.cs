@@ -24,12 +24,12 @@ namespace SlickWindows.Canvas
 
         // Image planes:
         // The RGB planes are as you'd expect. Highlight is a special indexed plane: 0 is transparent.
-        [NotNull] public readonly byte[] Red, Green, Blue, Highlight;
-        [NotNull] private readonly int[] _raw;
+        public readonly byte[] Red, Green, Blue, Highlight;
+        private readonly int[] _raw;
 
         // caching
         private TextureBrush? _renderCache;
-        [NotNull] private readonly object _cacheLock = new();
+        private readonly object _cacheLock = new();
         private volatile bool _canCache;
 
         /// <summary>
@@ -403,7 +403,7 @@ namespace SlickWindows.Canvas
             }
         }
 
-        [NotNull]private TextureBrush RawToTextureBrush(int width, int height)
+        private TextureBrush RawToTextureBrush(int width, int height)
         {
             using var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
             BitmapData? bmpData = null;
