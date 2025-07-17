@@ -1,8 +1,4 @@
-﻿using System;
-using System.Drawing;
-using System.IO;
-using System.Windows.Forms;
-using Microsoft.StylusInput;
+﻿using Microsoft.StylusInput;
 using SlickWindows.Canvas;
 using SlickWindows.Gui.Components;
 using SlickWindows.Input;
@@ -41,8 +37,8 @@ namespace SlickWindows.Gui
             var initialFile = (args?.Length > 0) ? args[0] : Path.Combine(_defaultLocation, "default.slick");
             _canvas = new EndlessCanvas(Width, Height, Dpi, initialFile, CanvasChanged);
             _scale = 1;
-            if (floatingText1 != null) { floatingText1.CanvasTarget = _canvas; floatingText1.Visible = false; }
 
+            if (floatingText1 != null) { floatingText1.CanvasTarget = _canvas; floatingText1.Visible = false; }
             if (saveFileDialog != null) saveFileDialog.InitialDirectory = _defaultLocation;
             
             InitializeComponent();
@@ -245,7 +241,9 @@ namespace SlickWindows.Gui
 
         private void TextButton_Click(object sender, EventArgs e)
         {
-            if (floatingText1 != null) {
+            if (floatingText1 != null)
+            {
+                floatingText1.CanvasTarget = _canvas;
                 floatingText1.NormaliseControlScale();
                 floatingText1.Visible = true;
             }

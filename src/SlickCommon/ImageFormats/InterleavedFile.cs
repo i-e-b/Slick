@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using JetBrains.Annotations;
 
 namespace SlickCommon.ImageFormats
 {
@@ -52,8 +51,8 @@ namespace SlickCommon.ImageFormats
         public byte[][]? Planes { get; }
 
         // Old quantiser settings from before they were stored with the image
-        [NotNull]public static readonly double[] OldYQuants = { 15, 8, 5, 3, 2.0};
-        [NotNull]public static readonly double[] OldCQuants = { 20, 10, 4.0 };
+        public static readonly   double[] OldYQuants = { 15, 8, 5, 3, 2.0};
+        public static readonly double[] OldCQuants = { 20, 10, 4.0 };
 
         // NOTE: not sure if it's better to compress-then-interleave or the other way around
 
@@ -94,7 +93,7 @@ namespace SlickCommon.ImageFormats
             Planes = new byte[planeCount][];
         }
 
-        public void WriteToStream([NotNull]Stream output)
+        public void WriteToStream(Stream output)
         {
             WriteStreamHeaders(output);
 
@@ -142,7 +141,7 @@ namespace SlickCommon.ImageFormats
         /// <summary>
         /// Read from a source file. If the source is truncated, the recovery will go as far as possible
         /// </summary>
-        public static InterleavedFile ReadFromStream([NotNull]Stream input) {
+        public static InterleavedFile ReadFromStream(Stream input) {
             ReadU16(input, out var version);
 
             if (version > 32) { // probably a version 1 file
@@ -238,7 +237,7 @@ namespace SlickCommon.ImageFormats
             }
         }
 
-        private static void ReadQuantiserSettings([NotNull]Stream input, List<double>? yQuant, List<double>? cQuant)
+        private static void ReadQuantiserSettings(Stream input, List<double>? yQuant, List<double>? cQuant)
         {
             var ok = ReadU8(input, out var yqCount);
             ok &= ReadU8(input, out var cqCount);
@@ -262,7 +261,7 @@ namespace SlickCommon.ImageFormats
             }
         }
 
-        private static bool ReadU8([NotNull]Stream rs, out int value) {
+        private static bool ReadU8(Stream rs, out int value) {
             value = rs.ReadByte();
             return value >= 0;
         }
@@ -271,7 +270,7 @@ namespace SlickCommon.ImageFormats
             ws?.WriteByte((byte)value);
         }
         
-        private static bool ReadU16([NotNull]Stream rs, out ushort value) {
+        private static bool ReadU16(Stream rs, out ushort value) {
             value = 0;
             var hi = rs.ReadByte();
             var lo = rs.ReadByte();
@@ -288,7 +287,7 @@ namespace SlickCommon.ImageFormats
             ws?.WriteByte(lo);
         }
 
-        private static bool ReadU64([NotNull]Stream rs, out ulong value)
+        private static bool ReadU64(Stream rs, out ulong value)
         {
             value = 0;
             for (int i = 56; i >= 0; i -= 8)

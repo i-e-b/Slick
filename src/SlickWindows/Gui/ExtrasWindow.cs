@@ -1,8 +1,4 @@
-﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.Windows.Forms;
-using JetBrains.Annotations;
+﻿using System.Drawing.Imaging;
 using SlickCommon.Canvas;
 using SlickWindows.Canvas;
 using SlickWindows.Extensions;
@@ -13,7 +9,7 @@ namespace SlickWindows.Gui
 {
     public partial class Extras : AutoScaleForm
     {
-        [NotNull] private readonly IEndlessCanvas _target;
+        private readonly IEndlessCanvas _target;
         private readonly FloatingImage? _importFloat;
         private readonly FloatingText? _textFloat;
 

@@ -1,14 +1,11 @@
-﻿using System.Windows.Forms;
-using JetBrains.Annotations;
-
-namespace SlickWindows.Input
+﻿namespace SlickWindows.Input
 {
     /// <summary>
     /// Handles reading mouse-wheel style events across the application
     /// </summary>
     public static class PanScrollReceiver
     {
-        [NotNull] private static readonly object _lock = new();
+        private static readonly object _lock = new();
         private static bool isSetUp = false;
         private static MouseWheelMessageFilter? _mouseFilter;
 

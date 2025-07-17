@@ -1,8 +1,4 @@
-﻿using System.Drawing;
-using System.Linq;
-using System.Windows.Forms;
-
-namespace SlickWindows.Gui.Components
+﻿namespace SlickWindows.Gui.Components
 {
     public static class FormsHelper {
 

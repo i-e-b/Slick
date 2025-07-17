@@ -3,21 +3,20 @@ using System.Collections.Generic;
 using System.IO;
 using Containers;
 using Containers.Types;
-using JetBrains.Annotations;
 using StreamDb;
 
 namespace SlickCommon.Storage
 {
     public class StreamDbStorageContainer : IStorageContainer
     {
-        [NotNull] private readonly IStreamProvider _pageFile;
-        [NotNull] private readonly Database _db;
+        private readonly    IStreamProvider _pageFile;
+        private readonly Database        _db;
 
         // ReSharper disable InconsistentNaming
         private static readonly Exception NotFound = new Exception("The node does not exist");
         // ReSharper restore InconsistentNaming
 
-        public StreamDbStorageContainer([NotNull]IStreamProvider pageFile)
+        public StreamDbStorageContainer(IStreamProvider pageFile)
         {
             _pageFile = pageFile;
             //Database.SetQuickAndDirtyMode(); // only if we hit performance issues.

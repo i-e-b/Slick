@@ -1,8 +1,4 @@
-﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.Windows.Forms;
-using JetBrains.Annotations;
+﻿using System.Drawing.Imaging;
 using Microsoft.StylusInput;
 using SlickCommon.Canvas;
 using SlickWindows.Gui.Components;
@@ -12,10 +8,10 @@ namespace SlickWindows.Gui
 {
     public partial class PaletteWindow : AutoScaleForm, ITouchTriggered
     {
-        private static Image? _paletteImage;
-        [NotNull] private readonly RealTimeStylus _colorInput;
-        private bool _shouldClose;
-        private int _penSize = (int)PenSizes.Default;
+        private static      Image?         _paletteImage;
+        private readonly RealTimeStylus _colorInput;
+        private             bool           _shouldClose;
+        private             int            _penSize = (int)PenSizes.Default;
 
         public IEndlessCanvas? Canvas { get; set; }
 

@@ -1,10 +1,7 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
-using JetBrains.Annotations;
 using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
@@ -178,17 +175,16 @@ namespace SlickWindows.Canvas
 
             if (bottom < 0 || right < 0 || top > Size || left > Size) return false;
 
-            
             var size = Size >> (drawScale - 1);
             int r = penColor.R;
             int g = penColor.G;
             int b = penColor.B;
 
-            var rsq = (int)(radius / 2);
+            var rsq = radius / 2;
             rsq *= rsq;
 
             var blurEdge = (rsq - 2) * 0.5;
-            var blurFact = 255 / (rsq - blurEdge);
+            var blurFact = 256 / (rsq - blurEdge);
             if (blurFact > 127) blurFact = 127;
 
             if (inkPenType == InkType.Import)
@@ -197,32 +193,37 @@ namespace SlickWindows.Canvas
             }
             else
             {
-                DrawPenPoint(px, py, top, bottom, size, left, right, rsq, blurFact, blurEdge, r, g, b);
+                if (px < 0) px -= 0.0; else px += 0.5;
+                if (py < 0) py -= 0.5; else py += 0.5;
+                DrawPenPoint(px-0.5, py-0.5, top, bottom, size, left, right, rsq, blurFact, blurEdge, r, g, b);
             }
             Invalidate();
 
             return true;
         }
 
-        private void DrawPenPoint(double px, double py, int top, int bottom, int size, int left, int right, int rsq, double blurFact, double blurEdge, int r, int g, int b)
+        /// <summary>
+        /// Blend pen with existing tile ink
+        /// </summary>
+        private void DrawPenPoint(double px, double py, int top, int bottom, int size, int left, int right, double rsq, double blurFact, double blurEdge, int r, int g, int b)
         {
             for (int y = top; y < bottom; y++)
             {
-                var ysq = (int) ((y - py) * (y - py));
-                var yo = y * size;
+                var ysq = (y - py) * (y - py);
+                var yo  = y * size;
 
                 for (int x = left; x < right; x++)
                 {
                     var idx = yo + x;
 
                     // circular pen
-                    var xsq = (int) ((x - px) * (x - px));
+                    var xsq = (x - px) * (x - px);
                     var posSum = xsq + ysq;
 
-                    if (posSum > rsq) continue;
+                    if (posSum > rsq) continue; // outside of circle
 
-                    var blend = Pin255(blurFact * (posSum - blurEdge));
-                    int invBlend = 256 - blend;
+                    var blend    = Pin255(blurFact * (posSum - blurEdge)); // 0 is full ink, 255 is no ink
+                    int invBlend = 255 - blend;
 
                     Red[idx] = (byte) ((Red[idx] * blend + r * invBlend) >> 8);
                     Green[idx] = (byte) ((Green[idx] * blend + g * invBlend) >> 8);
@@ -247,17 +248,19 @@ namespace SlickWindows.Canvas
             return (int)rsq;
         }
 
+        /// <summary>
+        /// Get the smallest square that encloses the pen point
+        /// </summary>
         private static void PreparePen(double px, double py, double radius, out int top, out int left, out int right, out int bottom)
         {
-            // simple square for now...
             if (radius < 1) radius = 1;
-            var ol = (int) (radius / 2);
-            var or = (int) (radius - ol);
+            var ol = radius / 2;
+            var or = radius - ol;
 
-            top = Math.Max(0, (int) (py - ol));
-            left = Math.Max(0, (int) (px - ol));
-            right = Math.Min(Size, (int) (px + or));
-            bottom = Math.Min(Size, (int) (py + or));
+            top = Math.Max(0, (int) (py - ol - 1));
+            left = Math.Max(0, (int) (px - ol - 1));
+            right = Math.Min(Size, (int) (px + or + 1));
+            bottom = Math.Min(Size, (int) (py + or + 1));
         }
 
         private const int Alpha = unchecked((int)0xff000000);

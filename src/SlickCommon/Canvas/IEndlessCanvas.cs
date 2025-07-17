@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using JetBrains.Annotations;
 using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
 
@@ -73,7 +72,7 @@ namespace SlickCommon.Canvas
         /// <summary>
         /// List all pinned locations on the canvas
         /// </summary>
-        [NotNull] InfoPin[] AllPins();
+        InfoPin[] AllPins();
 
         void WritePinAtCurrentOffset(string text);
         void CentreOnPin(InfoPin pin);

@@ -1,6 +1,4 @@
-﻿using System;
-using JetBrains.Annotations;
-using Microsoft.StylusInput;
+﻿using Microsoft.StylusInput;
 
 namespace SlickWindows.Input
 {
@@ -17,14 +15,14 @@ namespace SlickWindows.Input
         /// <summary>
         /// A string containing the description of the plugin.
         /// </summary>
-        [NotNull]public string Description;
+        public string Description;
 
         /// <summary>
         /// Public constructor
         /// </summary>
         /// <param name="stylusPlugin">The plugin</param>
         /// <param name="pluginDescription">Description of the plugin</param>
-        public PluginListItem(IStylusSyncPlugin stylusPlugin, [NotNull]string pluginDescription)
+        public PluginListItem(IStylusSyncPlugin stylusPlugin, string pluginDescription)
         {
             Plugin = stylusPlugin;
             Description = pluginDescription ?? throw new ArgumentNullException(nameof(pluginDescription));

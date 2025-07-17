@@ -1,18 +1,15 @@
-﻿using System;
-using System.IO;
-using JetBrains.Annotations;
-using SlickCommon.Storage;
+﻿using SlickCommon.Storage;
 
 namespace SlickWindows.Canvas
 {
     public class SystemIoFile : Stream, IStreamProvider
     {
-        [NotNull] private static readonly object _lock = new();
-        [NotNull] private readonly string _path;
-        private FileStream? _openStream;
+        private static readonly object      _lock = new();
+        private readonly     string      _path;
+        private                 FileStream? _openStream;
 
 
-        public SystemIoFile([NotNull]string path)
+        public SystemIoFile(string path)
         {
             _path = path;
         }

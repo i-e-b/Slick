@@ -1,7 +1,4 @@
-﻿using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Windows.Forms;
-using JetBrains.Annotations;
+﻿using System.Drawing.Drawing2D;
 
 namespace SlickWindows.Gui.Components
 {
@@ -9,7 +6,7 @@ namespace SlickWindows.Gui.Components
     {
         public SymbolType Symbol { get; set; }
 
-        [NotNull] private readonly Pen _black2Px;
+        private readonly Pen _black2Px;
         private readonly int _scale;
 
         public RoundSymbolButton()
@@ -50,14 +47,14 @@ namespace SlickWindows.Gui.Components
             }
         }
 
-        private void DrawMergeArrow([NotNull]Graphics g)
+        private void DrawMergeArrow(Graphics g)
         {
             g.DrawLine(_black2Px, 12 * _scale, 5 * _scale, 12 * _scale, 18 * _scale);
             g.DrawLine(_black2Px, 12 * _scale, 18 * _scale, 6 * _scale, 12 * _scale);
             g.DrawLine(_black2Px, 12 * _scale, 18 * _scale, 18 * _scale, 12 * _scale);
         }
 
-        private void DrawCross([NotNull]Graphics g)
+        private void DrawCross(Graphics g)
         {
             g.DrawLine(_black2Px, 7 * _scale, 7 * _scale, 17 * _scale, 17 * _scale);
             g.DrawLine(_black2Px, 7 * _scale, 17 * _scale, 17 * _scale, 7 * _scale);

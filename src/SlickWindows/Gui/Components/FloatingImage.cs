@@ -1,7 +1,4 @@
-﻿using System;
-using System.Drawing;
-using System.Windows.Forms;
-using SlickCommon.Canvas;
+﻿using SlickCommon.Canvas;
 using SlickWindows.ImageFormats;
 
 namespace SlickWindows.Gui.Components

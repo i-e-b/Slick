@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Windows.Forms;
+﻿using System.Reflection;
 using SlickWindows.Gui;
 using SlickWindows.Gui.Components;
 

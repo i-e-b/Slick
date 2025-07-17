@@ -1,7 +1,4 @@
-﻿using System;
-using System.Windows.Forms;
-
-namespace SlickWindows.Gui.Components
+﻿namespace SlickWindows.Gui.Components
 {
     public static class ScreenExtensions
     {

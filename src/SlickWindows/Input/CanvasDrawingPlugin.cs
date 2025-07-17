@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows.Forms;
-using JetBrains.Annotations;
-using Microsoft.Ink;
+﻿using Microsoft.Ink;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
 using SlickCommon.Canvas;
@@ -15,13 +11,14 @@ namespace SlickWindows.Input
     /// </summary>
     public class CanvasDrawingPlugin:IStylusSyncPlugin
     {
-        [NotNull]private static readonly object _tileLock = new();
-        private readonly Form? _container;
-        [NotNull]private readonly IEndlessCanvas _canvas;
-        [NotNull]private readonly IKeyboard _keyboard;
+        private static readonly object _tileLock = new();
 
-        [NotNull] private readonly Dictionary<int,TabletDeviceKind> _stylusIdToDeviceKind;
-        [NotNull] private readonly Dictionary<int,Queue<DPoint>> _stylusIdToPoints;
+        private readonly Form?          _container;
+        private readonly IEndlessCanvas _canvas;
+        private readonly IKeyboard      _keyboard;
+
+        private readonly Dictionary<int, TabletDeviceKind> _stylusIdToDeviceKind;
+        private readonly Dictionary<int, Queue<DPoint>>    _stylusIdToPoints;
 
 
         /// <summary>
@@ -65,8 +62,7 @@ namespace SlickWindows.Input
             lock (_tileLock)
             {
                 if (!_stylusIdToDeviceKind.ContainsKey(data.Stylus.Id)) return; // unmapped
-                ptQ = _stylusIdToPoints[data.Stylus.Id];
-                if (ptQ == null) return; // unmapped
+                if (!_stylusIdToPoints.TryGetValue(data.Stylus.Id, out ptQ)) return; // unmapped
             }
 
             ReadPacketDataToQueue(data, ptQ);
@@ -140,8 +136,8 @@ namespace SlickWindows.Input
                 var point = new DPoint { X = data[i], Y = data[i + 1] };
 
                 // Since the packet data is in Ink Space coordinates, we need to convert to Pixels...
-                point.X = point.X * effectiveDpi;
-                point.Y = point.Y * effectiveDpi;
+                point.X *= effectiveDpi;
+                point.Y *= effectiveDpi;
                 var pressure = DefaultPressure;
 
                 if (data.PacketPropertyCount > 2) // Contains pressure info
@@ -163,7 +159,7 @@ namespace SlickWindows.Input
             }
         }
 
-        private void Draw([NotNull] Queue<DPoint> ptQ, bool exhaust)
+        private void Draw(Queue<DPoint> ptQ, bool exhaust)
         {
             while (ptQ.Count > 1)
             {
@@ -177,7 +173,7 @@ namespace SlickWindows.Input
             }
         }
 
-        private void Scroll([NotNull]Queue<DPoint> ptQ)
+        private void Scroll(Queue<DPoint> ptQ)
         {
             while (ptQ.Count > 1)
             {

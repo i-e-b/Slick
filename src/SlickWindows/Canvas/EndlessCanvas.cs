@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using JetBrains.Annotations;
+﻿using System.Drawing.Drawing2D;
 using SlickCommon.Canvas;
 using SlickCommon.ImageFormats;
 using SlickCommon.Storage;
@@ -19,30 +12,30 @@ namespace SlickWindows.Canvas
     public class EndlessCanvas : IEndlessCanvas
     {
         // For tile cache
-        [NotNull] private static readonly object _dataQueueLock = new();
-        [NotNull] private readonly HashSet<PositionKey> _changedTiles;
-        [NotNull] private readonly Dictionary<PositionKey, TileImage> _canvasTiles;
-        [NotNull] private readonly Queue<TileSource> _imageQueue = new();
-        private volatile IStorageContainer? _storage;
-        private string? _storagePath;
+        private static readonly object                             _dataQueueLock = new();
+        private readonly        HashSet<PositionKey>               _changedTiles;
+        private readonly        Dictionary<PositionKey, TileImage> _canvasTiles;
+        private readonly     Queue<TileSource>                  _imageQueue = new();
+        private volatile        IStorageContainer?                 _storage;
+        private                 string?                            _storagePath;
 
-        [NotNull] private readonly ManualResetEventSlim _updateTileCache;
-        [NotNull] private readonly ManualResetEventSlim _updateTileData;
-        [NotNull] private readonly ManualResetEventSlim _saveTileData;
-        private volatile bool _okToDraw;
-        private volatile bool _isRunning;
+        private readonly    ManualResetEventSlim _updateTileCache;
+        private readonly    ManualResetEventSlim _updateTileData;
+        private readonly ManualResetEventSlim _saveTileData;
+        private volatile    bool                 _okToDraw;
+        private volatile    bool                 _isRunning;
 
         // For drawing/inking
-        [NotNull] private readonly Dictionary<int, InkSettings> _inkSettings;
-        private InkSettings _lastPen;
-        private readonly Action<Rectangle>? _invalidateAction;
-        [NotNull] private readonly List<DPoint> _wetInkCurve;
+        private          InkSettings                  _lastPen;
+        private readonly Dictionary<int, InkSettings> _inkSettings;
+        private readonly Action<Rectangle>?           _invalidateAction;
+        private readonly List<DPoint>                 _wetInkCurve;
 
         // History
-        [NotNull] private readonly HashSet<PositionKey> _lastChangedTiles;
+        private readonly HashSet<PositionKey> _lastChangedTiles;
 
         // Selection / Export:
-        [NotNull] private readonly HashSet<PositionKey> _selectedTiles;
+        private readonly HashSet<PositionKey> _selectedTiles;
         private bool _inSelectMode;
 
         // Rendering properties
@@ -343,7 +336,6 @@ namespace SlickWindows.Canvas
             return new Rectangle((int)x, (int)y, (int)TileSize, (int)TileSize);
         }
 
-        [NotNull]
         public List<PositionKey> VisibleTiles(int width, int height)
         {
             var scale = 1 << (_drawScale - 1);
@@ -405,30 +397,29 @@ namespace SlickWindows.Canvas
             }
         }
 
-        private void RenderWetInk([NotNull]Graphics g)
+        /// <summary>
+        /// Temporarily draw wet ink to the screen.
+        /// </summary>
+        private void RenderWetInk(Graphics g)
         {
             if (_wetInkCurve.Count < 2) return;
-            var prev = _wetInkCurve[0];
             var scale = 1.0f / VisualScale;
-            for (int i = 1; i < _wetInkCurve.Count; i++)
-            {
-                var next = _wetInkCurve[i];
-                var pen = GuessPen(next.IsErase);
-                var size = next.Pressure * pen.PenSize * VisualScale * 0.6;
 
-                g.InterpolationMode = InterpolationMode.High;
-                g.SmoothingMode = SmoothingMode.HighQuality;
-                using (var gPen = new Pen(pen.PenColor, (float)size))
-                {
-                    g.DrawLine(gPen,
-                        (float)prev.X * scale,
-                        (float)prev.Y * scale,
-                        (float)next.X * scale,
-                        (float)next.Y * scale
-                    );
-                }
-                prev = next;
+            var points    = new List<PointF>();
+
+            foreach (var point in _wetInkCurve)
+            {
+                points.Add(new PointF((float)point.X * scale, (float)point.Y * scale));
             }
+
+            var first = _wetInkCurve[0];
+            var pen  = GuessPen(first.IsErase);
+            var size = first.Pressure * pen.PenSize * VisualScale * 0.6;
+
+            g.InterpolationMode = InterpolationMode.High;
+            g.SmoothingMode = SmoothingMode.HighQuality;
+            using var gPen = new Pen(pen.PenColor, (float)size);
+            g.DrawLines(gPen, points.ToArray());
         }
 
         private void RenderTiles(Graphics g, int width, int height, Rectangle clipRect)
@@ -541,6 +532,9 @@ namespace SlickWindows.Canvas
             _wetInkCurve.Clear();
         }
 
+        /// <summary>
+        /// Permanently write wet ink to tiles
+        /// </summary>
         public void EndStroke()
         {
             // Render the wet ink curve into the canvas image
@@ -558,7 +552,7 @@ namespace SlickWindows.Canvas
                 var dy = end.Y - start.Y;
                 var dp = end.Pressure - start.Pressure;
 
-                var penSet = _inkSettings.ContainsKey(start.StylusId) ? _inkSettings[start.StylusId] : GuessPen(start.IsErase);
+                var penSet = _inkSettings.TryGetValue(start.StylusId, out var setting) ? setting : GuessPen(start.IsErase);
 
                 var dd = Math.Floor(Math.Max(Math.Abs(dx), Math.Abs(dy)));
 
@@ -649,7 +643,6 @@ namespace SlickWindows.Canvas
             _saveTileData.Set();
         }
 
-        [NotNull]
         private List<PositionKey> InkPoint(InkSettings ink, DPoint pt, out double radius)
         {
             {
@@ -675,7 +668,7 @@ namespace SlickWindows.Canvas
                     var ax = local.X + (tx - pk.X) * TileImage.Size;
                     var ay = local.Y + (ty - pk.Y) * TileImage.Size;
 
-                    if (img?.DrawOnTile(ax, ay, radius, ink.PenColor, ink.PenType, _drawScale) == true)
+                    if (img.DrawOnTile(ax, ay, radius, ink.PenColor, ink.PenType, _drawScale) == true)
                     {
                         changed.Add(pk);
                     }
@@ -695,8 +688,7 @@ namespace SlickWindows.Canvas
                 PenSize = size,
                 PenType = type
             };
-            if (!_inkSettings.ContainsKey(stylusId)) _inkSettings.Add(stylusId, _lastPen);
-            else _inkSettings[stylusId] = _lastPen;
+            _inkSettings[stylusId] = _lastPen;
         }
 
         /// <summary>
@@ -751,7 +743,7 @@ namespace SlickWindows.Canvas
             _invalidateAction?.Invoke(new Rectangle(0, 0, 0, 0));
         }
         
-        [NotNull]private static IStorageContainer LoadStorageFile(IStreamProvider wrapper)
+        private static IStorageContainer LoadStorageFile(IStreamProvider wrapper)
         {
             if (wrapper == null) throw new Exception("Could not read file -- failed to access file system");
             try
@@ -792,10 +784,10 @@ namespace SlickWindows.Canvas
 
         private class TileSource
         {
-            [NotNull] public readonly TileImage Image;
-            [NotNull] public readonly Stream Data;
+            public readonly    TileImage Image;
+            public readonly Stream    Data;
 
-            public TileSource([NotNull] TileImage image, [NotNull] Stream data)
+            public TileSource(TileImage image, Stream data)
             {
                 Image = image;
                 Data = data;

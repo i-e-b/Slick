@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using JetBrains.Annotations;
 
 namespace SlickCommon.ImageFormats
 {
@@ -14,7 +13,7 @@ namespace SlickCommon.ImageFormats
         /// <param name="input">Readable stream for input</param>
         /// <param name="output">An existing value buffer. If there is more input
         /// than buffer space, the end of the input will be truncated</param>
-        public static void FibonacciDecode([NotNull]Stream input, [NotNull]float[] output)
+        public static void FibonacciDecode(Stream input, float[] output)
         {
             // Read a byte, scan through bits building up a number until we hit `b11`
             // Then move on to the next
@@ -59,7 +58,7 @@ namespace SlickCommon.ImageFormats
             }
         }
         
-        [NotNull]private static readonly uint[] _fibonacciSequence = {0,1,1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,
+        private static readonly uint[] _fibonacciSequence = {0,1,1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,
             2584,4181,6765,10946,17711,28657,46368,75025,121393,196418,317811,514229  };
 
 
@@ -70,7 +69,7 @@ namespace SlickCommon.ImageFormats
         /// <param name="buffer">Input buffer. Values will be truncated and must be in the range +- 196418</param>
         /// <param name="length">Number of samples to encode. Must be equal-or-less than buffer length. To encode entire buffer, pass zero.</param>
         /// <param name="output">Writable stream for output</param>
-        public static void FibonacciEncode([NotNull]float[] buffer, int length, [NotNull]Stream output)
+        public static void FibonacciEncode(float[] buffer, int length, Stream output)
         {
             var bf = new byte[8]; // if each bit is set. Value is 0xFF or 0x00
             var v = new byte[]{ 1<<7, 1<<6, 1<<5, 1<<4, 1<<3, 1<<2, 1<<1, 1 }; // values of the flag

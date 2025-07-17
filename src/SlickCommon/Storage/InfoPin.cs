@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using JetBrains.Annotations;
 
 namespace SlickCommon.Storage
 {
@@ -31,7 +30,7 @@ namespace SlickCommon.Storage
         /// <summary>
         /// Deserialise from bytes
         /// </summary>
-        public static InfoPin FromStream([NotNull]Stream s){
+        public static InfoPin FromStream(Stream s){
             var r = new BinaryReader(s);
             return new InfoPin{
                 Id = r.ReadString(),

@@ -15,11 +15,10 @@ namespace SlickCommon.ImageFormats
     public class WaveletCompress
     {
         // This set of coefficients will be used for new and edited tiles
-        [NotNull] public static readonly double[] StandardYQuants = { 2, 1 };
-        [NotNull] public static readonly double[] StandardCQuants = { 4, 2, 1 };
+        public static readonly    double[] StandardYQuants = { 2, 1 };
+        public static readonly double[] StandardCQuants = { 4, 2, 1 };
 
-        [NotNull]
-        public static InterleavedFile Compress([NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue, int imgWidth, int imgHeight)
+        public static InterleavedFile Compress(byte[] Red, byte[] Green, byte[] Blue, int imgWidth, int imgHeight)
         {
             RGBPlanes_To_YuvPlanes_ForcePower2(Red, Green, Blue, imgWidth, imgHeight,
                 out var Y, out var U, out var V,
@@ -28,14 +27,14 @@ namespace SlickCommon.ImageFormats
             return WaveletDecomposePlanar2(Y, U, V, width, height, imgWidth, imgHeight);
         }
 
-        public static void Decompress([NotNull]InterleavedFile file, [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue, byte scale)
+        public static void Decompress(InterleavedFile file, byte[] Red, byte[] Green, byte[] Blue, byte scale)
         {
             var planeWidth = WaveletRestorePlanar2(file, scale, out var Y, out var U, out var V);
             YuvPlanes_To_RgbPlanes(file.Version, Y, U, V, planeWidth, planeWidth, planeWidth, Red, Green, Blue);
         }
 
         // This controls the overall size and quality of the output
-        private static void QuantisePlanar2([NotNull]float[] buffer, int ch, int packedLength, QuantiseType mode, [NotNull]double[] fYs, [NotNull]double[] fCs)
+        private static void QuantisePlanar2(float[] buffer, int ch, int packedLength, QuantiseType mode, double[] fYs, double[] fCs)
         {
             if (packedLength < buffer.Length) packedLength = buffer.Length;
             // Planar two splits in half, starting with top/bottom, and alternating between
@@ -74,8 +73,7 @@ namespace SlickCommon.ImageFormats
         /// <param name="planeHeight">Height of the YUV planes, in samples. This must be a power-of-two</param>
         /// <param name="imgWidth">Width of the image region of interest. This must be less-or-equal to the plane width. Does not need to be a power of two</param>
         /// <param name="imgHeight">Height of the image region of interest. This must be less-or-equal to the plane height. Does not need to be a power of two</param>
-        [NotNull]
-        private static InterleavedFile WaveletDecomposePlanar2([NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V, int planeWidth, int planeHeight, int imgWidth, int imgHeight)
+        private static InterleavedFile WaveletDecomposePlanar2(float[] Y, float[] U, float[] V, int planeWidth, int planeHeight, int imgWidth, int imgHeight)
         {
             int rounds = (int)Math.Log(planeWidth, 2);
 
@@ -144,7 +142,7 @@ namespace SlickCommon.ImageFormats
             return container;
         }
 
-        public static int WaveletRestorePlanar2([NotNull]InterleavedFile container, byte scale, out float[] Y, out float[] U, out float[] V)
+        public static int WaveletRestorePlanar2(InterleavedFile container, byte scale, out float[] Y, out float[] U, out float[] V)
         {
             // ReSharper disable IdentifierTypo
             var Ybytes = container.Planes?[0];
@@ -250,12 +248,12 @@ namespace SlickCommon.ImageFormats
 
         private static int NextPow2(int c) => (int)NextPow2((uint)c);
 
-        [NotNull] private static T Pick<T>(int i, [NotNull][ItemNotNull] params T[] opts) => opts[i];
+        [NotNull] private static T Pick<T>(int i, [ItemNotNull] params T[] opts) => opts[i];
 
         /// <summary>
         /// Restore image byte order from storage format to image format
         /// </summary>
-        public static void FromStorageOrder2D([NotNull]float[] buffer, int srcWidth, int srcHeight, int rounds, int imgWidth, int imgHeight, int scale = 0)
+        public static void FromStorageOrder2D(float[] buffer, int srcWidth, int srcHeight, int rounds, int imgWidth, int imgHeight, int scale = 0)
         {
             var storage = new float[buffer.Length];
 
@@ -331,7 +329,7 @@ namespace SlickCommon.ImageFormats
         /// Pack the image coefficients into an order that is good for progressive loading and compression
         /// Returns total number of samples used (packed into lower range)
         /// </summary>
-        public static int ToStorageOrder2D([NotNull]float[] buffer, int srcWidth, int srcHeight, int rounds, int imgWidth, int imgHeight)
+        public static int ToStorageOrder2D(float[] buffer, int srcWidth, int srcHeight, int rounds, int imgWidth, int imgHeight)
         {
             var storage = new float[buffer.Length];
 
@@ -445,9 +443,9 @@ namespace SlickCommon.ImageFormats
             V = 127.5f + (0.439f * R + -0.368f * G + -0.071f * B);
         }
 
-        public static void YuvPlanes_To_RgbPlanes(int version, [NotNull]float[] Y, [NotNull]float[] U, [NotNull]float[] V,
+        public static void YuvPlanes_To_RgbPlanes(int version, float[] Y, float[] U, float[] V,
             int srcWidth, int dstWidth, int dstHeight,
-            [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue)
+            byte[] Red, byte[] Green, byte[] Blue)
         {
             int stride = srcWidth;
 
@@ -474,7 +472,7 @@ namespace SlickCommon.ImageFormats
 
         // This handles non-power-two input sizes
         public static void RGBPlanes_To_YuvPlanes_ForcePower2(
-            [NotNull]byte[] Red, [NotNull]byte[] Green, [NotNull]byte[] Blue,
+            byte[] Red, byte[] Green, byte[] Blue,
             int srcWidth, int srcHeight,
             out float[] Y, out float[] U, out float[] V,
             out int width, out int height)

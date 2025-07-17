@@ -1,10 +1,5 @@
-﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
+﻿using System.Drawing.Imaging;
 using System.Reflection;
-using JetBrains.Annotations;
 
 namespace SlickWindows.ImageFormats
 {
@@ -47,7 +42,7 @@ namespace SlickWindows.ImageFormats
             src.Save(filePath, ImageFormat.Bmp);
         }
 
-        private static void JpegStream([NotNull]Bitmap src, [NotNull]Stream outputStream, int quality = 95)
+        private static void JpegStream(Bitmap src, Stream outputStream, int quality = 95)
         {
             var encoder = ImageCodecInfo.GetImageEncoders().First(c => c?.FormatID == ImageFormat.Jpeg.Guid);
             if (encoder == null) throw new Exception("JPEG encoder not available. Check .Net runtime version");

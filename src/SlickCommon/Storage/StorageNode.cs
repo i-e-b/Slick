@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using JetBrains.Annotations;
 
 namespace SlickCommon.Storage
 {
@@ -16,7 +15,7 @@ namespace SlickCommon.Storage
         /// <summary>
         /// Deserialise from bytes
         /// </summary>
-        public static StorageNode FromStream([NotNull]Stream s){
+        public static StorageNode FromStream(Stream s){
             var r = new BinaryReader(s);
             return new StorageNode{
                 Id = r.ReadString(),

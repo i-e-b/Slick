@@ -216,6 +216,7 @@ namespace SlickWindows.Gui
             this.floatingText1.Name = "floatingText1";
             this.floatingText1.Size = new System.Drawing.Size(255, 205);
             this.floatingText1.TabIndex = 8;
+            this.floatingText1.Visible = false;
             // 
             // textButton
             // 

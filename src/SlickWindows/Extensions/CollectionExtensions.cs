@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace SlickWindows.Extensions
+﻿namespace SlickWindows.Extensions
 {
     public static class CollectionExtensions
     {
