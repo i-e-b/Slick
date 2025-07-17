@@ -25,7 +25,7 @@ namespace SlickCommon.Storage
         }
 
         /// <inheritdoc />
-        public override int CompareTo(object obj)
+        public override int CompareTo(object? obj)
         {
             if (obj is PositionKey key) {
                 if (key.X == X) return Y - key.Y;

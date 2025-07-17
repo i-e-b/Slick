@@ -49,7 +49,7 @@ namespace SlickWindows.Gui.Components
         {
             return _handle.GetHashCode();
         }
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is Window && Equals((Window)obj);
         }

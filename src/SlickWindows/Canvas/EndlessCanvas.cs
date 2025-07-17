@@ -760,14 +760,7 @@ namespace SlickWindows.Canvas
             }
             catch (Exception streamReason)
             {
-                try
-                {
-                    return new LiteDbStorageContainer(wrapper);
-                }
-                catch (Exception liteReason)
-                {
-                    throw new Exception("Could not read file -- it's either damaged or not a Slick file.\r\n" + liteReason + "\r\n" + streamReason);
-                }
+                throw new Exception("Could not read file -- it's either damaged or not a Slick file.\r\n" + streamReason);
             }
         }
 

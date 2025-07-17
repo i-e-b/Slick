@@ -2,7 +2,6 @@
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using JetBrains.Annotations;
 using Microsoft.StylusInput;
 using SlickWindows.Canvas;
 using SlickWindows.Gui.Components;
