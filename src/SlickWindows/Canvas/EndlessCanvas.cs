@@ -15,21 +15,21 @@ namespace SlickWindows.Canvas
         private static readonly object                             _dataQueueLock = new();
         private readonly        HashSet<PositionKey>               _changedTiles;
         private readonly        Dictionary<PositionKey, TileImage> _canvasTiles;
-        private readonly     Queue<TileSource>                  _imageQueue = new();
+        private readonly        Queue<TileSource>                  _imageQueue = new();
         private volatile        IStorageContainer?                 _storage;
         private                 string?                            _storagePath;
 
-        private readonly    ManualResetEventSlim _updateTileCache;
-        private readonly    ManualResetEventSlim _updateTileData;
+        private readonly ManualResetEventSlim _updateTileCache;
+        private readonly ManualResetEventSlim _updateTileData;
         private readonly ManualResetEventSlim _saveTileData;
-        private volatile    bool                 _okToDraw;
-        private volatile    bool                 _isRunning;
+        private volatile bool                 _okToDraw;
+        private volatile bool                 _isRunning;
 
         // For drawing/inking
         private          InkSettings                  _lastPen;
         private readonly Dictionary<int, InkSettings> _inkSettings;
         private readonly Action<Rectangle>?           _invalidateAction;
-        private readonly List<DPoint>                 _wetInkCurve;
+        private readonly MutexList<DPoint>            _wetInkCurve;
 
         // History
         private readonly HashSet<PositionKey> _lastChangedTiles;
@@ -98,7 +98,7 @@ namespace SlickWindows.Canvas
             _changedTiles = new HashSet<PositionKey>();
             _lastChangedTiles = new HashSet<PositionKey>();
             _selectedTiles = new HashSet<PositionKey>();
-            _wetInkCurve = new List<DPoint>();
+            _wetInkCurve = new MutexList<DPoint>();
             _inSelectMode = false;
 
             Dpi = deviceDpi; // 96 is 1:1
